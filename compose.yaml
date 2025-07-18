@@ -7,10 +7,10 @@ services:
     networks:
       - deployments_network
     ports:
-      - '27017:27017'
-    command: ['--replSet', 'rs0', '--bind_ip_all', '--port', '27017']
+      - "27017:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
     extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]}) }" | mongosh --port 27017 --quiet
       interval: 5s
@@ -38,11 +38,11 @@ services:
       - MONGODB_URI=mongodb://host.docker.internal:27017/deployments?replicaSet=rs0
       - DEPLOYMENT_MANAGER_PORT=3000
     image: deployment_manager:latest
-    command: node --no-warnings --loader ts-node/esm examples/deployments/manager.ts
+    command: node --no-warnings --loader ts-node/esm examples/manager.ts
     extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - "host.docker.internal:host-gateway"
     ports:
-      - '3000:3000'
+      - "3000:3000"
     networks:
       - deployments_network
     volumes:

@@ -2,6 +2,7 @@
   "name": "@nosana/deployment-manager",
   "version": "0.0.1",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "build": "npm run prepare && tsc",
     "prepare": "ts-patch install && typia patch",
@@ -20,7 +21,7 @@
   "dependencies": {
     "@nosana/sdk": "^0.4.8",
     "cron-parser": "^5.3.0",
-    "deep-context-stores": "^0.0.3",
+    "deep-context-stores": "^0.0.7",
     "express": "^5.1.0",
     "mongodb": "^6.17.0",
     "openapi-fetch": "^0.14.0",

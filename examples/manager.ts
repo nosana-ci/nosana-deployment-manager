@@ -1,5 +1,3 @@
-import { DeploymentsManager } from "../src";
+import { startDeploymentManager } from "../src";
 
-const manager = new DeploymentsManager();
-
-await manager.start();
+await startDeploymentManager();

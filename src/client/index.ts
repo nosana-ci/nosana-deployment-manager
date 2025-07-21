@@ -1,11 +1,9 @@
-import { getDeepStore } from "deep-context-stores";
 import createClient, { Middleware } from "openapi-fetch";
 import { AuthorizationManager, getWallet, Wallet } from "@nosana/sdk";
 
 export type QueryClient = ReturnType<typeof createClient<any, any | undefined>>;
 
 export const clientSelector = (wallet: Wallet): QueryClient => {
-  const { backend_url } = getDeepStore();
   let instance: QueryClient | undefined = undefined;
 
   if (!instance) {
@@ -25,7 +23,7 @@ export const clientSelector = (wallet: Wallet): QueryClient => {
     };
 
     instance = createClient({
-      baseUrl: `${backend_url}/api`,
+      baseUrl: `${process.env}/api`,
       headers: {
         "Content-Type": "application/json",
       },

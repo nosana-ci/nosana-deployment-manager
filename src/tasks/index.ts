@@ -1,18 +1,18 @@
 import { Db, ObjectId } from "mongodb";
 import { Worker } from "worker_threads";
 
+import { getConfig } from "../config/index.js";
 import { spawnListTask } from "./task/list/spawner.js";
 import { spawnStopTask } from "./task/stop/spawner.js";
 import { spawnExtendTask } from "./task/extend/spawner.js";
 import { getOutstandingTasks } from "./getOutstandingTasks.js";
 
-import { DeploymentsConfig, TaskDocument, TaskType } from "../types.js";
-import { getDeepStore } from "deep-context-stores";
+import { TaskDocument, TaskType } from "../types.js";
 
 export function startTaskListener(db: Db) {
   const tasks = new Map<ObjectId, Worker>();
   const collection = db.collection<TaskDocument>("tasks");
-  const { tasks_batch_size } = getDeepStore<DeploymentsConfig>();
+  const { tasks_batch_size } = getConfig();
   let fetchTasksInterval: NodeJS.Timeout | undefined = undefined;
 
   const completeTask = async (id: ObjectId) => {

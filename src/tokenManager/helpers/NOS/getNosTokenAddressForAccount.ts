@@ -4,15 +4,14 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getDeepStore } from "deep-context-stores";
 
-import { DeploymentsConfig } from "../../../types";
+import { getConfig } from "../../../config";
 
 export async function getNosTokenAddressForAccount(
   account: PublicKey,
   connection: Connection
 ): Promise<{ account: PublicKey; balance: number | null }> {
-  const { nos_address } = getDeepStore<DeploymentsConfig>();
+  const { nos_address } = getConfig();
   const tokenAccount = getAssociatedTokenAddressSync(
     new PublicKey(nos_address),
     account,

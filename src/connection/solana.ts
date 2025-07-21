@@ -1,13 +1,12 @@
-import { getDeepStore } from "deep-context-stores";
 import { Cluster, clusterApiUrl, Connection } from "@solana/web3.js";
 
-import { DeploymentsConfig } from "../types";
+import { getConfig } from "../config";
 
 export const ConnectionSelector = (): Connection => {
   let instance: Connection | undefined = undefined;
 
   if (!instance) {
-    const { rpc_network } = getDeepStore<DeploymentsConfig>();
+    const { rpc_network } = getConfig();
     let node = rpc_network;
     if (!node.includes("http")) {
       node = clusterApiUrl(node as Cluster);

@@ -6,6 +6,7 @@ import { CollectionsNames } from "../definitions/collection.js";
 import { setupDeploymentsRoutes, setupVaultRoutes } from "./setup/index.js";
 
 import { Collections } from "../types.js";
+import { getConfig } from "../config/index.js";
 
 export function startDeploymentManagerApi(db: Db) {
   const app = express();
@@ -26,7 +27,9 @@ export function startDeploymentManagerApi(db: Db) {
   setupDeploymentsRoutes(app);
   setupVaultRoutes(app);
 
-  app.listen(3000, () => {
-    console.log("Server is running on port 3000");
+  app.listen(getConfig().deployment_manager_port, () => {
+    console.log(
+      `Server is running on port ${getConfig().deployment_manager_port}`
+    );
   });
 }

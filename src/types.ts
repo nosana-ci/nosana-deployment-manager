@@ -7,6 +7,7 @@ export type DeploymentsConfig = {
   rpc_network: string;
   backend_url: string;
   tasks_batch_size: number;
+  deployment_manager_port: number;
 };
 
 export const DeploymentStatus = {

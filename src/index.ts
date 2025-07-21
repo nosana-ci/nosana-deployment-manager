@@ -1,33 +1,18 @@
-import { createDeepStore } from "deep-context-stores";
+#!/usr/bin/env node
 
 import { startDeploymentManagerApi } from "./routes/index.js";
-import { defaultConfig } from "./definitions/defaultConfig.js";
 import { DeploymentsConnection } from "./connection/deployments.js";
 import { startDeploymentManagerListeners } from "./listeners/index.js";
 
-import { DeploymentsConfig } from "./types.js";
+try {
+  const dbClient = await DeploymentsConnection();
 
-export async function startDeploymentManager(
-  config?: Partial<DeploymentsConfig>
-) {
-  const { withStore } = createDeepStore<DeploymentsConfig>(
-    Object.assign(defaultConfig[config?.network ?? "mainnet"], config)
-  );
-
-  try {
-    withStore(async () => {
-      const dbClient = await DeploymentsConnection();
-
-      if (!dbClient) {
-        throw new Error("Failed to connect to the database");
-      }
-
-      startDeploymentManagerListeners(dbClient);
-      startDeploymentManagerApi(dbClient);
-    });
-  } catch (error) {
-    throw error;
+  if (!dbClient) {
+    throw new Error("Failed to connect to the database");
   }
-}
 
-export { Vault } from "./vault/index.js";
+  startDeploymentManagerListeners(dbClient);
+  startDeploymentManagerApi(dbClient);
+} catch (error) {
+  throw error;
+}

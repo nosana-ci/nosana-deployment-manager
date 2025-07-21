@@ -35,10 +35,14 @@ services:
         - action: rebuild
           path: package.json
     environment:
-      - MONGODB_URI=mongodb://host.docker.internal:27017/deployments?replicaSet=rs0
+      - TASKS_BATCH_SIZE=10
+      - BACKEND_URL=mongodb://host.docker.internal:27017
       - DEPLOYMENT_MANAGER_PORT=3000
+      - NETWORK=mainnet
+      - SOLANA_NETWORK=https://rpc.ironforge.network/mainnet?apiKey=01J4RYMAWZC65B6CND9DTZZ5B
+      - NOS_ADDRESS=nosXBVoaCTtYdLvKY6Csb4AC8JCdQKKAaWYtx2ZMoo7
     image: deployment_manager:latest
-    command: node --no-warnings --loader ts-node/esm examples/manager.ts
+    command: node --no-warnings --loader ts-node/esm src/index.ts
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

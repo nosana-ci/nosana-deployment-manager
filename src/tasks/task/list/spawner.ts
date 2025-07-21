@@ -1,8 +1,8 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import { Db, Collection } from "mongodb";
-import { getDeepStore } from "deep-context-stores";
 
+import { getConfig } from "../../../config/index.js";
 import { VAULT_PATH } from "../../../definitions/vault.js";
 
 import { Worker } from "../Worker.js";
@@ -41,7 +41,7 @@ export function spawnListTask(
   let errorType: DeploymentStatus;
   const setErrorType = (type: DeploymentStatus) => (errorType = type);
 
-  const { network } = getDeepStore();
+  const { network } = getConfig();
   const collections = {
     documents: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),

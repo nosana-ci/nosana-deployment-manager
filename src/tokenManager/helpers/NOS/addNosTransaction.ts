@@ -6,9 +6,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
-import { getDeepStore } from "deep-context-stores";
-
-import { DeploymentsConfig } from "../../../types";
+import { getConfig } from "../../../config";
 
 export async function addNosToTransaction(
   amount: number,
@@ -24,7 +22,7 @@ export async function addNosToTransaction(
   createDestinationNosATA: boolean,
   transaction: Transaction
 ) {
-  const { nos_address } = getDeepStore<DeploymentsConfig>();
+  const { nos_address } = getConfig();
   if (createDestinationNosATA) {
     transaction.add(
       createAssociatedTokenAccountInstruction(

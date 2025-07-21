@@ -1,11 +1,11 @@
 import { Db } from "mongodb";
-import { getDeepStore } from "deep-context-stores";
 
 import {
   onExtendConfirmed,
   onExtendError,
   onExtendExit,
 } from "./events/index.js";
+import { getConfig } from "../../../config/index.js";
 
 import { Worker } from "../Worker.js";
 import { VAULT_PATH } from "../../../definitions/vault.js";
@@ -25,7 +25,7 @@ export function spawnExtendTask(
 ): Worker {
   let errorStatus: DeploymentStatus | undefined = undefined;
 
-  const { network } = getDeepStore();
+  const { network } = getConfig();
   const events = db.collection<EventDocument>("events");
   const deployments = db.collection<DeploymentDocument>("documents");
 

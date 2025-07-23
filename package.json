@@ -11,7 +11,7 @@
     "prettier:fix": "prettier --write ./src",
     "format": "npm run eslint && npm run prettier",
     "format:fix": "npm run eslint:fix && npm run prettier:fix",
-    "prepare": "ts-patch install && typia patch",
+    "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -24,6 +24,7 @@
     "@typescript-eslint/parser": "^8.38.0",
     "eslint": "^9.31.0",
     "eslint-plugin-import": "^2.32.0",
+    "husky": "^9.1.7",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-patch": "^3.3.0",

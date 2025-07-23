@@ -1,0 +1,33 @@
+#   _ __   ___  ___  __ _ _ __   __ _
+#  | '_ \ / _ \/ __|/ _` | '_ \ / _` |
+#  | | | | (_) \__ \ (_| | | | | (_| |
+#  |_| |_|\___/|___/\__,_|_| |_|\__,_|
+
+include:
+  - project: nosana-ci/tools/cicd/gitlab-ci
+    file: docker-container.yml
+
+variables:
+  CONTAINER_PLATFORMS: linux/amd64
+  DOCKERFILE_DIR: .
+  # RUN_AUTO_BUMP: ok
+  # AUTO_BUMP_REPO: nosana-ci/apps/platform/k8s
+  # AUTO_BUMP_FILE: helm-deployment-manager.tf
+  # AUTO_BUMP_SCG_PREFIX: image_tag [^}]*= { dev = \"
+
+npm format:
+  image: node:20.11.1
+  stage: test
+  script:
+    - npm ci
+    - npm run format
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+auto deploy prd:
+  stage: .post
+  extends: .auto-deploy
+  # variables:
+  #   AUTO_BUMP_SCG_PREFIX: image_tag [^}]* prd = \"
+  when: manual

@@ -13,12 +13,12 @@ import {
   WorkerEventMessage,
   OutstandingTasksDocument,
   TaskDocument,
-} from "../../../types";
+} from "../../../types.js";
 
 export function spawnStopTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void
+  complete: () => void,
 ): Worker {
   const { network } = getConfig();
   const tasksCollection = db.collection<TaskDocument>("tasks");
@@ -54,7 +54,7 @@ export function spawnStopTask(
           error,
           eventsCollection,
           task,
-          (type: DeploymentStatus) => (errorStatus = type)
+          (type: DeploymentStatus) => (errorStatus = type),
         );
         break;
     }

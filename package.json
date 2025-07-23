@@ -1,10 +1,16 @@
 {
   "name": "@nosana/deployment-manager",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "npm run prepare && tsc",
+    "build": "npm run prepare && npm run format && tsc",
+    "eslint": "eslint ./src",
+    "eslint:fix": "eslint --fix ./src",
+    "prettier": "prettier --check ./src",
+    "prettier:fix": "prettier --write ./src",
+    "format": "npm run eslint && npm run prettier",
+    "format:fix": "npm run eslint:fix && npm run prettier:fix",
     "prepare": "ts-patch install && typia patch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,6 +20,11 @@
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "eslint": "^9.31.0",
+    "eslint-plugin-import": "^2.32.0",
+    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-patch": "^3.3.0",
     "typescript": "^5.8.3"

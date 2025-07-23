@@ -1,4 +1,4 @@
-import { Collection, Db } from "mongodb";
+import { Db } from "mongodb";
 
 import type { TaskDocument, TasksCollection, TaskType } from "../types.js";
 
@@ -6,7 +6,7 @@ export async function scheduleTask(
   db: Db,
   task: TaskType,
   deploymentId: string,
-  due_at = new Date()
+  due_at = new Date(),
 ) {
   const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
 
@@ -20,7 +20,7 @@ export async function scheduleTask(
 
   if (!acknowledged) {
     console.error(
-      `Failed to schedule ${task} task for deployment ${deploymentId}.`
+      `Failed to schedule ${task} task for deployment ${deploymentId}.`,
     );
   }
 }

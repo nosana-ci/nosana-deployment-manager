@@ -6,7 +6,7 @@ export async function createTransferSOLInstruction(
   amount: number,
   source: PublicKey,
   destination: PublicKey,
-  transaction: Transaction
+  transaction: Transaction,
 ) {
   const connection = ConnectionSelector();
 
@@ -21,6 +21,6 @@ export async function createTransferSOLInstruction(
       fromPubkey: source,
       toPubkey: destination,
       lamports: amount === 0 ? balance : amount,
-    })
+    }),
   );
 }

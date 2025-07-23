@@ -16,7 +16,7 @@ import {
   OutstandingTasksDocument,
   TaskDocument,
   WorkerEventMessage,
-} from "../../../types";
+} from "../../../types.js";
 
 export interface OnListEventParams {
   code?: number;
@@ -36,7 +36,7 @@ export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export function spawnListTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void
+  complete: () => void,
 ): Worker {
   let errorType: DeploymentStatus;
   const setErrorType = (type: DeploymentStatus) => (errorType = type);
@@ -78,7 +78,7 @@ export function spawnListTask(
           });
           break;
       }
-    }
+    },
   );
 
   worker.on("exit", async (code) => {
@@ -90,7 +90,7 @@ export function spawnListTask(
         error: errorType,
         setErrorType,
       },
-      db
+      db,
     );
     complete();
   });

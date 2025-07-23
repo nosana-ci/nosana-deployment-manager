@@ -13,7 +13,7 @@ export async function onExtendExit(
   errorStatus: DeploymentStatus | undefined,
   deployments: DeploymentCollection,
   { deploymentId, deployment: { timeout } }: OutstandingTasksDocument,
-  db: Db
+  db: Db,
 ) {
   if (errorStatus) {
     deployments.updateOne(
@@ -26,7 +26,7 @@ export async function onExtendExit(
         $set: {
           status: errorStatus,
         },
-      }
+      },
     );
     return;
   }
@@ -35,6 +35,6 @@ export async function onExtendExit(
     db,
     TaskType.EXTEND,
     deploymentId,
-    new Date(new Date().getTime() + timeout * 0.9 * 60 * 1000)
+    new Date(new Date().getTime() + timeout * 0.9 * 60 * 1000),
   );
 }

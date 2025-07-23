@@ -1,7 +1,7 @@
 import { FilterOperators } from "../types.js";
 
 export function matchValue<T>(value: T, operator: FilterOperators<T>): boolean {
-  const isComparable = (v: any): v is number | Date =>
+  const isComparable = (v: unknown): v is number | Date =>
     typeof v === "number" || v instanceof Date;
 
   if ("$eq" in operator && value !== operator.$eq) return false;

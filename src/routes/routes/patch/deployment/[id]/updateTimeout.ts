@@ -6,7 +6,7 @@ import { DeploymentsResponse } from "../../../../../types.js";
 
 export async function deploymentUpdateTimeoutHandler(
   req: Request<{ deployment: string }, unknown, { timeout: number }>,
-  res: DeploymentsResponse
+  res: DeploymentsResponse,
 ) {
   const { db, deployment } = res.locals;
 
@@ -26,7 +26,7 @@ export async function deploymentUpdateTimeoutHandler(
           timeout,
           updated_at,
         },
-      }
+      },
     );
 
     if (!acknowledged) {

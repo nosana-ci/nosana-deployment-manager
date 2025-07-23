@@ -5,11 +5,11 @@ import {
 } from "@solana/spl-token";
 import { Connection, PublicKey } from "@solana/web3.js";
 
-import { getConfig } from "../../../config";
+import { getConfig } from "../../../config/index.js";
 
 export async function getNosTokenAddressForAccount(
   account: PublicKey,
-  connection: Connection
+  connection: Connection,
 ): Promise<{ account: PublicKey; balance: number | null }> {
   const { nos_address } = getConfig();
   const tokenAccount = getAssociatedTokenAddressSync(
@@ -17,7 +17,7 @@ export async function getNosTokenAddressForAccount(
     account,
     false,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
   try {

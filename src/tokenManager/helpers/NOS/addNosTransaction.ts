@@ -6,7 +6,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
-import { getConfig } from "../../../config";
+import { getConfig } from "../../../config/index.js";
 
 export async function addNosToTransaction(
   amount: number,
@@ -20,7 +20,7 @@ export async function addNosToTransaction(
   },
   payer: PublicKey,
   createDestinationNosATA: boolean,
-  transaction: Transaction
+  transaction: Transaction,
 ) {
   const { nos_address } = getConfig();
   if (createDestinationNosATA) {
@@ -31,8 +31,8 @@ export async function addNosToTransaction(
         destination.account,
         new PublicKey(nos_address),
         TOKEN_PROGRAM_ID,
-        ASSOCIATED_TOKEN_PROGRAM_ID
-      )
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+      ),
     );
   }
 
@@ -41,7 +41,7 @@ export async function addNosToTransaction(
       source.tokenAccount,
       destination.tokenAccount,
       source.account,
-      amount
-    )
+      amount,
+    ),
   );
 }

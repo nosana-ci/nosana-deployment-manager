@@ -2,7 +2,7 @@ import fs from "fs";
 import { Request } from "express";
 import { Keypair } from "@solana/web3.js";
 
-import { VAULT_PATH } from "../../../../../definitions/vault";
+import { VAULT_PATH } from "../../../../../definitions/vault.js";
 import { ErrorsMessages } from "../../../../../errors/index.js";
 import { TokenManager } from "../../../../../tokenManager/index.js";
 
@@ -10,7 +10,7 @@ import { VaultsResponse } from "../../../../../types.js";
 
 export async function vaultWithdrawHandler(
   req: Request<{ vault: string }, unknown, { SOL?: number; NOS?: number }>,
-  res: VaultsResponse
+  res: VaultsResponse,
 ) {
   const { vault } = res.locals;
 
@@ -18,7 +18,7 @@ export async function vaultWithdrawHandler(
     const tokenManager = new TokenManager(
       vault.vault,
       vault.owner,
-      "DESTINATION"
+      "DESTINATION",
     );
 
     await tokenManager.addSOL(req.body.SOL);
@@ -26,7 +26,7 @@ export async function vaultWithdrawHandler(
 
     const vaultKey = fs.readFileSync(
       `${VAULT_PATH}${vault.vault.toString()}.json`,
-      "utf8"
+      "utf8",
     );
 
     if (!vaultKey) {
@@ -36,8 +36,8 @@ export async function vaultWithdrawHandler(
 
     const tx = await tokenManager.signAndSerialize(
       Keypair.fromSecretKey(
-        new Uint8Array(JSON.parse(vaultKey) as Iterable<number>)
-      )
+        new Uint8Array(JSON.parse(vaultKey) as Iterable<number>),
+      ),
     );
 
     res.status(200).json({ transaction: tx });

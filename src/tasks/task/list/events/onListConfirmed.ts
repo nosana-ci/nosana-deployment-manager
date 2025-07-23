@@ -4,7 +4,7 @@ export function onListConfirmed(
   tx: string,
   job: string,
   run: string,
-  { collections: { events, jobs }, task }: OnListEventParams
+  { collections: { events, jobs }, task }: OnListEventParams,
 ) {
   events.insertOne({
     deploymentId: task.deploymentId,

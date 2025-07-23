@@ -12,7 +12,7 @@ export type CollectionListener<T extends Document> = ReturnType<
 
 export function createCollectionListener<T extends Document>(
   key: keyof Collections,
-  db: Db
+  db: Db,
 ) {
   if (!CollectionsNames.includes(key)) throw new Error("Invalid collection.");
 

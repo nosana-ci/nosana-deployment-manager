@@ -4,15 +4,11 @@ import { startDeploymentManagerApi } from "./routes/index.js";
 import { DeploymentsConnection } from "./connection/deployments.js";
 import { startDeploymentManagerListeners } from "./listeners/index.js";
 
-try {
-  const dbClient = await DeploymentsConnection();
+const dbClient = await DeploymentsConnection();
 
-  if (!dbClient) {
-    throw new Error("Failed to connect to the database");
-  }
-
-  startDeploymentManagerListeners(dbClient);
-  startDeploymentManagerApi(dbClient);
-} catch (error) {
-  throw error;
+if (!dbClient) {
+  throw new Error("Failed to connect to the database");
 }
+
+startDeploymentManagerListeners(dbClient);
+startDeploymentManagerApi(dbClient);

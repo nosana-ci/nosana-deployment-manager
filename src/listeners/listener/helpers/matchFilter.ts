@@ -3,7 +3,7 @@ import { matchValue } from "./matchValue.js";
 
 export function matchFilter<T extends object>(
   obj: T,
-  filter: Filters<T>
+  filter: Filters<T>,
 ): boolean {
   // Compound filters
   if ("$and" in filter) {
@@ -19,7 +19,7 @@ export function matchFilter<T extends object>(
   // Field filters
   for (const key in filter) {
     const fieldValue = obj[key as keyof T];
-    const condition = filter[key as keyof T] as FilterOperators<any>;
+    const condition = filter[key as keyof T] as FilterOperators<unknown>;
 
     if (!matchValue(fieldValue, condition)) {
       return false;

@@ -1,7 +1,7 @@
 import createClient, { Middleware } from "openapi-fetch";
 import { AuthorizationManager, getWallet, Wallet } from "@nosana/sdk";
 
-export type QueryClient = ReturnType<typeof createClient<any, any | undefined>>;
+export type QueryClient = ReturnType<typeof createClient>;
 
 export const clientSelector = (wallet: Wallet): QueryClient => {
   let instance: QueryClient | undefined = undefined;
@@ -17,7 +17,7 @@ export const clientSelector = (wallet: Wallet): QueryClient => {
           "Authorization",
           authorizationManager.generate("DeploymentsAuthorization", {
             includeTime: true,
-          })
+          }),
         );
       },
     };

@@ -9,7 +9,7 @@ import {
 
 export async function deploymentStartHandler(
   req: Request<{ deployment: string }, unknown, unknown>,
-  res: DeploymentsResponse
+  res: DeploymentsResponse,
 ) {
   const { db, deployment } = res.locals;
   const userId = req.headers["x-user-id"] as string;
@@ -31,7 +31,7 @@ export async function deploymentStartHandler(
         $set: {
           status: DeploymentStatus.STARTING,
         },
-      }
+      },
     );
 
     if (!acknowledged) {

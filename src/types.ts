@@ -5,9 +5,14 @@ export type DeploymentsConfig = {
   network: "mainnet" | "devnet";
   nos_address: string;
   rpc_network: string;
-  backend_url: string;
   tasks_batch_size: number;
   deployment_manager_port: number;
+  docdb: {
+    hostname: string;
+    port: string | number;
+    username: string | undefined;
+    password: string | undefined;
+  };
 };
 
 export const DeploymentStatus = {
@@ -76,6 +81,7 @@ export const VaultStatus = {
   ARCHIVED: "ARCHIVED",
 } as const;
 
+// @eslint-ignore
 export type VaultStatus = (typeof VaultStatus)[keyof typeof VaultStatus];
 
 export type VaultDocument = {
@@ -102,7 +108,7 @@ export type DeploymentAggregation = DeploymentDocument & {
   jobs: JobsDocument[];
 };
 
-export type DeploymentsResponse<ResponseBody extends {} = any> =
+export type DeploymentsResponse<ResponseBody extends {} = {}> =
   Response<ResponseBody> & {
     locals: {
       db: Collections;
@@ -110,7 +116,7 @@ export type DeploymentsResponse<ResponseBody extends {} = any> =
     };
   };
 
-export type VaultsResponse<ResponseBody extends {} = any> =
+export type VaultsResponse<ResponseBody extends {} = {}> =
   Response<ResponseBody> & {
     locals: {
       db: Collections;
@@ -146,7 +152,7 @@ export type JobsDocument = {
 
 export interface WorkerEventMessage {
   event: "CONFIRMED" | string;
-  error?: any;
+  error?: string | object | Error | null;
   job: string;
   run: string;
   tx: string;

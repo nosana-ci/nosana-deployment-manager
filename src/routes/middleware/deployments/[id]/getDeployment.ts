@@ -8,7 +8,7 @@ import { DeploymentsResponse } from "../../../../types.js";
 export async function getDeploymentMiddleware(
   req: Request<{ deployment: string }>,
   res: DeploymentsResponse,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> {
   const { db } = res.locals;
   const id = req.params.deployment;

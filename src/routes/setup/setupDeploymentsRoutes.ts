@@ -25,7 +25,7 @@ export function setupDeploymentsRoutes(app: Express) {
   app.get(
     "/api/deployment/:deployment",
     getDeploymentMiddleware,
-    deploymentIdHandler
+    deploymentIdHandler,
   );
   // POST
   app.post("/api/deployment/create", deploymentCreateHandler);
@@ -33,25 +33,25 @@ export function setupDeploymentsRoutes(app: Express) {
     "/api/deployment/:deployment/start",
     getDeploymentMiddleware,
     validateActiveDeploymentMiddleware,
-    deploymentStartHandler
+    deploymentStartHandler,
   );
   app.post(
     "/api/deployment/:deployment/stop",
     getDeploymentMiddleware,
     validateActiveDeploymentMiddleware,
-    deploymentStopHandler
+    deploymentStopHandler,
   );
   // PATCH
   app.patch(
     "/api/deployment/:deployment/archive",
     getDeploymentMiddleware,
     validateActiveDeploymentMiddleware,
-    deploymentArchiveHandler
+    deploymentArchiveHandler,
   );
   app.patch(
     "/api/deployment/:deployment/update-timeout",
     getDeploymentMiddleware,
     validateActiveDeploymentMiddleware,
-    deploymentUpdateTimeoutHandler
+    deploymentUpdateTimeoutHandler,
   );
 }

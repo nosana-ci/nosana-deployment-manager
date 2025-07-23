@@ -25,7 +25,7 @@ export class Vault {
     const solBalance = await connection.getBalance(this.publicKey);
     const { balance } = await getNosTokenAddressForAccount(
       this.publicKey,
-      connection
+      connection,
     );
 
     return {
@@ -46,7 +46,7 @@ export class Vault {
     const manager = new TokenManager(
       this.wallet.publicKey,
       this.publicKey,
-      "SOURCE"
+      "SOURCE",
     );
 
     try {
@@ -60,7 +60,7 @@ export class Vault {
 
       await manager.transfer([this.wallet.payer]);
     } catch (e) {
-      errorFormatter("Failed to topup vault.", e);
+      errorFormatter("Failed to topup vault.", { error: (e as Error).message });
     }
   }
 
@@ -69,8 +69,9 @@ export class Vault {
     const client = clientSelector(this.wallet);
 
     const { data, error } = await client.POST(
+      // @ts-expect-error need to create open api schema
       `/vault/${this.publicKey.toString()}/withdraw`,
-      {}
+      {},
     );
 
     if (error) {
@@ -78,7 +79,8 @@ export class Vault {
     }
 
     const transaction = VersionedTransaction.deserialize(
-      new Uint8Array(Buffer.from(data.transaction, "base64"))
+      // @ts-expect-error need to create open api schema
+      new Uint8Array(Buffer.from(data.transaction, "base64")),
     );
     transaction.sign([this.wallet.payer]);
 

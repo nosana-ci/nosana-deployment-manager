@@ -8,10 +8,10 @@ import { DeploymentsResponse } from "../../../types.js";
 export async function authMiddleware(
   req: Request,
   res: DeploymentsResponse,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> {
   const authorizationManager = new AuthorizationManager(
-    new Wallet(new Keypair())
+    new Wallet(new Keypair()),
   );
 
   const userId = req.headers["x-user-id"];

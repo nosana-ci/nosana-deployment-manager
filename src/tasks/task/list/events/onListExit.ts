@@ -8,7 +8,7 @@ import {
   DeploymentStatus,
   DeploymentStrategy,
   TaskType,
-} from "../../../../types";
+} from "../../../../types.js";
 
 export async function onListExit(
   {
@@ -20,7 +20,7 @@ export async function onListExit(
       due_at,
     },
   }: OnListEventParams,
-  db: Db
+  db: Db,
 ) {
   if (!error) {
     if (strategy === DeploymentStrategy["SIMPLE-EXTEND"]) {
@@ -28,7 +28,7 @@ export async function onListExit(
         db,
         TaskType.EXTEND,
         deploymentId,
-        new Date(new Date().getTime() + timeout * 0.9 * 60 * 1000)
+        new Date(new Date().getTime() + timeout * 0.9 * 60 * 1000),
       );
     }
 
@@ -52,6 +52,6 @@ export async function onListExit(
       $set: {
         status: error || DeploymentStatus.RUNNING,
       },
-    }
+    },
   );
 }

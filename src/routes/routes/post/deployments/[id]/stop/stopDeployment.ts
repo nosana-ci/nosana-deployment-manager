@@ -9,7 +9,7 @@ import {
 
 export async function deploymentStopHandler(
   req: Request<{ deployment: string }, unknown, unknown>,
-  res: DeploymentsResponse
+  res: DeploymentsResponse,
 ) {
   const updated_at = new Date();
   const { db, deployment } = res.locals;
@@ -35,7 +35,7 @@ export async function deploymentStopHandler(
           status: DeploymentStatus.STOPPING,
           updated_at,
         },
-      }
+      },
     );
 
   if (!acknowledgedDeployments) {

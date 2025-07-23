@@ -8,7 +8,7 @@ export async function fetchDeployments(
     id?: string | undefined;
     owner: string;
   },
-  deployments: DeploymentCollection
+  deployments: DeploymentCollection,
 ): Promise<DeploymentAggregation[]> {
   const deployment = await deployments
     .aggregate()

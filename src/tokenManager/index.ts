@@ -18,7 +18,7 @@ export class TokenManager {
   constructor(
     sourceWallet: PublicKey | string,
     destinationWallet: PublicKey | string,
-    payer: "SOURCE" | "DESTINATION"
+    payer: "SOURCE" | "DESTINATION",
   ) {
     this.payer = payer;
     this.transaction = new Transaction();
@@ -41,7 +41,7 @@ export class TokenManager {
       this.sourceWallet,
       this.destinationWallet,
       this.payer === "SOURCE" ? this.sourceWallet : this.destinationWallet,
-      this.transaction
+      this.transaction,
     );
   }
 
@@ -50,7 +50,7 @@ export class TokenManager {
       amount ?? 0,
       this.sourceWallet,
       this.destinationWallet,
-      this.transaction
+      this.transaction,
     );
   }
 

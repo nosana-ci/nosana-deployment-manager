@@ -12,7 +12,7 @@ import {
   DeploymentStatus,
   DeploymentStrategy,
   TaskType,
-} from "../../types";
+} from "../../types.js";
 
 export function startDeploymentListener(db: Db) {
   const listener: CollectionListener<DeploymentDocument> =
@@ -31,11 +31,11 @@ export function startDeploymentListener(db: Db) {
         id,
         strategy === DeploymentStrategy.SCHEDULED
           ? getNextTaskTime(schedule, new Date())
-          : undefined
+          : undefined,
       ),
     {
       status: { $eq: DeploymentStatus.STARTING },
-    }
+    },
   );
 
   listener.addListener(
@@ -43,7 +43,7 @@ export function startDeploymentListener(db: Db) {
     ({ id }) => scheduleTask(db, TaskType.STOP, id),
     {
       status: { $eq: DeploymentStatus.STOPPING },
-    }
+    },
   );
 
   listener.start();

@@ -1,9 +1,9 @@
 export function errorFormatter(
   customMessage: string,
-  { error }: any | undefined
+  errorObject: { error: string } | undefined,
 ) {
-  if (error) {
-    throw new Error(`${customMessage}: ${error}`);
+  if (errorObject?.error) {
+    throw new Error(`${customMessage}: ${errorObject.error}`);
   }
   throw new Error(customMessage);
 }

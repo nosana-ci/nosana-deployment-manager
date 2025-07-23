@@ -9,11 +9,11 @@ export function setupVaultRoutes(app: Express) {
   app.post(
     "/api/vault/:vault/withdraw",
     getVaultMiddleware,
-    vaultWithdrawHandler
+    vaultWithdrawHandler,
   );
   app.patch(
     "/api/vault/:vault/update-balance",
     getVaultMiddleware,
-    vaultUpdateBalanceHandler
+    vaultUpdateBalanceHandler,
   );
 }

@@ -1,6 +1,6 @@
-import { Request } from 'express';
+import { Request } from "express";
 
-import { DeploymentsResponse } from '../../../../../types.js';
+import { DeploymentsResponse } from "../../../../../types.js";
 
 export async function deploymentIdHandler(
   _: Request<{ deployment: string }>,
@@ -8,6 +8,6 @@ export async function deploymentIdHandler(
 ) {
   const { deployment } = res.locals;
 
-  Reflect.deleteProperty(deployment, '_id');
+  Reflect.deleteProperty(deployment, "_id");
   res.status(200).json(deployment);
 }

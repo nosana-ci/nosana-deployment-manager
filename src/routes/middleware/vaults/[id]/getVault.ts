@@ -7,7 +7,7 @@ import { VaultsResponse } from "../../../../types.js";
 export async function getVaultMiddleware(
   req: Request<{ vault: string }>,
   res: VaultsResponse,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> {
   const { db } = res.locals;
   const vaultId = req.params.vault;

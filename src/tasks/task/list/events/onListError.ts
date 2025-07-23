@@ -4,8 +4,8 @@ import { DeploymentStatus } from "../../../../types.js";
 
 export function onListError(
   tx: string | undefined,
-  error: object | Error | string | null,
-  { collections: { events }, task, setErrorType }: OnListEventParams
+  error: object | Error | string | null = "",
+  { collections: { events }, task, setErrorType }: OnListEventParams,
 ) {
   if (!error || error === null) return;
 
@@ -18,8 +18,8 @@ export function onListError(
       error instanceof Error
         ? error.message
         : typeof error === "object"
-        ? JSON.stringify(error)
-        : error,
+          ? JSON.stringify(error)
+          : error,
     created_at: new Date(),
   });
 

@@ -7,7 +7,7 @@ import { DeploymentsResponse } from "../../../../types.js";
 export async function validateActiveDeploymentMiddleware(
   req: Request<{ deployment: string }>,
   res: DeploymentsResponse,
-  next: NextFunction
+  next: NextFunction,
 ): Promise<void> {
   const { deployment } = res.locals;
 

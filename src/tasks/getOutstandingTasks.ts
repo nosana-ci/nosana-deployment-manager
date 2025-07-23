@@ -5,7 +5,7 @@ import { OutstandingTasksDocument, TaskDocument } from "../types.js";
 export async function getOutstandingTasks(
   collection: Collection<TaskDocument>,
   keys: ObjectId[],
-  batchSize: number
+  batchSize: number,
 ): Promise<OutstandingTasksDocument[]> {
   return collection
     .aggregate()

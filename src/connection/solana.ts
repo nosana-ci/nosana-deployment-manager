@@ -1,6 +1,6 @@
 import { Cluster, clusterApiUrl, Connection } from "@solana/web3.js";
 
-import { getConfig } from "../config";
+import { getConfig } from "../config/index.js";
 
 export const ConnectionSelector = (): Connection => {
   let instance: Connection | undefined = undefined;

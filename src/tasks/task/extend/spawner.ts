@@ -16,12 +16,12 @@ import {
   EventDocument,
   WorkerEventMessage,
   OutstandingTasksDocument,
-} from "../../../types";
+} from "../../../types.js";
 
 export function spawnExtendTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void
+  complete: () => void,
 ): Worker {
   let errorStatus: DeploymentStatus | undefined = undefined;
 
@@ -47,13 +47,13 @@ export function spawnExtendTask(
           error,
           (status: DeploymentStatus) => (errorStatus = status),
           events,
-          task
+          task,
         );
         break;
     }
   });
 
-  worker.on("exit", async (_code) => {
+  worker.on("exit", async () => {
     await onExtendExit(errorStatus, deployments, task, db);
 
     complete();

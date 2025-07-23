@@ -5,7 +5,7 @@ import { EventDocument, OutstandingTasksDocument } from "../../../../types.js";
 export function onStopConfirmed(
   tx: string,
   events: Collection<EventDocument>,
-  { deploymentId }: OutstandingTasksDocument
+  { deploymentId }: OutstandingTasksDocument,
 ) {
   events.insertOne({
     deploymentId,

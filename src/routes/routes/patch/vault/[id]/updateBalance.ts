@@ -9,7 +9,7 @@ import { VaultsResponse } from "../../../../../types.js";
 
 export async function vaultUpdateBalanceHandler(
   req: Request<{ vault: string }>,
-  res: VaultsResponse
+  res: VaultsResponse,
 ) {
   const { db, vault } = res.locals;
   const userId = req.headers["x-user-id"] as string;
@@ -30,7 +30,7 @@ export async function vaultUpdateBalanceHandler(
           nos: balance ?? 0,
           nos_ata: account.toString(),
         },
-      }
+      },
     );
 
     if (!acknowledged) {

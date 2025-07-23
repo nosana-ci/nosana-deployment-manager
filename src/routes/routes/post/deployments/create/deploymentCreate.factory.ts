@@ -16,19 +16,19 @@ import {
 
 export async function createAndStoreVault(
   owner: string,
-  created_at: Date
+  created_at: Date,
 ): Promise<VaultDocument> {
   const connection = ConnectionSelector();
   const vault = solana.Keypair.generate();
 
   fs.writeFileSync(
     `${VAULT_PATH}${vault.publicKey.toString()}.json`,
-    JSON.stringify(Buffer.from(vault.secretKey).toJSON().data)
+    JSON.stringify(Buffer.from(vault.secretKey).toJSON().data),
   );
 
   const { account } = await getNosTokenAddressForAccount(
     vault.publicKey,
-    connection
+    connection,
   );
 
   return {
@@ -55,7 +55,7 @@ export function createDeployment(
   }: DeploymentCreateRequest,
   vault: string,
   owner: string,
-  created_at: Date
+  created_at: Date,
 ): DeploymentDocument {
   const baseFields = {
     id: solana.Keypair.generate().publicKey.toString(),

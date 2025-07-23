@@ -13,7 +13,7 @@ import {
 
 export async function deploymentArchiveHandler(
   req: Request<{ deployment: string }, unknown, unknown>,
-  res: DeploymentsResponse
+  res: DeploymentsResponse,
 ) {
   const { db, deployment } = res.locals;
   const userId = req.headers["x-user-id"] as string;
@@ -28,7 +28,7 @@ export async function deploymentArchiveHandler(
 
     const vault = new Vault(
       new PublicKey(deployment.vault),
-      new Wallet(new Keypair())
+      new Wallet(new Keypair()),
     );
 
     const { SOL, NOS } = await vault.getBalance();
@@ -49,7 +49,7 @@ export async function deploymentArchiveHandler(
         $set: {
           status: VaultStatus.ARCHIVED,
         },
-      }
+      },
     );
 
     if (!acknowledged) {
@@ -72,7 +72,7 @@ export async function deploymentArchiveHandler(
           $set: {
             status: DeploymentStatus.ARCHIVED,
           },
-        }
+        },
       );
 
     if (!acknowledgedDeployments) {

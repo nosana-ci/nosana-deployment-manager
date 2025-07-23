@@ -12,7 +12,7 @@ export function startDeploymentManagerApi(db: Db) {
   const app = express();
 
   const collections = CollectionsNames.reduce((collections, name) => {
-    // @ts-ignore
+    // @ts-expect-error collections are type safe
     collections[name] = db.collection(name);
     return collections;
   }, {} as Collections);
@@ -29,7 +29,7 @@ export function startDeploymentManagerApi(db: Db) {
 
   app.listen(getConfig().deployment_manager_port, () => {
     console.log(
-      `Server is running on port ${getConfig().deployment_manager_port}`
+      `Server is running on port ${getConfig().deployment_manager_port}`,
     );
   });
 }

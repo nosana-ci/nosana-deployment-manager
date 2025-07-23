@@ -9,7 +9,7 @@ export async function createTransferNOSInstruction(
   source: PublicKey,
   destination: PublicKey,
   payer: PublicKey,
-  transaction: Transaction
+  transaction: Transaction,
 ) {
   const connection = ConnectionSelector();
 
@@ -39,6 +39,6 @@ export async function createTransferNOSInstruction(
     },
     payer,
     destinationBalance === null,
-    transaction
+    transaction,
   );
 }

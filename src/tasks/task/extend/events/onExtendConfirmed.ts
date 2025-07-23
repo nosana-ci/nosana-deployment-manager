@@ -6,7 +6,7 @@ import {
 export function onExtendConfirmed(
   tx: string,
   events: EventsCollection,
-  task: OutstandingTasksDocument
+  task: OutstandingTasksDocument,
 ) {
   events.insertOne({
     deploymentId: task.deploymentId,

@@ -86,6 +86,7 @@ export type VaultStatus = (typeof VaultStatus)[keyof typeof VaultStatus];
 
 export type VaultDocument = {
   vault: string;
+  vault_key: string;
   owner: string;
   status: VaultStatus;
   sol: number;
@@ -160,6 +161,8 @@ export interface WorkerEventMessage {
 
 export type OutstandingTasksDocument = Document &
   TaskDocument & {
-    deployment: DeploymentDocument;
+    deployment: Exclude<DeploymentDocument, "vault"> & {
+      vault: VaultDocument;
+    };
     jobs: JobsDocument[];
   };

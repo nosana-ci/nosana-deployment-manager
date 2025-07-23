@@ -8,7 +8,6 @@ import {
 import { getConfig } from "../../../config/index.js";
 
 import { Worker } from "../Worker.js";
-import { VAULT_PATH } from "../../../definitions/vault.js";
 
 import {
   DeploymentDocument,
@@ -16,6 +15,7 @@ import {
   EventDocument,
   WorkerEventMessage,
   OutstandingTasksDocument,
+  VaultDocument,
 } from "../../../types.js";
 
 export function spawnExtendTask(
@@ -33,7 +33,7 @@ export function spawnExtendTask(
     workerData: {
       task,
       network,
-      vault: `${VAULT_PATH}${task.deployment.vault.toString()}.json`,
+      vault: (task.deployment.vault as VaultDocument).vault_key,
     },
   });
 

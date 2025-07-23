@@ -7,10 +7,8 @@
     "build": "npm run prepare && npm run format && tsc",
     "eslint": "eslint ./src",
     "eslint:fix": "eslint --fix ./src",
-    "prettier": "prettier --check ./src",
-    "prettier:fix": "prettier --write ./src",
-    "format": "npm run eslint && npm run prettier",
-    "format:fix": "npm run eslint:fix && npm run prettier:fix",
+    "format": "npm run eslint",
+    "format:fix": "npm run eslint:fix",
     "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -25,7 +23,6 @@
     "eslint": "^9.31.0",
     "eslint-plugin-import": "^2.32.0",
     "husky": "^9.1.7",
-    "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-patch": "^3.3.0",
     "typescript": "^5.8.3"

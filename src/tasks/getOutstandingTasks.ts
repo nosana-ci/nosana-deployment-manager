@@ -34,5 +34,15 @@ export async function getOutstandingTasks(
       path: "$deployment",
       preserveNullAndEmptyArrays: false,
     })
+    .lookup({
+      from: "vaults",
+      localField: "deployment.vault",
+      foreignField: "vault",
+      as: "deployment.vault",
+    })
+    .unwind({
+      path: "$deployment.vault",
+      preserveNullAndEmptyArrays: false,
+    })
     .toArray() as Promise<OutstandingTasksDocument[]>;
 }

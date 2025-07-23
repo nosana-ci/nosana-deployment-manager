@@ -3,7 +3,6 @@ import { fileURLToPath } from "url";
 import { Db, Collection } from "mongodb";
 
 import { getConfig } from "../../../config/index.js";
-import { VAULT_PATH } from "../../../definitions/vault.js";
 
 import { Worker } from "../Worker.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
@@ -15,6 +14,7 @@ import {
   JobsDocument,
   OutstandingTasksDocument,
   TaskDocument,
+  VaultDocument,
   WorkerEventMessage,
 } from "../../../types.js";
 
@@ -53,7 +53,7 @@ export function spawnListTask(
     workerData: {
       task,
       network,
-      vault: `${VAULT_PATH}${task.deployment.vault.toString()}.json`,
+      vault: (task.deployment.vault as VaultDocument).vault_key,
     },
   });
 

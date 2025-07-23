@@ -1,7 +1,5 @@
-import fs from "fs";
 import solana from "@solana/web3.js";
 
-import { VAULT_PATH } from "../../../../../definitions/vault.js";
 import { ConnectionSelector } from "../../../../../connection/solana.js";
 import { getNosTokenAddressForAccount } from "../../../../../tokenManager/helpers/NOS/getNosTokenAddressForAccount.js";
 
@@ -21,11 +19,6 @@ export async function createAndStoreVault(
   const connection = ConnectionSelector();
   const vault = solana.Keypair.generate();
 
-  fs.writeFileSync(
-    `${VAULT_PATH}${vault.publicKey.toString()}.json`,
-    JSON.stringify(Buffer.from(vault.secretKey).toJSON().data),
-  );
-
   const { account } = await getNosTokenAddressForAccount(
     vault.publicKey,
     connection,
@@ -33,6 +26,7 @@ export async function createAndStoreVault(
 
   return {
     vault: vault.publicKey.toString(),
+    vault_key: vault.secretKey.toString(),
     status: VaultStatus.OPEN,
     owner,
     sol: 0,

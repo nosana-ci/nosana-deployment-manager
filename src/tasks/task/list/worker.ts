@@ -1,8 +1,9 @@
-import fs from "fs";
 import { register } from "ts-node";
 import { parentPort, workerData } from "worker_threads";
 
 import { Client } from "@nosana/sdk";
+
+import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
 
 import { DeploymentsConfig, OutstandingTasksDocument } from "../../../types.js";
 
@@ -16,7 +17,7 @@ type WorkerData = {
 
 const { task, vault, network } = workerData as WorkerData;
 
-const client = new Client(network, fs.readFileSync(vault, "utf8"));
+const client = new Client(network, covertStringToIterable(vault));
 
 const { ipfs_definition_hash, timeout, market, replicas } = task.deployment;
 

@@ -1,10 +1,9 @@
-import fs from "fs";
 import { Request } from "express";
 import { Keypair } from "@solana/web3.js";
 
-import { VAULT_PATH } from "../../../../../definitions/vault.js";
 import { ErrorsMessages } from "../../../../../errors/index.js";
 import { TokenManager } from "../../../../../tokenManager/index.js";
+import { covertStringToIterable } from "../../../../../tasks/utils/convertStringToIterable.js";
 
 import { VaultsResponse } from "../../../../../types.js";
 
@@ -24,19 +23,9 @@ export async function vaultWithdrawHandler(
     await tokenManager.addSOL(req.body.SOL);
     await tokenManager.addNOS(req.body.NOS);
 
-    const vaultKey = fs.readFileSync(
-      `${VAULT_PATH}${vault.vault.toString()}.json`,
-      "utf8",
-    );
-
-    if (!vaultKey) {
-      res.send(500).json({ error: ErrorsMessages.vaults.FAILED_TO_FIND_KEY });
-      return;
-    }
-
     const tx = await tokenManager.signAndSerialize(
       Keypair.fromSecretKey(
-        new Uint8Array(JSON.parse(vaultKey) as Iterable<number>),
+        new Uint8Array(covertStringToIterable(vault.vault_key)),
       ),
     );
 

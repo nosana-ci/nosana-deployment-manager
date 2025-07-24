@@ -1,6 +1,6 @@
 export function errorFormatter(
   customMessage: string,
-  errorObject: { error: string } | undefined,
+  errorObject: { error: string } | undefined
 ) {
   if (errorObject?.error) {
     throw new Error(`${customMessage}: ${errorObject.error}`);
@@ -19,6 +19,7 @@ export const ErrorsMessages = {
     FAILED_TO_STOP: "Failed to stop deployment.",
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
+    FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
     INCORRECT_STATE: "Deployment is in the incorrect state.",
   },
   vaults: {

@@ -8,7 +8,7 @@ function createConnectionString(
   hostname: string,
   port: string | number,
   username: string | undefined,
-  password: string | undefined,
+  password: string | undefined
 ): string {
   return `mongodb://${
     username && password ? `${username}:${password}@` : ""
@@ -18,7 +18,7 @@ function createConnectionString(
 export async function DeploymentsConnection(): Promise<Db> {
   let client: MongoClient | undefined = undefined;
   const {
-    docdb: { hostname, port, username, password },
+    docdb: { hostname, port, username, password, use_tls },
   } = getConfig();
 
   if (!client) {
@@ -27,8 +27,10 @@ export async function DeploymentsConnection(): Promise<Db> {
         hostname,
         port,
         username,
-        password,
-      )}/deployments?replicaSet=rs0`,
+        password
+      )}/deployments?${
+        use_tls ? "tls=true&tlsCAFile=../../global-bundle.pem&" : ""
+      }replicaSet=rs0`
     );
     // TODO: Handle connection errors and retries
     client = await mongo.connect();

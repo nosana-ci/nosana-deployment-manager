@@ -1,4 +1,10 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import { DeploymentsConfig } from "../types.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const commonConfig: Pick<
   DeploymentsConfig,
@@ -15,6 +21,7 @@ const commonConfig: Pick<
     port: process.env.DOCDB_PORT ?? "27017",
     username: process.env.DOCDB_USERNAME,
     password: process.env.DOCDB_PASSWORD,
+    use_tls: fs.existsSync(path.join(__dirname, "../../global-bundle.pem")),
   },
 };
 

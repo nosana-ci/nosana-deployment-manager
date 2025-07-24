@@ -12,6 +12,7 @@ export type DeploymentsConfig = {
     port: string | number;
     username: string | undefined;
     password: string | undefined;
+    use_tls: boolean;
   };
 };
 

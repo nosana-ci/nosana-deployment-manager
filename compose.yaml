@@ -24,6 +24,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        SKIP_FETCH_RDS_BUNDLE: true
     develop:
       watch:
         - action: sync+restart

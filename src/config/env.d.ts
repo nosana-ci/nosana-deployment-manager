@@ -5,5 +5,6 @@ declare namespace NodeJS {
     NETWORK?: "mainnet" | "devnet";
     SOLANA_NETWORK?: string;
     NOS_ADDRESS?: string;
+    USE_TLS?: string;
   }
 }

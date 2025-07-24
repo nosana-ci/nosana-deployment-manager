@@ -38,6 +38,7 @@ export async function DeploymentsConnection(): Promise<Db> {
       // Enable change streams for the entire cluster
       await admin.command({
         modifyChangeStreams: 1,
+        database: "deployments",
         enable: true,
       });
 

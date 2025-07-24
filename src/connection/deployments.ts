@@ -11,7 +11,7 @@ function createConnectionString(
   password: string | undefined
 ): string {
   return `mongodb://${
-    username && password ? `${username}:${password}@` : ""
+    username && password ? `${username}:${encodeURIComponent(password)}@` : ""
   }${hostname}:${port}`;
 }
 
@@ -20,18 +20,6 @@ export async function DeploymentsConnection(): Promise<Db> {
   const {
     docdb: { hostname, port, username, password, use_tls },
   } = getConfig();
-
-  console.log(
-    `${createConnectionString(
-      hostname,
-      port,
-      username,
-      password?.slice(0, 3)
-    )}/deployments?${
-      use_tls ? "tls=true&tlsCAFile=../../global-bundle.pem&" : ""
-    }replicaSet=rs0`
-  );
-
   if (!client) {
     const mongo = new MongoClient(
       `${createConnectionString(

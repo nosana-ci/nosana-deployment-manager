@@ -28,7 +28,7 @@ export async function DeploymentsConnection(): Promise<Db> {
         username,
         password
       )}/deployments?${
-        use_tls ? "tls=true&tlsCAFile=../../global-bundle.pem&" : ""
+        use_tls ? "tls=true&tlsCAFile=global-bundle.pem&" : ""
       }replicaSet=rs0`
     );
     // TODO: Handle connection errors and retries

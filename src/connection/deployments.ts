@@ -29,7 +29,8 @@ export async function DeploymentsConnection(): Promise<Db> {
         password
       )}/deployments?${
         use_tls ? "tls=true&tlsCAFile=global-bundle.pem&" : ""
-      }replicaSet=rs0`
+      }replicaSet=rs0`,
+      { directConnection: true }
     );
 
     client = await mongo.connect();

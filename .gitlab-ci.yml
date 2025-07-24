@@ -10,10 +10,10 @@ include:
 variables:
   CONTAINER_PLATFORMS: linux/amd64
   DOCKERFILE_DIR: .
-  # RUN_AUTO_BUMP: ok
-  # AUTO_BUMP_REPO: nosana-ci/apps/platform/k8s
-  # AUTO_BUMP_FILE: helm-deployment-manager.tf
-  # AUTO_BUMP_SCG_PREFIX: image_tag [^}]*= { dev = \"
+  RUN_AUTO_BUMP: ok
+  AUTO_BUMP_REPO: nosana-ci/apps/platform/k8s
+  AUTO_BUMP_FILE: helm-deployment-manager.tf
+  AUTO_BUMP_SCG_PREFIX: image_tag [^}]*= { dev = \"
 
 npm format:
   image: node:20.11.1
@@ -28,6 +28,6 @@ npm format:
 auto deploy prd:
   stage: .post
   extends: .auto-deploy
-  # variables:
-  #   AUTO_BUMP_SCG_PREFIX: image_tag [^}]* prd = \"
+  variables:
+    AUTO_BUMP_SCG_PREFIX: image_tag [^}]* prd = \"
   when: manual

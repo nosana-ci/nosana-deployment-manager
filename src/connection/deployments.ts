@@ -35,10 +35,33 @@ export async function DeploymentsConnection(): Promise<Db> {
 
     client = await mongo.connect();
 
+    await client.db().command({
+      modifyChangeStreams: 1,
+    });
+
+    await mongo.db().command({
+      modifyChangeStreams: 1,
+    });
+
     const admin = mongo.db().admin();
 
     try {
       const res = await admin.command({
+        modifyChangeStreams: 1,
+        database: "deployments",
+        collection: "deployments",
+        enable: true,
+      });
+
+      console.log(res);
+    } catch (error) {
+      console.error("Error enabling change streams:", error);
+    }
+
+    const adminClient = client.db().admin();
+
+    try {
+      const res = await adminClient.command({
         modifyChangeStreams: 1,
         database: "deployments",
         collection: "deployments",

@@ -35,14 +35,6 @@ export async function DeploymentsConnection(): Promise<Db> {
 
     client = await mongo.connect();
 
-    await client.db().command({
-      modifyChangeStreams: 1,
-    });
-
-    await mongo.db().command({
-      modifyChangeStreams: 1,
-    });
-
     const admin = mongo.db().admin();
 
     try {
@@ -61,6 +53,18 @@ export async function DeploymentsConnection(): Promise<Db> {
     const adminClient = client.db().admin();
 
     try {
+      await adminClient.command({
+        modifyChangeStreams: 1,
+        database: "",
+        collection: "",
+        enable: true,
+      });
+      await admin.command({
+        modifyChangeStreams: 1,
+        database: "",
+        collection: "",
+        enable: true,
+      });
       const res = await adminClient.command({
         modifyChangeStreams: 1,
         database: "deployments",

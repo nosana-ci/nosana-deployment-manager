@@ -1,6 +1,7 @@
 import { Db, MongoClient } from "mongodb";
 
 import { getConfig } from "../config/index.js";
+import { CollectionsNames } from "../definitions/collection.js";
 
 const DB_NAME = "nosana_deployments";
 
@@ -32,23 +33,28 @@ export async function DeploymentsConnection(): Promise<Db> {
       }replicaSet=rs0`
     );
 
+    client = await mongo.connect();
+
     try {
       const admin = mongo.db().admin();
 
-      // Enable change streams for the entire cluster
-      await admin.command({
-        modifyChangeStreams: 1,
-        database: "deployments",
-        enable: true,
-      });
-
+      for (const collection of CollectionsNames) {
+        try {
+          await client.db("deployments").createCollection(collection);
+          await admin.command({
+            modifyChangeStreams: 1,
+            database: "deployments",
+            collection,
+            enable: true,
+          });
+        } catch (error) {
+          console.error(error);
+        }
+      }
       console.log("Change streams enabled successfully");
     } catch (error) {
       console.error("Error enabling change streams:", error);
     }
-
-    // TODO: Handle connection errors and retries
-    client = await mongo.connect();
   }
 
   return client.db(DB_NAME);

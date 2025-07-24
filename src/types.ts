@@ -103,6 +103,8 @@ export type Collections = {
   deployments: DeploymentCollection;
   events: EventsCollection;
   vaults: VaultCollection;
+  tasks: TasksCollection;
+  jobs: JobsCollection;
 };
 
 export type DeploymentAggregation = DeploymentDocument & {
@@ -151,6 +153,8 @@ export type JobsDocument = {
   tx: string;
   created_at: Date;
 };
+
+export type JobsCollection = Collection<JobsDocument>;
 
 export interface WorkerEventMessage {
   event: "CONFIRMED" | string;

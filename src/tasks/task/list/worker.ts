@@ -1,4 +1,3 @@
-import { register } from "ts-node";
 import { parentPort, workerData } from "worker_threads";
 
 import { Client } from "@nosana/sdk";
@@ -7,7 +6,12 @@ import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
 
 import { DeploymentsConfig, OutstandingTasksDocument } from "../../../types.js";
 
-register();
+try {
+  const { register } = await import("ts-node");
+  register();
+} catch {
+  /* empty */
+}
 
 type WorkerData = {
   task: OutstandingTasksDocument;

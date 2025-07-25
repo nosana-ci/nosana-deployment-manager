@@ -40,7 +40,7 @@ services:
       - TASKS_BATCH_SIZE=10
       - DEPLOYMENT_MANAGER_PORT=3000
       - NETWORK=mainnet
-      - SOLANA_NETWORK=https://rpc.ironforge.network/mainnet?apiKey=01J4RYMAWZC65B6CND9DTZZ5B
+      - SOLANA_NETWORK=https://rpc.ironforge.network/mainnet?apiKey=01J4RYMAWZC65B6CND9DTZZ5BK
       - NOS_ADDRESS=nosXBVoaCTtYdLvKY6Csb4AC8JCdQKKAaWYtx2ZMoo7
       - DOCDB_HOST=host.docker.internal
       - DOCDB_PORT=27017

@@ -22,12 +22,7 @@ export async function DeploymentsConnection(): Promise<Db> {
   } = getConfig();
   if (!client) {
     const mongo = new MongoClient(
-      `${createConnectionString(
-        hostname,
-        port,
-        username,
-        password
-      )}/deployments?${
+      `${createConnectionString(hostname, port, username, password)}/?${
         use_tls ? "tls=true&tlsCAFile=global-bundle.pem&" : ""
       }replicaSet=rs0`,
       { directConnection: true }

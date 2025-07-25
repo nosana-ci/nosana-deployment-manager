@@ -8,8 +8,14 @@ export async function fetchDeployments(
     id?: string | undefined;
     owner: string;
   },
-  deployments: DeploymentCollection,
+  deployments: DeploymentCollection
 ): Promise<DeploymentAggregation[]> {
+  console.log({
+    id,
+    owner,
+  });
+  console.log(await deployments.aggregate());
+
   const deployment = await deployments
     .aggregate()
     .match({

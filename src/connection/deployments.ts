@@ -1,6 +1,7 @@
 import { Db, MongoClient } from "mongodb";
 
 import { getConfig } from "../config/index.js";
+import { init_db } from "./schemas/index.js";
 
 const DB_NAME = "nosana_deployments";
 
@@ -16,11 +17,11 @@ function createConnectionString(
 }
 
 export async function DeploymentsConnection(): Promise<Db> {
-  let client: MongoClient | undefined = undefined;
+  let db: Db | undefined = undefined;
   const {
     docdb: { hostname, port, username, password, use_tls },
   } = getConfig();
-  if (!client) {
+  if (!db) {
     const mongo = new MongoClient(
       `${createConnectionString(hostname, port, username, password)}/?${
         use_tls ? "tls=true&tlsCAFile=global-bundle.pem&" : ""
@@ -28,23 +29,11 @@ export async function DeploymentsConnection(): Promise<Db> {
       { directConnection: true }
     );
 
-    client = await mongo.connect();
+    const client = await mongo.connect();
+    db = client.db(DB_NAME);
 
-    if (use_tls) {
-      try {
-        await client.db().admin().command({
-          modifyChangeStreams: 1,
-          database: "",
-          collection: "",
-          enable: true,
-        });
-      } catch (error) {
-        console.error("Error enabling change streams:", error);
-      }
-
-      console.log("Change streams enabled successfully");
-    }
+    await init_db(db, use_tls);
   }
 
-  return client.db(DB_NAME);
+  return db;
 }

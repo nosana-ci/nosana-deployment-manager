@@ -14,7 +14,8 @@ export async function fetchDeployments(
     id,
     owner,
   });
-  console.log(await deployments.aggregate());
+  console.log(await deployments.aggregate().toArray());
+  console.log({ id, owner });
 
   const deployment = await deployments
     .aggregate()

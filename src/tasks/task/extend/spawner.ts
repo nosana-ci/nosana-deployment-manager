@@ -21,7 +21,7 @@ import {
 export function spawnExtendTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void,
+  complete: () => void
 ): Worker {
   let errorStatus: DeploymentStatus | undefined = undefined;
 
@@ -29,7 +29,7 @@ export function spawnExtendTask(
   const events = db.collection<EventDocument>("events");
   const deployments = db.collection<DeploymentDocument>("documents");
 
-  const worker = new Worker("./extend/worker.ts", {
+  const worker = new Worker("./extend/worker.js", {
     workerData: {
       task,
       network,
@@ -47,7 +47,7 @@ export function spawnExtendTask(
           error,
           (status: DeploymentStatus) => (errorStatus = status),
           events,
-          task,
+          task
         );
         break;
     }

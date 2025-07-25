@@ -49,7 +49,7 @@ export function spawnListTask(
     tasks: db.collection<TaskDocument>("tasks"),
   };
 
-  const worker = new Worker("./list/worker.ts", {
+  const worker = new Worker("./list/worker.js", {
     workerData: {
       task,
       network,

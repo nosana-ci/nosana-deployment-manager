@@ -8,7 +8,7 @@ import { DeploymentsResponse } from "../../../../types.js";
 export async function getDeploymentMiddleware(
   req: Request<{ deployment: string }>,
   res: DeploymentsResponse,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   const { db } = res.locals;
   const id = req.params.deployment;
@@ -25,7 +25,7 @@ export async function getDeploymentMiddleware(
     res.locals.deployment = deployments[0];
     next();
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res
       .status(500)
       .json({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });

@@ -7,7 +7,7 @@ import { VaultsResponse } from "../../../../types.js";
 export async function getVaultMiddleware(
   req: Request<{ vault: string }>,
   res: VaultsResponse,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   const { db } = res.locals;
   const vaultId = req.params.vault;
@@ -27,7 +27,7 @@ export async function getVaultMiddleware(
     res.locals.vault = vault;
     next();
   } catch (error) {
-    console.log(error);
+    console.error(error);
     res
       .status(500)
       .json({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });

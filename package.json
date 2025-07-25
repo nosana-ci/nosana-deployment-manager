@@ -4,11 +4,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "npm run prepare && npm run format && tsc",
+    "build": "npm run prepare && npm run patch && npm run format && tsc",
     "eslint": "eslint ./src",
     "eslint:fix": "eslint --fix ./src",
     "format": "npm run eslint",
     "format:fix": "npm run eslint:fix",
+    "patch": "ts-patch install && typia patch",
     "prepare": "husky",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -29,6 +30,7 @@
   },
   "dependencies": {
     "@nosana/sdk": "^0.4.8",
+    "@solana/web3.js": "^1.98.2",
     "cron-parser": "^5.3.0",
     "express": "^5.1.0",
     "mongodb": "^4.17.2",

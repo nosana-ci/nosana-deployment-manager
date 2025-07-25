@@ -3,8 +3,7 @@ import { OnListEventParams } from "../spawner.js";
 export function onListConfirmed(
   tx: string,
   job: string,
-  run: string,
-  { collections: { events, jobs }, task }: OnListEventParams,
+  { collections: { events, jobs }, task }: OnListEventParams
 ) {
   events.insertOne({
     deploymentId: task.deploymentId,
@@ -15,7 +14,6 @@ export function onListConfirmed(
   });
   jobs.insertOne({
     job,
-    run,
     tx,
     deployment: task.deploymentId,
     created_at: new Date(),

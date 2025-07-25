@@ -149,7 +149,6 @@ export type TasksCollection = Collection<TaskDocument>;
 export type JobsDocument = {
   job: string;
   deployment: string;
-  run: string;
   tx: string;
   created_at: Date;
 };

@@ -25,14 +25,14 @@ export function spawnExtendTask(
 ): Worker {
   let errorStatus: DeploymentStatus | undefined = undefined;
 
-  const { network } = getConfig();
+  const config = getConfig();
   const events = db.collection<EventDocument>("events");
   const deployments = db.collection<DeploymentDocument>("documents");
 
   const worker = new Worker("./extend/worker.js", {
     workerData: {
       task,
-      network,
+      config,
       vault: (task.deployment.vault as VaultDocument).vault_key,
     },
   });

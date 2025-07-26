@@ -41,7 +41,7 @@ export function spawnListTask(
   let errorType: DeploymentStatus;
   const setErrorType = (type: DeploymentStatus) => (errorType = type);
 
-  const { network } = getConfig();
+  const config = getConfig();
   const collections = {
     documents: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),
@@ -52,7 +52,7 @@ export function spawnListTask(
   const worker = new Worker("./list/worker.js", {
     workerData: {
       task,
-      network,
+      config,
       vault: (task.deployment.vault as VaultDocument).vault_key,
     },
   });

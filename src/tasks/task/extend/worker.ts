@@ -16,11 +16,17 @@ try {
 type WorkerData = {
   task: OutstandingTasksDocument;
   vault: string;
-  network: DeploymentsConfig["network"];
+  config: DeploymentsConfig;
 };
 
-const { task, vault, network } = workerData as WorkerData;
-const client = new Client(network, covertStringToIterable(vault));
+const {
+  task,
+  vault,
+  config: { network, rpc_network },
+} = workerData as WorkerData;
+const client = new Client(network, covertStringToIterable(vault), {
+  solana: { network: rpc_network },
+});
 
 const {
   deployment: { timeout },

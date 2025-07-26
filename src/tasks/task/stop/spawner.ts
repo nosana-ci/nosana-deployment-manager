@@ -20,7 +20,7 @@ export function spawnStopTask(
   task: OutstandingTasksDocument,
   complete: () => void
 ): Worker {
-  const { network } = getConfig();
+  const config = getConfig();
   const tasksCollection = db.collection<TaskDocument>("tasks");
   const eventsCollection = db.collection<EventDocument>("events");
   const deploymentsCollection =
@@ -38,7 +38,7 @@ export function spawnStopTask(
   const worker = new Worker("./stop/worker.js", {
     workerData: {
       task,
-      network,
+      config,
       vault: (task.deployment.vault as VaultDocument).vault_key,
     },
   });

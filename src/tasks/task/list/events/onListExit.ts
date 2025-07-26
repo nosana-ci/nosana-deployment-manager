@@ -28,7 +28,10 @@ export async function onListExit(
         db,
         TaskType.EXTEND,
         deploymentId,
-        new Date(new Date().getTime() + timeout * 0.9 * 1000)
+        new Date(
+          new Date().getTime() +
+            (timeout - Math.max(timeout - timeout * 0.9, 60)) * 1000
+        )
       );
     }
   }

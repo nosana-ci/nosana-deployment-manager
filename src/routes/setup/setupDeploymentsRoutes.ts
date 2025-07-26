@@ -6,6 +6,7 @@ import {
 } from "../middleware/index.js";
 
 import {
+  deploymentGetScheduledTasksHandler,
   deploymentIdHandler,
   deploymentsHandler,
 } from "../routes/get/index.js";
@@ -27,6 +28,12 @@ export function setupDeploymentsRoutes(app: Express) {
     "/api/deployment/:deployment",
     getDeploymentMiddleware,
     deploymentIdHandler
+  );
+  app.get(
+    "/api/deployment/:deployment/tasks",
+    getDeploymentMiddleware,
+    validateActiveDeploymentMiddleware,
+    deploymentGetScheduledTasksHandler
   );
   // POST
   app.post("/api/deployment/create", deploymentCreateHandler);

@@ -20,7 +20,7 @@ export async function onListExit(
       due_at,
     },
   }: OnListEventParams,
-  db: Db,
+  db: Db
 ) {
   if (!error) {
     if (strategy === DeploymentStrategy["SIMPLE-EXTEND"]) {
@@ -28,20 +28,20 @@ export async function onListExit(
         db,
         TaskType.EXTEND,
         deploymentId,
-        new Date(new Date().getTime() + timeout * 0.9 * 60 * 1000),
+        new Date(new Date().getTime() + timeout * 0.9 * 1000)
       );
     }
+  }
 
-    if (strategy === DeploymentStrategy.SCHEDULED && schedule) {
-      const nextTaskTime = getNextTaskTime(schedule, due_at);
-      await tasks.insertOne({
-        task: TaskType.LIST,
-        due_at: nextTaskTime,
-        deploymentId: deploymentId,
-        tx: undefined,
-        created_at: new Date(),
-      });
-    }
+  if (strategy === DeploymentStrategy.SCHEDULED && schedule) {
+    const nextTaskTime = getNextTaskTime(schedule, due_at);
+    await tasks.insertOne({
+      task: TaskType.LIST,
+      due_at: nextTaskTime,
+      deploymentId: deploymentId,
+      tx: undefined,
+      created_at: new Date(),
+    });
   }
 
   documents.updateOne(
@@ -52,6 +52,6 @@ export async function onListExit(
       $set: {
         status: error || DeploymentStatus.RUNNING,
       },
-    },
+    }
   );
 }

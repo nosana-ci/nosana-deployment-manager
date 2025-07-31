@@ -7,7 +7,7 @@ import {
   TaskType,
   DeploymentCollection,
   OutstandingTasksDocument,
-} from "../../../../types.js";
+} from "../../../../types/index.js";
 
 export async function onExtendExit(
   errorStatus: DeploymentStatus | undefined,
@@ -35,9 +35,6 @@ export async function onExtendExit(
     db,
     TaskType.EXTEND,
     deploymentId,
-    new Date(
-      new Date().getTime() +
-        (timeout - Math.max(timeout - timeout * 0.9, 60)) * 1000
-    )
+    new Date(new Date().getTime() + timeout * 1000)
   );
 }

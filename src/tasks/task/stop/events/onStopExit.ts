@@ -4,12 +4,12 @@ import {
   DeploymentDocument,
   DeploymentStatus,
   OutstandingTasksDocument,
-} from "../../../../types.js";
+} from "../../../../types/index.js";
 
 export function onStopExit(
   errorStatus: DeploymentStatus | undefined,
   documents: Collection<DeploymentDocument>,
-  { deploymentId }: OutstandingTasksDocument,
+  { deploymentId }: OutstandingTasksDocument
 ) {
   documents.updateOne(
     {
@@ -19,6 +19,6 @@ export function onStopExit(
       $set: {
         status: errorStatus ?? DeploymentStatus.STOPPED,
       },
-    },
+    }
   );
 }

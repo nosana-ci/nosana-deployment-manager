@@ -4,14 +4,14 @@ import {
   DeploymentStatus,
   EventDocument,
   OutstandingTasksDocument,
-} from "../../../../types.js";
+} from "../../../../types/index.js";
 
 export function onStopError(
   tx: string | undefined,
   error: object | Error | string | null = "",
   collection: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument,
-  setErrorType: (status: DeploymentStatus) => void,
+  setErrorType: (status: DeploymentStatus) => void
 ) {
   if (!error || error === null) return;
 
@@ -24,8 +24,8 @@ export function onStopError(
       error instanceof Error
         ? error.message
         : typeof error === "object"
-          ? JSON.stringify(error)
-          : error,
+        ? JSON.stringify(error)
+        : error,
     created_at: new Date(),
   });
 

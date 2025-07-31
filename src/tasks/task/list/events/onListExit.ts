@@ -8,7 +8,7 @@ import {
   DeploymentStatus,
   DeploymentStrategy,
   TaskType,
-} from "../../../../types.js";
+} from "../../../../types/index.js";
 
 export async function onListExit(
   {
@@ -30,7 +30,8 @@ export async function onListExit(
         deploymentId,
         new Date(
           new Date().getTime() +
-            (timeout - Math.max(timeout - timeout * 0.9, 60)) * 1000
+            (timeout - Math.min(Math.max(timeout - timeout * 0.9, 60), 300)) *
+              1000
         )
       );
     }

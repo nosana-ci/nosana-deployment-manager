@@ -16,7 +16,7 @@ import {
   TaskDocument,
   VaultDocument,
   WorkerEventMessage,
-} from "../../../types.js";
+} from "../../../types/index.js";
 
 export interface OnListEventParams {
   code?: number;

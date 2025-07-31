@@ -16,7 +16,7 @@ import {
   WorkerEventMessage,
   OutstandingTasksDocument,
   VaultDocument,
-} from "../../../types.js";
+} from "../../../types/index.js";
 
 export function spawnExtendTask(
   db: Db,

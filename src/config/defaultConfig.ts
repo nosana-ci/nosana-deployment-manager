@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { DeploymentsConfig } from "../types.js";
+import { DeploymentsConfig } from "../types/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

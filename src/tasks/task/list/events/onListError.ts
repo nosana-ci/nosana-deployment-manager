@@ -1,11 +1,11 @@
 import { OnListEventParams } from "../spawner.js";
 
-import { DeploymentStatus } from "../../../../types.js";
+import { DeploymentStatus } from "../../../../types/index.js";
 
 export function onListError(
   tx: string | undefined,
   error: object | Error | string | null = "",
-  { collections: { events }, task, setErrorType }: OnListEventParams,
+  { collections: { events }, task, setErrorType }: OnListEventParams
 ) {
   if (!error || error === null) return;
 
@@ -18,8 +18,8 @@ export function onListError(
       error instanceof Error
         ? error.message
         : typeof error === "object"
-          ? JSON.stringify(error)
-          : error,
+        ? JSON.stringify(error)
+        : error,
     created_at: new Date(),
   });
 

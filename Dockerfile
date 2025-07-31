@@ -18,4 +18,4 @@ RUN if [ "$SKIP_FETCH_RDS_BUNDLE" != "true" ]; then \
     https.get('https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem', \
     res=>res.pipe(fs.createWriteStream('global-bundle.pem')))"; \
   fi
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]

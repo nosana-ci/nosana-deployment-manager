@@ -3,7 +3,7 @@ import { Collection, Db, Document } from "mongodb";
 import { matchFilter } from "./helpers/matchFilter.js";
 import { CollectionsNames } from "../../definitions/collection.js";
 
-import { Collections } from "../../types.js";
+import { Collections } from "../../types/index.js";
 import { EventCallback, Filters, InsertEvent, UpdateEvent } from "./types.js";
 
 export type CollectionListener<T extends Document> = ReturnType<
@@ -12,7 +12,7 @@ export type CollectionListener<T extends Document> = ReturnType<
 
 export function createCollectionListener<T extends Document>(
   key: keyof Collections,
-  db: Db,
+  db: Db
 ) {
   if (!CollectionsNames.includes(key)) throw new Error("Invalid collection.");
 

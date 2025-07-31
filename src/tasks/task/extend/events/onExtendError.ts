@@ -4,13 +4,13 @@ import {
   DeploymentStatus,
   EventDocument,
   OutstandingTasksDocument,
-} from "../../../../types.js";
+} from "../../../../types/index.js";
 
 export function onExtendError(
   error: object | Error | string | null = "",
   setError: (status: DeploymentStatus) => void,
   events: Collection<EventDocument>,
-  { deploymentId }: OutstandingTasksDocument,
+  { deploymentId }: OutstandingTasksDocument
 ) {
   events.insertOne({
     deploymentId,
@@ -20,8 +20,8 @@ export function onExtendError(
       error instanceof Error
         ? error.message
         : typeof error === "object"
-          ? JSON.stringify(error)
-          : error,
+        ? JSON.stringify(error)
+        : error,
     created_at: new Date(),
   });
 

@@ -1,11 +1,11 @@
 import { Collection, ObjectId } from "mongodb";
 
-import { OutstandingTasksDocument, TaskDocument } from "../types.js";
+import { OutstandingTasksDocument, TaskDocument } from "../types/index.js";
 
 export async function getOutstandingTasks(
   collection: Collection<TaskDocument>,
   keys: ObjectId[],
-  batchSize: number,
+  batchSize: number
 ): Promise<OutstandingTasksDocument[]> {
   return collection
     .aggregate()

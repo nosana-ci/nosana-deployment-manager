@@ -1,12 +1,12 @@
 import {
   EventsCollection,
   OutstandingTasksDocument,
-} from "../../../../types.js";
+} from "../../../../types/index.js";
 
 export function onExtendConfirmed(
   tx: string,
   events: EventsCollection,
-  task: OutstandingTasksDocument,
+  task: OutstandingTasksDocument
 ) {
   events.insertOne({
     deploymentId: task.deploymentId,

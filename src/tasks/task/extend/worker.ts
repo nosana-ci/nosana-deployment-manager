@@ -4,7 +4,10 @@ import { Client } from "@nosana/sdk";
 
 import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
 
-import { DeploymentsConfig, OutstandingTasksDocument } from "../../../types.js";
+import {
+  DeploymentsConfig,
+  OutstandingTasksDocument,
+} from "../../../types/index.js";
 
 try {
   const { register } = await import("ts-node");

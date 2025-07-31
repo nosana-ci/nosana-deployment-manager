@@ -13,7 +13,7 @@ import {
   OutstandingTasksDocument,
   TaskDocument,
   VaultDocument,
-} from "../../../types.js";
+} from "../../../types/index.js";
 
 export function spawnStopTask(
   db: Db,

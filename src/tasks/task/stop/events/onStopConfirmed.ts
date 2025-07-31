@@ -1,11 +1,14 @@
 import { Collection } from "mongodb";
 
-import { EventDocument, OutstandingTasksDocument } from "../../../../types.js";
+import {
+  EventDocument,
+  OutstandingTasksDocument,
+} from "../../../../types/index.js";
 
 export function onStopConfirmed(
   tx: string,
   events: Collection<EventDocument>,
-  { deploymentId }: OutstandingTasksDocument,
+  { deploymentId }: OutstandingTasksDocument
 ) {
   events.insertOne({
     deploymentId,

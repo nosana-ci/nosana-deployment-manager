@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "npm run prepare && npm run patch && npm run format && tsc",
+    "generate:openapi-docs": "node --no-warnings --loader ts-node/esm scripts/generateOpenAPIDocumentation.ts",
     "eslint": "eslint ./src",
     "eslint:fix": "eslint --fix ./src",
     "format": "npm run eslint",
@@ -17,7 +18,6 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@types/express": "^5.0.3",
     "@types/node": "^24.0.14",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
@@ -29,10 +29,13 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@fastify/middie": "^9.0.3",
+    "@fastify/swagger": "^9.5.1",
     "@nosana/sdk": "^0.4.8",
+    "@sinclair/typebox": "^0.34.38",
     "@solana/web3.js": "^1.98.2",
     "cron-parser": "^5.3.0",
-    "express": "^5.1.0",
+    "fastify": "^5.4.0",
     "mongodb": "^4.17.2",
     "openapi-fetch": "^0.14.0",
     "typia": "^9.5.0"

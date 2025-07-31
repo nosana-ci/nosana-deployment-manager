@@ -1,4 +1,4 @@
-import { Collections } from "../types.js";
+import { Collections } from "../types/index.js";
 
 export const CollectionsNames: Array<keyof Collections> = [
   "deployments",

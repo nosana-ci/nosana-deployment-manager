@@ -43,6 +43,14 @@ export const VaultUpdateBalanceSchema: FastifySchema = {
         },
       },
     },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
+        },
+      },
+    },
     404: {
       description: "Vault not found.",
       content: {

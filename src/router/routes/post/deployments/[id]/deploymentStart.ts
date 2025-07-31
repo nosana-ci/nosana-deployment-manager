@@ -6,7 +6,7 @@ import { DeploymentStatus } from "../../../../../types/index.js";
 import type {
   DeploymentStartSuccess,
   DeploymentStartError,
-} from "../../../../schema/post/deployments/deploymentStart.schema.js";
+} from "../../../../schema/post/deployments/[id]/deploymentStart.schema.js";
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
 
 export const deploymentStartHandler: RouteHandler<{

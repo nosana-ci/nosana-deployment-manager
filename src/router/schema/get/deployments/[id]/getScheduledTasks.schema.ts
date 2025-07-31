@@ -1,4 +1,5 @@
 import { FastifySchema } from "fastify";
+import { Type } from "@sinclair/typebox";
 
 import { TaskDocument } from "../../../../../types/index.js";
 import { ErrorSchema } from "../../../index.schema";
@@ -32,6 +33,14 @@ export const GetDeploymentScheduledTasksSchema: FastifySchema = {
               $ref: "Task",
             },
           },
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
         },
       },
     },

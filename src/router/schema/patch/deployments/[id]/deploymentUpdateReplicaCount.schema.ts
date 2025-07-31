@@ -14,7 +14,7 @@ export type DeploymentUpdateReplicaCountError = ErrorSchema;
 
 export const DeploymentUpdateReplicaCountSchema: FastifySchema = {
   description: "Update the replica count of a deployment",
-  tags: ["deployments"],
+  tags: ["Deployments"],
   headers: {
     $ref: "Headers",
   },
@@ -36,6 +36,14 @@ export const DeploymentUpdateReplicaCountSchema: FastifySchema = {
       content: {
         "application/json": {
           schema: DeploymentUpdateReplicaCountSuccess,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
         },
       },
     },

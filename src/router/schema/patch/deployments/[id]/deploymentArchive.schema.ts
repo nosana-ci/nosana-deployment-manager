@@ -14,7 +14,7 @@ export type DeploymentArchiveError = ErrorSchema;
 
 export const DeploymentArchiveSchema: FastifySchema = {
   description: "Archive a deployment",
-  tags: ["deployments"],
+  tags: ["Deployments"],
   headers: {
     $ref: "Headers",
   },
@@ -33,6 +33,14 @@ export const DeploymentArchiveSchema: FastifySchema = {
       content: {
         "application/json": {
           schema: DeploymentArchiveSuccess,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
         },
       },
     },

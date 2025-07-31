@@ -2,6 +2,7 @@ import { Db } from "mongodb";
 import fastify from "fastify";
 import middie from "@fastify/middie";
 import swagger from "@fastify/swagger";
+import swaggerUI from "@fastify/swagger-ui";
 
 import { getConfig } from "../config/index.js";
 import { authMiddleware } from "./middleware/index.js";
@@ -32,6 +33,10 @@ export async function startDeploymentManagerApi(db: Db) {
         version: pkg.version,
       },
     },
+  });
+
+  await server.register(swaggerUI, {
+    routePrefix: "/documentation/swagger",
   });
 
   addSchemas(server);

@@ -14,7 +14,7 @@ export type DeploymentUpdateTimeoutError = ErrorSchema;
 
 export const DeploymentUpdateTimeoutSchema: FastifySchema = {
   description: "Update deployment timeout",
-  tags: ["deployments"],
+  tags: ["Deployments"],
   headers: {
     $ref: "Headers",
   },
@@ -36,6 +36,14 @@ export const DeploymentUpdateTimeoutSchema: FastifySchema = {
       content: {
         "application/json": {
           schema: DeploymentUpdateTimeoutSuccess,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
         },
       },
     },

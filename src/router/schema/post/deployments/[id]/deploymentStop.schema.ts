@@ -1,8 +1,8 @@
 import { FastifySchema } from "fastify";
 import { Type, Static } from "@sinclair/typebox";
 
-import { ErrorSchema } from "../../index.schema.js";
-import { DeploymentStatus } from "../../../../types/index.js";
+import { ErrorSchema } from "../../../index.schema.js";
+import { DeploymentStatus } from "../../../../../types/index.js";
 
 const DeploymentStopSuccess = Type.Object({
   status: Type.Literal(DeploymentStatus.STOPPING),
@@ -33,6 +33,14 @@ export const DeploymentStopSchema: FastifySchema = {
       content: {
         "application/json": {
           schema: DeploymentStopSuccess,
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
         },
       },
     },

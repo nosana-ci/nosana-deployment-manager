@@ -53,6 +53,14 @@ export const DeploymentCreateSchema: FastifySchema = {
         },
       },
     },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
+        },
+      },
+    },
     400: {
       description: "Invalid request body.",
       content: {

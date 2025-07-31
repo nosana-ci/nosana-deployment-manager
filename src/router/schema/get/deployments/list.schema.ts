@@ -1,4 +1,5 @@
 import { FastifySchema } from "fastify";
+import { Type } from "@sinclair/typebox";
 
 import type { DeploymentsSchema, ErrorSchema } from "../../index.schema.js";
 
@@ -19,6 +20,14 @@ export const DeploymentsHandlerSchema: FastifySchema = {
           schema: {
             $ref: "Deployments",
           },
+        },
+      },
+    },
+    401: {
+      description: "Unauthorized. Invalid or missing authentication.",
+      content: {
+        "application/json": {
+          schema: Type.Literal("Unauthorized"),
         },
       },
     },

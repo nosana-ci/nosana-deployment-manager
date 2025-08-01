@@ -85,7 +85,7 @@ export async function startDeploymentManagerApi(db: Db) {
 
   setupDeploymentsRoutes(server);
   setupVaultRoutes(server);
-  server.get("/", { logLevel: "silent" }, (_req, res) =>
+  server.get("/", { logLevel: "silent", schema: { hide: true } }, (_req, res) =>
     res.status(200).send()
   );
   try {

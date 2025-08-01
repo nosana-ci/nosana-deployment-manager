@@ -10,6 +10,7 @@ import {
 
 declare module "fastify" {
   interface FastifyReply {
+    _locals?: {};
     locals: {
       deployment?: DeploymentAggregation;
       vault?: VaultDocument;

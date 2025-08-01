@@ -52,7 +52,6 @@ export const deploymentCreateHandler: RouteHandler<{
       return;
     }
 
-    Reflect.deleteProperty(deployment, "_id");
     res.status(200);
     return {
       ...deployment,

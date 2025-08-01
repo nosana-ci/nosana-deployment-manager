@@ -64,15 +64,28 @@ export async function startDeploymentManagerApi(db: Db) {
 
   await server.register(middie);
 
+  const dbCollections = CollectionsNames.reduce((collections, name) => {
+    // @ts-expect-error collections are type safe
+    collections[name] = db.collection(name);
+    return collections;
+  }, {} as Collections);
+
   server.decorateReply("locals", {
     getter() {
-      return {
-        db: CollectionsNames.reduce((collections, name) => {
-          // @ts-expect-error collections are type safe
-          collections[name] = db.collection(name);
-          return collections;
-        }, {} as Collections),
-      };
+      if (!this._locals) {
+        this._locals = {
+          db: dbCollections,
+        };
+      }
+      return this._locals as { db: Collections };
+    },
+    setter(value) {
+      if (!this._locals) {
+        this._locals = {
+          db: dbCollections,
+        };
+      }
+      Object.assign(this._locals, value);
     },
   });
 

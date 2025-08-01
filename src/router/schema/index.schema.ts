@@ -60,6 +60,11 @@ export function addSchemas(server: FastifyInstance) {
   });
 
   server.addSchema({
+    $id: "DeploymentCreateBody",
+    ...postSchemas.DeploymentCreateBodySchema,
+  });
+
+  server.addSchema({
     $id: "Error",
     ...ErrorSchema,
   });

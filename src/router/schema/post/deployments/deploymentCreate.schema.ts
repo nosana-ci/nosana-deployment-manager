@@ -5,7 +5,7 @@ import type { DeploymentSchema, ErrorSchema } from "../../index.schema";
 
 import { DeploymentStrategy } from "../../../../types/index.js";
 
-const DeploymentCreateBody = Type.Intersect([
+export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
     name: Type.String(),
     market: Type.String(),
@@ -28,7 +28,7 @@ const DeploymentCreateBody = Type.Intersect([
   ]),
 ]);
 
-export type DeploymentCreateBody = Static<typeof DeploymentCreateBody> & {
+export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   schedule?: string; // Optional for non-scheduled strategies
 };
 
@@ -41,7 +41,9 @@ export const DeploymentCreateSchema: FastifySchema = {
   headers: {
     $ref: "Headers",
   },
-  body: DeploymentCreateBody,
+  body: {
+    $ref: "DeploymentCreateBody",
+  },
   response: {
     201: {
       description: "Deployment created successfully.",

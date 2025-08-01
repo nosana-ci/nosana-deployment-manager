@@ -5,8 +5,8 @@ import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 
 import { getConfig } from "../config/index.js";
-import { swaggerGenerateAuth } from "./ui/index.js";
 import { authMiddleware } from "./middleware/index.js";
+import { nosanaLogo, swaggerGenerateAuth } from "./ui/index.js";
 import { CollectionsNames } from "../definitions/collection.js";
 import { setupDeploymentsRoutes, setupVaultRoutes } from "./setup/index.js";
 
@@ -50,7 +50,7 @@ export async function startDeploymentManagerApi(db: Db) {
     logLevel: "error",
     logo: {
       type: "image/svg+xml",
-      content: "url('https://docs.nosana.io/assets/logo_new.svg')",
+      content: nosanaLogo,
       href: "",
     },
     uiConfig: {
@@ -85,6 +85,7 @@ export async function startDeploymentManagerApi(db: Db) {
 
   setupDeploymentsRoutes(server);
   setupVaultRoutes(server);
+  server.get("/", (req, res) => res.status(200).send());
   try {
     await server.ready();
     await server.listen({

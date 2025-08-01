@@ -45,7 +45,7 @@ export const DeploymentCreateSchema: FastifySchema = {
     $ref: "DeploymentCreateBody",
   },
   response: {
-    201: {
+    200: {
       description: "Deployment created successfully.",
       content: {
         "application/json": {

@@ -21,7 +21,7 @@ const commonConfig: Pick<
     port: process.env.DOCDB_PORT ?? "27017",
     username: process.env.DOCDB_USERNAME,
     password: process.env.DOCDB_PASSWORD,
-    use_tls: fs.existsSync(path.join(__dirname, "../../global-bundle.pem")),
+    use_tls: fs.existsSync(path.join(__dirname, "../../../global-bundle.pem")),
   },
 };
 

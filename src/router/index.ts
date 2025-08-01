@@ -5,6 +5,7 @@ import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 
 import { getConfig } from "../config/index.js";
+import { swaggerGenerateAuth } from "./ui/index.js";
 import { authMiddleware } from "./middleware/index.js";
 import { CollectionsNames } from "../definitions/collection.js";
 import { setupDeploymentsRoutes, setupVaultRoutes } from "./setup/index.js";
@@ -32,11 +33,31 @@ export async function startDeploymentManagerApi(db: Db) {
         title: pkg.name,
         version: pkg.version,
       },
+      components: {
+        securitySchemes: {
+          Authorization: {
+            type: "apiKey",
+            in: "header",
+            name: "Authorization",
+          },
+        },
+      },
     },
   });
 
   await server.register(swaggerUI, {
     routePrefix: "/documentation/swagger",
+    logLevel: "error",
+    logo: {
+      type: "image/svg+xml",
+      content: "url('https://docs.nosana.io/assets/logo_new.svg')",
+      href: "",
+    },
+    uiConfig: {
+      deepLinking: true,
+      persistAuthorization: true,
+      onComplete: swaggerGenerateAuth,
+    },
   });
 
   addSchemas(server);

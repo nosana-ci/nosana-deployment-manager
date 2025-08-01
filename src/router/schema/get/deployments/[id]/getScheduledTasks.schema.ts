@@ -65,4 +65,9 @@ export const GetDeploymentScheduledTasksSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

@@ -42,4 +42,9 @@ export const DeploymentsHandlerSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

@@ -78,4 +78,9 @@ export const VaultWithdrawSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

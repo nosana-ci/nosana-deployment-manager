@@ -68,4 +68,9 @@ export const DeploymentUpdateReplicaCountSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

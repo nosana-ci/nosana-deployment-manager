@@ -65,4 +65,9 @@ export const DeploymentStopSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

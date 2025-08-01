@@ -72,4 +72,9 @@ export const VaultUpdateBalanceSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

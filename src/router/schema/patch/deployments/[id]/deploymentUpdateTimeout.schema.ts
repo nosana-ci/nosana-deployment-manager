@@ -68,4 +68,9 @@ export const DeploymentUpdateTimeoutSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

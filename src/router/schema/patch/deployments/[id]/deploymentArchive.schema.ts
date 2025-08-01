@@ -65,4 +65,9 @@ export const DeploymentArchiveSchema: FastifySchema = {
       },
     },
   },
+  security: [
+    {
+      Authorization: [],
+    },
+  ],
 };

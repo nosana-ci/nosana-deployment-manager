@@ -47,7 +47,7 @@ export async function startDeploymentManagerApi(db: Db) {
 
   await server.register(swaggerUI, {
     routePrefix: "/documentation/swagger",
-    logLevel: "error",
+    logLevel: "silent",
     logo: {
       type: "image/svg+xml",
       content: nosanaLogo,
@@ -85,7 +85,9 @@ export async function startDeploymentManagerApi(db: Db) {
 
   setupDeploymentsRoutes(server);
   setupVaultRoutes(server);
-  server.get("/", (req, res) => res.status(200).send());
+  server.get("/", { logLevel: "silent" }, (_req, res) =>
+    res.status(200).send()
+  );
   try {
     await server.ready();
     await server.listen({

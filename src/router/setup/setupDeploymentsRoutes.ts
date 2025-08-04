@@ -33,7 +33,7 @@ const {
     DeploymentByIdSchema,
     GetDeploymentScheduledTasksSchema,
   },
-  post: { DeploymentCreateSchema, DeploymentStartSchema },
+  post: { DeploymentCreateSchema, DeploymentStartSchema, DeploymentStopSchema },
   patch: {
     DeploymentArchiveSchema,
     DeploymentUpdateReplicaCountSchema,
@@ -90,7 +90,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   server.post(
     "/api/deployment/:deployment/stop",
     {
-      schema: DeploymentCreateSchema,
+      schema: DeploymentStopSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentStopHandler

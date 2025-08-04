@@ -29,11 +29,13 @@ export const deploymentStartHandler: RouteHandler<{
   }
 
   try {
+    const updated_at = new Date();
     const { acknowledged } = await db.deployments.updateOne(
       { id: { $eq: deployment.id }, owner: { $eq: userId } },
       {
         $set: {
           status: DeploymentStatus.STARTING,
+          updated_at,
         },
       }
     );
@@ -45,7 +47,12 @@ export const deploymentStartHandler: RouteHandler<{
       return;
     }
 
-    res.status(200).send({ status: DeploymentStatus.STARTING });
+    res
+      .status(200)
+      .send({
+        status: DeploymentStatus.STARTING,
+        updated_at: updated_at.toISOString(),
+      });
   } catch (error) {
     res.log.error(error);
     res

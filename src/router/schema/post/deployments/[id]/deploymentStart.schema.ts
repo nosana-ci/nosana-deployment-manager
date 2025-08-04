@@ -6,6 +6,7 @@ import { ErrorSchema } from "../../../index.schema.js";
 
 export const DeploymentStartSuccess = Type.Object({
   status: Type.Literal(DeploymentStatus.STARTING),
+  updated_at: Type.String({ format: "date-time" }),
 });
 
 export type DeploymentStartSuccess = Static<typeof DeploymentStartSuccess>;

@@ -22,6 +22,7 @@ export const deploymentArchiveHandler: RouteHandler<{
   const userId = req.headers["x-user-id"];
 
   try {
+    const updated_at = new Date();
     if (deployment.status !== "STOPPED") {
       res
         .status(500)
@@ -71,6 +72,7 @@ export const deploymentArchiveHandler: RouteHandler<{
         {
           $set: {
             status: DeploymentStatus.ARCHIVED,
+            updated_at,
           },
         }
       );
@@ -82,7 +84,10 @@ export const deploymentArchiveHandler: RouteHandler<{
       return;
     }
 
-    res.status(200).send();
+    res.status(200).send({
+      status: DeploymentStatus.ARCHIVED,
+      updated_at: updated_at.toISOString(),
+    });
   } catch (error) {
     res.log.error(error);
     res

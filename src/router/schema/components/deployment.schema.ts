@@ -38,20 +38,15 @@ export const DeploymentSchema = Type.Intersect([
     Type.Object({
       strategy: Type.Union(
         Object.values(DeploymentStrategy)
-          .map((val) => {
-            if (val !== DeploymentStrategy.SCHEDULED) {
-              return Type.Literal(val);
-            }
-          })
-          .filter((val) => val !== undefined)
+          .filter((val) => val !== DeploymentStrategy.SCHEDULED)
+          .map((val) => Type.Literal(val))
       ),
     }),
     Type.Object({
       strategy: Type.Literal(DeploymentStrategy.SCHEDULED),
       schedule: Type.String({
         description: "Cron expression for scheduled deployments",
-        pattern:
-          "^([0-5]?\\d) ([0-5]?\\d) ([01]?\\d|2[0-3]) ([1-9]|[12]\\d|3[01]) ([1-9]|1[012]) ([0-6])$",
+        pattern: "^\\s*(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s*$",
       }),
     }),
   ]),

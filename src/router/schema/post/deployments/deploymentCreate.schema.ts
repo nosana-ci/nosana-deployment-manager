@@ -23,7 +23,10 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     }),
     Type.Object({
       strategy: Type.Literal("SCHEDULED"),
-      schedule: Type.String(),
+      schedule: Type.String({
+        description: "Cron expression for scheduled deployments",
+        pattern: "^\\s*(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s*$",
+      }),
     }),
   ]),
 ]);

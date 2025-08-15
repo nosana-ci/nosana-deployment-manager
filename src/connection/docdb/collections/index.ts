@@ -11,9 +11,10 @@ export async function createCollections(db: Db) {
       if (!collections.find(({ name }) => name === collection)) {
         await db.createCollection(collection);
       }
-      if (!collections.find(({ name }) => name === "_migrations")) {
-        await db.createCollection("_migrations");
-      }
+    }
+
+    if (!collections.find(({ name }) => name === "_migrations")) {
+      await db.createCollection("_migrations");
     }
   } catch (error) {
     console.error("Error creating collection schemas.");

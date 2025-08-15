@@ -66,6 +66,11 @@ export function addSchemas(server: FastifyInstance) {
   });
 
   server.addSchema({
+    $id: "Endpoint",
+    ...EndpointSchema,
+  });
+
+  server.addSchema({
     $id: "Error",
     ...ErrorSchema,
   });
@@ -88,10 +93,5 @@ export function addSchemas(server: FastifyInstance) {
   server.addSchema({
     $id: "Task",
     ...TaskSchema,
-  });
-
-  server.addSchema({
-    $id: "Endpoint",
-    ...EndpointSchema,
   });
 }

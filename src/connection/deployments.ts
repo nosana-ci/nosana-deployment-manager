@@ -1,7 +1,7 @@
 import { Db, MongoClient } from "mongodb";
 
+import { init_db } from "./docdb/index.js";
 import { getConfig } from "../config/index.js";
-import { init_db } from "./schemas/index.js";
 
 const DB_NAME = "nosana_deployments";
 

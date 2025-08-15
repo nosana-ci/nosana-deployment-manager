@@ -12,6 +12,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY --from=builder /app/dist ./dist
 ENV NODE_ENV=production
+ENV NODE_NO_WARNINGS=1
 ARG SKIP_FETCH_RDS_BUNDLE=false
 RUN if [ "$SKIP_FETCH_RDS_BUNDLE" != "true" ]; then \
     node -e "const https=require('https'),fs=require('fs'); \

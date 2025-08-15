@@ -23,7 +23,7 @@ services:
       - deployments_db
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
       args:
         SKIP_FETCH_RDS_BUNDLE: true
     develop:
@@ -47,7 +47,6 @@ services:
       - DOCDB_USERNAME=
       - DOCDB_PASSWORD=
     image: deployment_manager:latest
-    command: node --no-warnings --loader ts-node/esm src/index.ts
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

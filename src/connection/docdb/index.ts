@@ -31,7 +31,7 @@ export async function init_db(db: Db, use_tls: boolean = false) {
     .filter((file) => file.endsWith(".js"));
 
   for (const migration of migrations) {
-    const applied = await db.collection("migrations").findOne({ migration });
+    const applied = await db.collection("_migrations").findOne({ migration });
 
     if (!applied) {
       console.log(`Applying migration ${migration}.`);

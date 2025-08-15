@@ -4,6 +4,7 @@ export type DeploymentsConfig = {
   network: "mainnet" | "devnet";
   nos_address: string;
   rpc_network: string;
+  frps_address: string;
   tasks_batch_size: number;
   deployment_manager_port: number;
   docdb: {

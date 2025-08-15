@@ -55,7 +55,9 @@ async function createDeploymentEndpoints(
         endpoints.push({
           opId: op.id,
           port: expose,
-          url: getExposeIdHash(deploymentHash, op.id, expose),
+          url: `https://${getExposeIdHash(deploymentHash, op.id, expose)}/${
+            getConfig().frps_address
+          }`,
         });
       }
 
@@ -66,7 +68,9 @@ async function createDeploymentEndpoints(
           endpoints.push({
             opId: op.id,
             port,
-            url: getExposeIdHash(deploymentHash, op.id, port),
+            url: `https://${getExposeIdHash(deploymentHash, op.id, port)}/${
+              getConfig().frps_address
+            }`,
           });
         }
       }

@@ -59,10 +59,17 @@ export type DeploymentDocumentBase = {
   name: string;
   status: DeploymentStatus;
   ipfs_definition_hash: string;
+  endpoints: Endpoint[];
   replicas: number;
   timeout: number;
   created_at: Date;
   updated_at: Date;
+};
+
+export type Endpoint = {
+  opId: string;
+  port: number;
+  url: string;
 };
 
 export const EventType = {

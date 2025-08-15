@@ -3,6 +3,7 @@ import { Static, Type } from "@sinclair/typebox";
 import { JobsSchema } from "./job.schema.js";
 import { EventsSchema } from "./event.schema.js";
 import { PublicKeySchema } from "./publicKey.schema.js";
+import { EndpointSchema } from "./endpoint.schema.js";
 
 import { DeploymentStatus, DeploymentStrategy } from "../../../types/index.js";
 
@@ -31,6 +32,7 @@ export const DeploymentSchema = Type.Intersect([
     timeout: Type.Number({ minimum: 60 }),
     jobs: Type.Array(JobsSchema),
     events: Type.Array(EventsSchema),
+    endpoints: Type.Array(EndpointSchema),
     created_at: Type.String({ format: "date-time" }),
     updated_at: Type.String({ format: "date-time" }),
   }),

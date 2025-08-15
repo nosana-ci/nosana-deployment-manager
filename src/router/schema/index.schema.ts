@@ -23,6 +23,7 @@ export * from "./components/task.schema.js";
 import * as getSchemas from "./get/index.schema.js";
 import * as postSchemas from "./post/index.schema.js";
 import * as patchSchemas from "./patch/index.schema.js";
+import { EndpointSchema } from "./components/endpoint.schema.js";
 
 export const routeSchemas = {
   get: getSchemas,
@@ -87,5 +88,10 @@ export function addSchemas(server: FastifyInstance) {
   server.addSchema({
     $id: "Task",
     ...TaskSchema,
+  });
+
+  server.addSchema({
+    $id: "Endpoint",
+    ...EndpointSchema,
   });
 }

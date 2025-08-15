@@ -3,7 +3,7 @@ import { Db } from "mongodb";
 import {
   createCollectionListener,
   CollectionListener,
-} from "../listener/index.js";
+} from "../../client/listener/index.js";
 import { getNextTaskTime } from "../../tasks/utils/index.js";
 import { scheduleTask } from "../../tasks/scheduleTask.js";
 

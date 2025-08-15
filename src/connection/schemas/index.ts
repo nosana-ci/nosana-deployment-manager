@@ -1,6 +1,5 @@
 import { Db } from "mongodb";
-import { createEventsCollectionSchema } from "./createEventsCollectionSchema.js";
-import { createJobsCollectionSchema } from "./createJobsCollectionSchema.js";
+import { CollectionsNames } from "../../definitions/collection.js";
 
 export async function init_db(db: Db, use_tls: boolean = false) {
   if (use_tls) {
@@ -21,10 +20,12 @@ export async function init_db(db: Db, use_tls: boolean = false) {
 
   try {
     const collections = await db.listCollections().toArray();
-    const collectionName = collections.map(({ name }) => name);
 
-    await createEventsCollectionSchema(db, collectionName.includes("events"));
-    await createJobsCollectionSchema(db, collectionName.includes("jobs"));
+    for (const collection of CollectionsNames) {
+      if (!collections.find(({ name }) => name === collection)) {
+        await db.createCollection(collection);
+      }
+    }
   } catch (error) {
     console.error("Error creating collection schemas.");
     throw error;

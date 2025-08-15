@@ -39,12 +39,13 @@ export const deploymentCreateHandler: RouteHandler<{
       return;
     }
 
-    const deployment = createDeployment(
+    const deployment = await createDeployment(
       req.body,
       vault.vault,
       userId,
       created_at
     );
+
     const { acknowledged } = await db.deployments.insertOne(deployment);
 
     if (!acknowledged) {

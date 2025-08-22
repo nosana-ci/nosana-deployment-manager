@@ -1,6 +1,7 @@
 import { Db } from "mongodb";
 import fastify from "fastify";
 import middie from "@fastify/middie";
+import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 
@@ -61,6 +62,10 @@ export async function startDeploymentManagerApi(db: Db) {
   });
 
   addSchemas(server);
+
+  await server.register(cors, {
+    origin: true
+  });
 
   await server.register(middie);
 

@@ -8,7 +8,7 @@ import type { HeadersSchema } from "../../schema/index.schema";
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;
 }> = async (req, res) => {
-  if (!req.url.startsWith("/api/")) {
+  if (!req.url.startsWith("/api/") || req.method === "OPTIONS") {
     return;
   }
   const authorizationManager = new AuthorizationManager(

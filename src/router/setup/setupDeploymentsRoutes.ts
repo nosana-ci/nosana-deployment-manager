@@ -12,6 +12,7 @@ import { routeSchemas } from "../schema/index.schema.js";
 const {
   get: {
     deploymentGetScheduledTasksHandler,
+    deploymentGetHeaderHandler,
     getDeploymentByIdHandler,
     deploymentsHandler,
   },
@@ -32,6 +33,7 @@ const {
     DeploymentsHandlerSchema,
     DeploymentByIdSchema,
     GetDeploymentScheduledTasksSchema,
+    GetDeploymentHeaderSchema
   },
   post: { DeploymentCreateSchema, DeploymentStartSchema, DeploymentStopSchema },
   patch: {
@@ -68,6 +70,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     },
     deploymentGetScheduledTasksHandler
   );
+
+  server.get(
+    "/api/deployment/:deployment/header",
+    {
+      schema: GetDeploymentHeaderSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    deploymentGetHeaderHandler
+  )
 
   // POST
   server.post(

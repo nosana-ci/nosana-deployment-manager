@@ -24,6 +24,7 @@ export const deploymentsHandler: RouteHandler<{
     deployments.forEach((deployment) => {
       Reflect.deleteProperty(deployment, "_id");
     });
+
     res.status(200);
     return deployments.map((deployment) => ({
       ...deployment,

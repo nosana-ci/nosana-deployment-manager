@@ -42,13 +42,13 @@ export type DeploymentStrategy =
 
 export type DeploymentDocument =
   | ({
-      strategy: "SCHEDULED";
-      schedule: string;
-    } & DeploymentDocumentBase)
+    strategy: "SCHEDULED";
+    schedule: string;
+  } & DeploymentDocumentBase)
   | ({
-      strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
-      schedule?: never;
-    } & DeploymentDocumentBase);
+    strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
+    schedule?: never;
+  } & DeploymentDocumentBase);
 
 export type DeploymentCollection = Collection<DeploymentDocument>;
 
@@ -91,19 +91,11 @@ export type EventDocument = {
 
 export type EventsCollection = Collection<EventDocument>;
 
-export const VaultStatus = {
-  OPEN: "OPEN",
-  ARCHIVED: "ARCHIVED",
-} as const;
-
-// @eslint-ignore
-export type VaultStatus = (typeof VaultStatus)[keyof typeof VaultStatus];
 
 export type VaultDocument = {
   vault: string;
   vault_key: string;
   owner: string;
-  status: VaultStatus;
   sol: number;
   nos: number;
   nos_ata: string;

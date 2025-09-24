@@ -14,7 +14,7 @@ export type DeploymentStopError = ErrorSchema;
 
 export const DeploymentStopSchema: FastifySchema = {
   description: "Stop a deployment",
-  tags: ["deployments"],
+  tags: ["Deployments"],
   headers: {
     $ref: "Headers",
   },

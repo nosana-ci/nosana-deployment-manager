@@ -2,7 +2,6 @@ import typia from "typia";
 import { RouteHandler } from "fastify";
 
 import {
-  createAndStoreVault,
   createDeployment,
 } from "./deploymentCreate.factory.js";
 
@@ -12,6 +11,7 @@ import type {
   DeploymentCreateSuccess,
 } from "../../../../schema/post/index.schema.js";
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
+import { createAndStoreSharedVault } from "../../vault/createSharedVault/createSharedVaultFactory.js";
 
 export const deploymentCreateHandler: RouteHandler<{
   Headers: HeadersSchema;
@@ -27,21 +27,29 @@ export const deploymentCreateHandler: RouteHandler<{
       return;
     }
 
-    const created_at = new Date();
+    let vault = req.body.vault
 
-    const vault = await createAndStoreVault(userId, created_at);
-    const { acknowledged: vaultAcknowledged } = await db.vaults.insertOne(
-      vault
-    );
+    if (vault) {
+      const vaultfound = await db.vaults.findOne({ owner: userId, vault });
 
-    if (!vaultAcknowledged) {
-      res.status(500).send({ error: "Failed to create deployment vault" });
-      return;
+      if (!vaultfound) {
+        res.status(404).send({ error: "Vault not found" });
+        return;
+      }
+    } else {
+      const { vault: sharedVault, acknowledged } = await createAndStoreSharedVault(db.vaults, userId, new Date());
+      if (!acknowledged) {
+        res.status(500).send({ error: "Failed to create deployment vault" });
+        return;
+      }
+      vault = sharedVault.vault;
     }
+
+    const created_at = new Date();
 
     const deployment = await createDeployment(
       req.body,
-      vault.vault,
+      vault,
       userId,
       created_at
     );

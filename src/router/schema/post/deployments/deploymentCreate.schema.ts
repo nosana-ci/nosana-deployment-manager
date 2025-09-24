@@ -1,7 +1,7 @@
 import { FastifySchema } from "fastify";
 import { Type, Static } from "@sinclair/typebox";
 
-import type { DeploymentSchema, ErrorSchema } from "../../index.schema";
+import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../index.schema.js";
 
 import { DeploymentStrategy } from "../../../../types/index.js";
 
@@ -12,6 +12,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     ipfs_definition_hash: Type.String(),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 60 }),
+    vault: Type.Optional(PublicKeySchema)
   }),
   Type.Union([
     Type.Object({

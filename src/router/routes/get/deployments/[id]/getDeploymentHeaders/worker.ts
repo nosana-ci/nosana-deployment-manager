@@ -1,6 +1,7 @@
+import { Client } from "@nosana/sdk";
 import { parentPort, workerData } from "worker_threads";
 
-import { Client } from "@nosana/sdk";
+import { covertStringToIterable } from "../../../../../../tasks/utils/convertStringToIterable.js";
 
 try {
   const { register } = await import("ts-node");
@@ -11,13 +12,15 @@ try {
 
 type WorkerData = {
   includeTime: boolean;
-  network: "mainnet" | "devnet";
+  config: { network: "mainnet" | "devnet"; rpc_network: string };
   vault: string;
 };
 
-const { includeTime, network, vault } = workerData as WorkerData;
+const { includeTime, config: { network, rpc_network }, vault } = workerData as WorkerData;
 
-const client = new Client(network, vault);
+const client = new Client(network, covertStringToIterable(vault), {
+  solana: { network: rpc_network },
+});
 
 try {
   const header = await client.authorization.generate("DEPLOYMENT_HEADER", {

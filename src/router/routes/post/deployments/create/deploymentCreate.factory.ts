@@ -47,7 +47,7 @@ async function createDeploymentEndpoints(
 
       if (!expose) continue;
 
-      if (typeof expose === "number") {
+      if (typeof expose === "number" || typeof expose === "string") {
         endpoints.push({
           opId: op.id,
           port: expose,
@@ -58,7 +58,8 @@ async function createDeploymentEndpoints(
 
       if (Array.isArray(expose)) {
         for (const service of expose) {
-          const port = typeof service === "number" ? service : service.port;
+          // @ts-expect-error - service can be string or number
+          const port = typeof service === "object" ? service.port : service;
 
           endpoints.push({
             opId: op.id,

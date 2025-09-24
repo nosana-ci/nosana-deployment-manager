@@ -26,11 +26,11 @@ export const GetDeploymentHeaderSchema: FastifySchema = {
       description: "Returns authorization header to interact with the vaults jobs.",
       content: {
         "application/json": {
-          schema: {
-            type: "string",
-          },
-        },
-      },
+          schema: Type.Object({
+            "header": Type.String()
+          }),
+        }
+      }
     },
     401: {
       description: "Unauthorized. Invalid or missing authentication.",

@@ -69,7 +69,7 @@ export type DeploymentDocumentBase = {
 
 export type Endpoint = {
   opId: string;
-  port: number;
+  port: number | string;
   url: string;
 };
 

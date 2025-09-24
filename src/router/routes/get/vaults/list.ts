@@ -14,7 +14,7 @@ export const vaultsHandler: RouteHandler<{
   const userId = req.headers["x-user-id"];
 
   try {
-    const vaults = await db.vaults.find({ user_id: userId }).toArray();
+    const vaults = await db.vaults.find({ owner: userId }).toArray();
 
     res.status(200);
     return vaults.map(({ vault, owner, created_at }) => ({

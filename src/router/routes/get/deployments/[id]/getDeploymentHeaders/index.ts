@@ -36,27 +36,38 @@ export const deploymentGetHeaderHandler: RouteHandler<{
       return;
     }
 
-    const worker = new Worker(path.resolve(__dirname, "./worker.js"), {
-      workerData: {
-        includeTime: includeTime === "true",
-        config: getConfig(),
-        vault: vaultDocument.vault_key,
-      },
-    });
+    try {
+      const header: string = await new Promise((resolve, reject) => {
+        const worker = new Worker(path.resolve(__dirname, "./worker.js"), {
+          workerData: {
+            includeTime: includeTime === "true",
+            config: getConfig(),
+            vault: vaultDocument.vault_key,
+          },
+        });
 
-    worker.on("message", ({ event, header, error, }) => {
-      switch (event) {
-        case "GENERATED":
-          console.log("Generated header:", header);
-          res.status(200);
-          return { header };
-        case "ERROR":
-          res.log.error("Error occurred in worker:", error);
-          res.status(500).send({ error: "Failed to generate header." });
-      }
-    });
 
-    return
+
+        worker.on("message", ({ event, header: generatedHeader, error, }) => {
+          switch (event) {
+            case "GENERATED":
+              resolve(generatedHeader);
+              break;
+            case "ERROR":
+              reject(error)
+              break;
+            default:
+              reject("Unknown event from worker");
+          }
+        });
+      });
+
+      res.status(200)
+      return { header };
+    } catch (error) {
+      res.log.error("Error occurred while generating header:", error);
+      res.status(500).send({ error: "Failed to generate header." });
+    }
   } catch (error) {
     req.log.error(error, "Failed to get scheduled tasks for deployment");
     res.status(500).send({

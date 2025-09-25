@@ -3,7 +3,7 @@ import { Type } from "@sinclair/typebox";
 
 import { ErrorSchema } from "../../../index.schema";
 
-export type GetDeploymentHeaderSuccess = string;
+export type GetDeploymentHeaderSuccess = { header: string };
 export type GetDeploymentHeaderError = ErrorSchema;
 
 export const GetDeploymentHeaderSchema: FastifySchema = {
@@ -23,13 +23,12 @@ export const GetDeploymentHeaderSchema: FastifySchema = {
   },
   response: {
     200: {
+      type: "string",
       description: "Returns authorization header to interact with the vaults jobs.",
       content: {
         "application/json": {
-          schema: Type.Object({
-            "header": Type.String()
-          }),
-        }
+          schema: Type.Object({ header: Type.String() }),
+        },
       }
     },
     401: {

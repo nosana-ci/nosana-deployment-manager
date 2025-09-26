@@ -11,6 +11,7 @@ import { HeadersSchema } from "./components/headers.schema.js";
 import { JobsSchema } from "./components/job.schema.js";
 import { PublicKeySchema } from "./components/publicKey.schema.js";
 import { TaskSchema } from "./components/task.schema.js";
+import { VaultSchema, VaultsSchema } from "./components/vault.schema.js";
 
 export * from "./components/deployment.schema.js";
 export * from "./components/error.schema.js";
@@ -19,6 +20,7 @@ export * from "./components/headers.schema.js";
 export * from "./components/job.schema.js";
 export * from "./components/publicKey.schema.js";
 export * from "./components/task.schema.js";
+export * from "./components/vault.schema.js";
 
 import * as getSchemas from "./get/index.schema.js";
 import * as postSchemas from "./post/index.schema.js";
@@ -94,4 +96,14 @@ export function addSchemas(server: FastifyInstance) {
     $id: "Task",
     ...TaskSchema,
   });
+
+  server.addSchema({
+    $id: "Vault",
+    ...VaultSchema
+  })
+
+  server.addSchema({
+    $id: "Vaults",
+    ...VaultsSchema
+  })
 }

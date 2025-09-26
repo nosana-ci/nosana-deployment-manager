@@ -7,19 +7,15 @@ import {
   OperationArgsMap,
 } from "@nosana/sdk";
 
-import { ConnectionSelector } from "../../../../../connection/solana.js";
-import { getNosTokenAddressForAccount } from "../../../../../tokenManager/helpers/NOS/getNosTokenAddressForAccount.js";
+import { getConfig } from "../../../../../config/index.js";
+import { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
 
 import {
   type DeploymentDocument,
   DeploymentStatus,
   DeploymentStrategy,
   type Endpoint,
-  type VaultDocument,
-  VaultStatus,
 } from "../../../../../types/index.js";
-import { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
-import { getConfig } from "../../../../../config/index.js";
 
 async function createDeploymentEndpoints(
   deployment: string,
@@ -51,26 +47,25 @@ async function createDeploymentEndpoints(
 
       if (!expose) continue;
 
-      if (typeof expose === "number") {
+      if (typeof expose === "number" || typeof expose === "string") {
         endpoints.push({
           opId: op.id,
           port: expose,
-          url: `https://${getExposeIdHash(deploymentHash, op.id, expose)}/${
-            getConfig().frps_address
-          }`,
+          url: `https://${getExposeIdHash(deploymentHash, op.id, expose)}/${getConfig().frps_address
+            }`,
         });
       }
 
       if (Array.isArray(expose)) {
         for (const service of expose) {
-          const port = typeof service === "number" ? service : service.port;
+          // @ts-expect-error - service can be string or number
+          const port = typeof service === "object" ? service.port : service;
 
           endpoints.push({
             opId: op.id,
             port,
-            url: `https://${getExposeIdHash(deploymentHash, op.id, port)}/${
-              getConfig().frps_address
-            }`,
+            url: `https://${getExposeIdHash(deploymentHash, op.id, port)}/${getConfig().frps_address
+              }`,
           });
         }
       }
@@ -78,31 +73,6 @@ async function createDeploymentEndpoints(
   }
 
   return { endpoints, newIpfsHash };
-}
-
-export async function createAndStoreVault(
-  owner: string,
-  created_at: Date
-): Promise<VaultDocument> {
-  const connection = ConnectionSelector();
-  const vault = solana.Keypair.generate();
-
-  const { account } = await getNosTokenAddressForAccount(
-    vault.publicKey,
-    connection
-  );
-
-  return {
-    vault: vault.publicKey.toString(),
-    vault_key: vault.secretKey.toString(),
-    status: VaultStatus.OPEN,
-    owner,
-    sol: 0,
-    nos: 0,
-    nos_ata: account.toString(),
-    created_at,
-    updated_at: created_at,
-  };
 }
 
 export async function createDeployment(

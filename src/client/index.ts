@@ -11,11 +11,11 @@ export const clientSelector = (wallet: Wallet): QueryClient => {
     const authorizationManager = new AuthorizationManager(wallet);
 
     const authMiddleware: Middleware = {
-      onRequest({ request }) {
+      async onRequest({ request }) {
         request.headers.set("x-user-id", userId);
         request.headers.set(
           "Authorization",
-          authorizationManager.generate("DeploymentsAuthorization", {
+          await authorizationManager.generate("DeploymentsAuthorization", {
             includeTime: true,
           }),
         );

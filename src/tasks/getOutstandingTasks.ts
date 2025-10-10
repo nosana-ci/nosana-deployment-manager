@@ -40,6 +40,12 @@ export async function getOutstandingTasks(
       foreignField: "vault",
       as: "deployment.vault",
     })
+    .lookup({
+      from: "revisions",
+      localField: "deploymentId",
+      foreignField: "deployment",
+      as: "revisions",
+    })
     .unwind({
       path: "$deployment.vault",
       preserveNullAndEmptyArrays: false,

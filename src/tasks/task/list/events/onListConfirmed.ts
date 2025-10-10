@@ -15,7 +15,9 @@ export function onListConfirmed(
   jobs.insertOne({
     job,
     tx,
+    status: "PENDING",
     deployment: task.deploymentId,
+    revision: task.deployment.active_revision,
     created_at: new Date(),
   });
 }

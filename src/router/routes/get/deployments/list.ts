@@ -38,6 +38,10 @@ export const deploymentsHandler: RouteHandler<{
         ...event,
         created_at: event.created_at.toISOString(),
       })),
+      revisions: deployment.revisions.map((revision) => ({
+        ...revision,
+        created_at: revision.created_at.toISOString(),
+      })),
     }));
   } catch (error) {
     res.log.error("Error fetching deployments:", error);

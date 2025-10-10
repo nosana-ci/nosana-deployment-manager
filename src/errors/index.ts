@@ -22,6 +22,11 @@ export const ErrorsMessages = {
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
     INCORRECT_STATE: "Deployment is in the incorrect state.",
   },
+  job: {
+    NOT_FOUND: "Job not found.",
+    FAILED_TO_FIND_JOB_DEFINITION: "Failed to find the jobs definition.",
+    FAILED_TO_FIND_DEPLOYMENT: "Failed to find the deployments job definition.",
+  },
   vaults: {
     NOT_FOUND: "Vault not found.",
     NOT_EMPTY: "Vault must be empty. Please withdraw all funds.",

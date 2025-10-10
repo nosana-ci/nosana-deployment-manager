@@ -11,7 +11,7 @@ import type {
   DeploymentCreateSuccess,
 } from "../../../../schema/post/index.schema.js";
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
-import { createAndStoreSharedVault } from "../../vault/createSharedVault/createSharedVaultFactory.js";
+import { createAndStoreSharedVault } from "../../vaults/createSharedVault/createSharedVaultFactory.js";
 
 export const deploymentCreateHandler: RouteHandler<{
   Headers: HeadersSchema;
@@ -47,12 +47,19 @@ export const deploymentCreateHandler: RouteHandler<{
 
     const created_at = new Date();
 
-    const deployment = await createDeployment(
+    const { deployment, revision } = await createDeployment(
       req.body,
       vault,
       userId,
       created_at
     );
+
+    const { acknowledged: revisionAcknowledged } = await db.revisions.insertOne(revision);
+
+    if (!revisionAcknowledged) {
+      res.status(500).send({ error: "Failed to create deployment revision" });
+      return;
+    }
 
     const { acknowledged } = await db.deployments.insertOne(deployment);
 
@@ -66,6 +73,12 @@ export const deploymentCreateHandler: RouteHandler<{
       ...deployment,
       events: [],
       jobs: [],
+      revisions: [
+        {
+          ...revision,
+          created_at: revision.created_at.toISOString()
+        },
+      ],
       created_at: created_at.toISOString(),
       updated_at: created_at.toISOString(),
     };

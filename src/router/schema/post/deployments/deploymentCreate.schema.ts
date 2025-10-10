@@ -4,15 +4,16 @@ import { Type, Static } from "@sinclair/typebox";
 import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../index.schema.js";
 
 import { DeploymentStrategy } from "../../../../types/index.js";
+import { JobDefinitionSchema } from "../../components/jobDefinition.schema.js";
 
 export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
     name: Type.String(),
     market: Type.String(),
-    ipfs_definition_hash: Type.String(),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 60 }),
-    vault: Type.Optional(PublicKeySchema)
+    vault: Type.Optional(PublicKeySchema),
+    job_definition: JobDefinitionSchema
   }),
   Type.Union([
     Type.Object({

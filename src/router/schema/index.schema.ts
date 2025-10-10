@@ -18,6 +18,7 @@ export * from "./components/error.schema.js";
 export * from "./components/event.schema.js";
 export * from "./components/headers.schema.js";
 export * from "./components/job.schema.js";
+export * from "./components/jobDefinition.schema.js";
 export * from "./components/publicKey.schema.js";
 export * from "./components/task.schema.js";
 export * from "./components/vault.schema.js";
@@ -26,6 +27,8 @@ import * as getSchemas from "./get/index.schema.js";
 import * as postSchemas from "./post/index.schema.js";
 import * as patchSchemas from "./patch/index.schema.js";
 import { EndpointSchema } from "./components/endpoint.schema.js";
+import { RevisionSchema } from "./components/revision.schema.js";
+import { JobDefinitionSchema } from "./components/jobDefinition.schema.js";
 
 export const routeSchemas = {
   get: getSchemas,
@@ -105,5 +108,15 @@ export function addSchemas(server: FastifyInstance) {
   server.addSchema({
     $id: "Vaults",
     ...VaultsSchema
+  })
+
+  server.addSchema({
+    $id: "Revision",
+    ...RevisionSchema
+  })
+
+  server.addSchema({
+    $id: "JobDefinition",
+    ...JobDefinitionSchema
   })
 }

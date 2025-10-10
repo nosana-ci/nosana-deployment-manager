@@ -1,3 +1,4 @@
+import { JobDefinition } from "@nosana/sdk";
 import { Collection, Document } from "mongodb";
 
 export type DeploymentsConfig = {
@@ -59,10 +60,10 @@ export type DeploymentDocumentBase = {
   owner: string; // Owners PublicKey
   name: string;
   status: DeploymentStatus;
-  ipfs_definition_hash: string;
-  endpoints: Endpoint[];
   replicas: number;
   timeout: number;
+  endpoints: Endpoint[];
+  active_revision: number;
   created_at: Date;
   updated_at: Date;
 };
@@ -91,7 +92,6 @@ export type EventDocument = {
 
 export type EventsCollection = Collection<EventDocument>;
 
-
 export type VaultDocument = {
   vault: string;
   vault_key: string;
@@ -105,17 +105,29 @@ export type VaultDocument = {
 
 export type VaultCollection = Collection<VaultDocument>;
 
+export type RevisionDocument = {
+  revision: number;
+  deployment: string;
+  ipfs_definition_hash: string;
+  job_definition: JobDefinition;
+  created_at: Date;
+};
+
+export type RevisionCollection = Collection<RevisionDocument>;
+
 export type Collections = {
   deployments: DeploymentCollection;
   events: EventsCollection;
   vaults: VaultCollection;
   tasks: TasksCollection;
   jobs: JobsCollection;
+  revisions: RevisionCollection;
 };
 
 export type DeploymentAggregation = DeploymentDocument & {
   events: EventDocument[];
   jobs: JobsDocument[];
+  revisions: RevisionDocument[];
 };
 
 export const TaskType = {
@@ -139,11 +151,19 @@ export type TasksCollection = Collection<TaskDocument>;
 export type JobsDocument = {
   job: string;
   deployment: string;
+  revision: number;
   tx: string;
+  status: "PENDING" | "CONFIRMED";
   created_at: Date;
 };
 
 export type JobsCollection = Collection<JobsDocument>;
+
+export type ResultsDocument = {
+  job: string;
+}
+
+export type ResultsCollection = Collection<ResultsDocument>;
 
 export interface WorkerEventMessage {
   event: "CONFIRMED" | string;
@@ -159,4 +179,5 @@ export type OutstandingTasksDocument = Document &
       vault: VaultDocument;
     };
     jobs: JobsDocument[];
+    revisions: RevisionDocument[];
   };

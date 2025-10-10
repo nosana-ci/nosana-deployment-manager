@@ -1,16 +1,17 @@
 import { Wallet } from "@coral-xyz/anchor";
 import { AuthorizationManager } from "@nosana/sdk";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import type { RouteHandler } from "fastify";
 
-import type { HeadersSchema } from "../../schema/index.schema";
+import type { RouteHandler } from "fastify";
+import type { HeadersSchema } from "../../schema/index.schema.js";
 
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;
 }> = async (req, res) => {
-  if (!req.url.startsWith("/api/") || req.method === "OPTIONS") {
+  if (!req.url.startsWith("/api/") || req.url.startsWith("/api/jobs/") || req.method === "OPTIONS") {
     return;
   }
+
   const authorizationManager = new AuthorizationManager(
     new Wallet(new Keypair())
   );

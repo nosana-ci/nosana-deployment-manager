@@ -32,13 +32,23 @@ const client = new Client(network, covertStringToIterable(vault), {
   solana: { network: rpc_network },
 });
 
-const { ipfs_definition_hash, timeout, market, replicas } = task.deployment;
+const { active_revision, timeout, market, replicas } = task.deployment;
+// TODO: clean this up in the queury
+const activeRevision = task.revisions.find(({ revision }) => revision === active_revision);
+
+if (!activeRevision) {
+  parentPort!.postMessage({
+    event: "ERROR",
+    error: "Active revision not found",
+  });
+  process.exit(1);
+}
 
 // TODO, convert to Single instruction
 for (let i = 0; i < replicas; i++) {
   try {
     const res = await client.jobs
-      .list(ipfs_definition_hash, timeout, market, undefined)
+      .list(activeRevision.ipfs_definition_hash, timeout, market, undefined)
       .catch((err) => {
         parentPort!.postMessage({
           event: "ERROR",

@@ -2,6 +2,7 @@ import { parentPort, workerData } from "worker_threads";
 
 import { Client } from "@nosana/sdk";
 
+import { decryptWithKey } from "../../../vault/decrypt.js";
 import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
 
 import {
@@ -27,7 +28,13 @@ const {
   vault,
   config: { network, rpc_network },
 } = workerData as WorkerData;
-const client = new Client(network, covertStringToIterable(vault), {
+
+const key = decryptWithKey(vault);
+const useNosanaApiKey = key.startsWith("Bearer ");
+
+const client = useNosanaApiKey ? new Client(network, undefined, {
+  apiKey: key.replace("Bearer ", ""),
+}) : new Client(network, covertStringToIterable(vault), {
   solana: { network: rpc_network },
 });
 
@@ -38,7 +45,7 @@ const {
 
 for (const { job } of jobs) {
   try {
-    const res = await client.jobs.extend(job, timeout);
+    const res = useNosanaApiKey ? await client.api.jobs.extend(job, timeout) : await client.jobs.extend(job, timeout);
     if (res) {
       parentPort?.postMessage({
         event: "CONFIRMED",

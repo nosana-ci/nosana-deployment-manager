@@ -9,8 +9,10 @@ export type DeploymentsConfig = {
   rpc_network: string;
   frps_address: string;
   tasks_batch_size: number;
+  confidential_ipfs_pin: string;
   confidential_by_default: boolean;
   deployment_manager_port: number;
+  vault_key: string | undefined;
   docdb: {
     hostname: string;
     port: string | number;

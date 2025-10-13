@@ -11,17 +11,24 @@ export function errorFormatter(
 export const ErrorMessages = {
   generic: {
     INVALID_BODY: "Invalid request body.",
+    INTERNAL_SERVER_ERROR: "Internal server error.",
     SOMETHING_WENT_WRONG: "Ops something went wrong, please again.",
   },
   deployments: {
     NOT_FOUND: "Deployment not found.",
     ARCHIVED: "Cannot modify an archived deployment.",
+    FAILED_TO_CREATE: "Failed to create deployment.",
     FAILED_STARTING: "Failed to start deployment.",
     FAILED_TO_STOP: "Failed to stop deployment.",
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
     INCORRECT_STATE: "Deployment is in the incorrect state.",
+    REVISIONS: {
+      NOT_FOUND: "Deployment revision not found.",
+      FAILED_TO_CREATE: "Failed to create deployment revision.",
+      FAILED_TO_UPDATE: "Failed to update deployment revision.",
+    }
   },
   job: {
     NOT_FOUND: "Job not found.",
@@ -35,6 +42,7 @@ export const ErrorMessages = {
   vaults: {
     NOT_FOUND: "Vault not found.",
     NOT_EMPTY: "Vault must be empty. Please withdraw all funds.",
+    FAILED_TO_CREATE: "Failed to create vault.",
     FAILED_TO_ARCHIVE: "Failed to archive vault.",
     FAILED_TO_FIND_KEY: "Could not find vault.",
     FAILED_TO_UPDATE_BALANCE: "Could not update vaults balance.",

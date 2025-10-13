@@ -2,6 +2,7 @@ import {
   DeploymentAggregation,
   DeploymentCollection,
   EventsCollection,
+  JobResultsCollection,
   JobsCollection,
   RevisionCollection,
   TasksCollection,
@@ -22,6 +23,7 @@ declare module "fastify" {
         jobs: JobsCollection;
         tasks: TasksCollection;
         revisions: RevisionCollection;
+        results: JobResultsCollection;
       };
     };
   }

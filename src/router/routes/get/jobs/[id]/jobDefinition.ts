@@ -1,8 +1,9 @@
 import { RouteHandler } from "fastify";
 
-import { ErrorsMessages } from "../../../../../errors/index.js";
-import { JobsDocument, RevisionDocument } from "../../../../../types/index.js";
-import { JobDefinitionHandlerError, JobDefinitionHandlerSuccess } from "../../../../schema/get/index.schema.js";
+import { ErrorMessages } from "../../../../../errors/index.js";
+
+import type { JobsDocument, RevisionDocument } from "../../../../../types/index.js";
+import type { JobDefinitionHandlerError, JobDefinitionHandlerSuccess } from "../../../../schema/get/index.schema.js";
 
 type JobDeploymentRevision = JobsDocument & {
   revisions: RevisionDocument[]
@@ -19,14 +20,14 @@ export const jobDefinitionHandler: RouteHandler<{
     const job = await db.jobs.aggregate().match({ job: { $eq: jobId } }).lookup({ from: "revisions", localField: "deployment", foreignField: "deployment", as: "revisions" }).unwind({ path: "$deployment" }).next();
 
     if (!job) {
-      res.status(404).send({ error: ErrorsMessages.job.NOT_FOUND });
+      res.status(404).send({ error: ErrorMessages.job.NOT_FOUND });
       return;
     }
 
     const revision = (job as JobDeploymentRevision).revisions.find(({ revision }) => revision === job.revision);
 
     if (!revision) {
-      res.status(404).send({ error: ErrorsMessages.job.FAILED_TO_FIND_JOB_DEFINITION });
+      res.status(404).send({ error: ErrorMessages.job.FAILED_TO_FIND_JOB_DEFINITION });
       return;
     }
 
@@ -35,6 +36,6 @@ export const jobDefinitionHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 }

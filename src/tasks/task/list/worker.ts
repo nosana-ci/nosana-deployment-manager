@@ -3,6 +3,7 @@ import { parentPort, workerData } from "worker_threads";
 import { Client } from "@nosana/sdk";
 
 import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
+import { confidentialJobDefinition } from "../../../definitions/confidential.jobdefinition.js";
 
 import {
   DeploymentsConfig,
@@ -32,7 +33,7 @@ const client = new Client(network, covertStringToIterable(vault), {
   solana: { network: rpc_network },
 });
 
-const { active_revision, timeout, market, replicas } = task.deployment;
+const { active_revision, confidential, market, replicas, timeout } = task.deployment;
 // TODO: clean this up in the queury
 const activeRevision = task.revisions.find(({ revision }) => revision === active_revision);
 
@@ -48,7 +49,7 @@ if (!activeRevision) {
 for (let i = 0; i < replicas; i++) {
   try {
     const res = await client.jobs
-      .list(activeRevision.ipfs_definition_hash, timeout, market, undefined)
+      .list(confidential ? confidentialJobDefinition : activeRevision.ipfs_definition_hash, timeout, market, undefined)
       .catch((err) => {
         parentPort!.postMessage({
           event: "ERROR",

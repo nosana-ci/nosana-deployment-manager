@@ -1,6 +1,6 @@
 import type { RouteHandler } from "fastify";
 
-import { ErrorsMessages } from "../../../../../errors/index.js";
+import { ErrorMessages } from "../../../../../errors/index.js";
 
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
 import type {
@@ -13,8 +13,8 @@ export const deploymentUpdateReplicaCountHandler: RouteHandler<{
   Params: { deployment: string };
   Headers: HeadersSchema;
   Reply:
-    | DeploymentUpdateReplicaCountSuccess
-    | DeploymentUpdateReplicaCountError;
+  | DeploymentUpdateReplicaCountSuccess
+  | DeploymentUpdateReplicaCountError;
 }> = async (req, res) => {
   const { db } = res.locals;
   const replicas = req.body.replicas;
@@ -40,7 +40,7 @@ export const deploymentUpdateReplicaCountHandler: RouteHandler<{
 
     if (!acknowledged) {
       res.status(500).send({
-        error: ErrorsMessages.deployments.FAILED_REPLICA_COUNT_UPDATE,
+        error: ErrorMessages.deployments.FAILED_REPLICA_COUNT_UPDATE,
       });
       return;
     }
@@ -53,6 +53,6 @@ export const deploymentUpdateReplicaCountHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 };

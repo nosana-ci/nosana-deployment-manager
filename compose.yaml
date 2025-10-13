@@ -37,6 +37,7 @@ services:
         - action: rebuild
           path: package.json
     environment:
+      - CONFIDENTIAL=true
       - TASKS_BATCH_SIZE=10
       - DEPLOYMENT_MANAGER_PORT=3000
       - NETWORK=mainnet

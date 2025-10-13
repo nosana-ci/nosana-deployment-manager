@@ -88,6 +88,7 @@ export async function createDeployment(
     replicas,
     strategy,
     schedule,
+    confidential,
     timeout,
   }: DeploymentCreateBody,
   vault: string,
@@ -104,6 +105,7 @@ export async function createDeployment(
     replicas,
     timeout,
     active_revision: 1,
+    confidential: confidential ?? getConfig().confidential_by_default,
     created_at,
     updated_at: created_at,
   };

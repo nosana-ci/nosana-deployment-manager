@@ -5,13 +5,15 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import type { RouteHandler } from "fastify";
 import type { HeadersSchema } from "../../schema/index.schema.js";
 import { getSdk } from "../../../sdk/index.js";
-import { ErrorsMessages } from "../../../errors/index.js";
+import { ErrorMessages } from "../../../errors/index.js";
+
+export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/jobs/") && (method !== "GET" && !url.endsWith("results"))
 
 export const authJobsMiddleware: RouteHandler<{
   Params: { job: string };
   Headers: HeadersSchema;
 }> = async (req, res) => {
-  if (req.url.startsWith("/api/jobs/")) {
+  if (isJobHostRoute(req.url, req.method)) {
     if (req.params.job === undefined) {
       res.status(400).send("Bad Request");
       return;
@@ -57,7 +59,7 @@ export const authJobsMiddleware: RouteHandler<{
         res.status(404).send("Job Account not found");
         return
       }
-      res.status(500).send(ErrorsMessages.generic.SOMETHING_WENT_WRONG);
+      res.status(500).send(ErrorMessages.generic.SOMETHING_WENT_WRONG);
     }
   }
 };

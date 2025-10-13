@@ -4,11 +4,12 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 
 import type { RouteHandler } from "fastify";
 import type { HeadersSchema } from "../../schema/index.schema.js";
+import { isJobHostRoute } from "./authJobsMiddleware.js";
 
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;
 }> = async (req, res) => {
-  if (!req.url.startsWith("/api/") || req.url.startsWith("/api/jobs/") || req.method === "OPTIONS") {
+  if (!req.url.startsWith("/api/") || isJobHostRoute(req.url, req.method) || req.method === "OPTIONS") {
     return;
   }
 

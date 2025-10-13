@@ -1,6 +1,6 @@
 import type { RouteHandler } from "fastify";
 
-import { ErrorsMessages } from "../../../../../errors/index.js";
+import { ErrorMessages } from "../../../../../errors/index.js";
 import { DeploymentStatus } from "../../../../../types/index.js";
 
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
@@ -24,7 +24,7 @@ export const deploymentArchiveHandler: RouteHandler<{
     if (deployment.status !== "STOPPED") {
       res
         .status(500)
-        .send({ error: ErrorsMessages.deployments.INCORRECT_STATE });
+        .send({ error: ErrorMessages.deployments.INCORRECT_STATE });
       return;
     }
 
@@ -45,7 +45,7 @@ export const deploymentArchiveHandler: RouteHandler<{
     if (!acknowledgedDeployments) {
       res
         .status(500)
-        .send({ error: ErrorsMessages.deployments.FAILED_TO_ARCHIVE });
+        .send({ error: ErrorMessages.deployments.FAILED_TO_ARCHIVE });
       return;
     }
 
@@ -57,6 +57,6 @@ export const deploymentArchiveHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 };

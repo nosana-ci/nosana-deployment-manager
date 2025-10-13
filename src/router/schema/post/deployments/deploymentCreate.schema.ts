@@ -13,6 +13,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 60 }),
     vault: Type.Optional(PublicKeySchema),
+    confidential: Type.Optional(Type.Boolean()),
     job_definition: JobDefinitionSchema
   }),
   Type.Union([

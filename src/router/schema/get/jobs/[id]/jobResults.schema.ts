@@ -1,27 +1,25 @@
 import { FastifySchema } from "fastify";
-import { Static, Type } from "@sinclair/typebox";
+import { Type } from "@sinclair/typebox";
 
-import type { ErrorSchema } from "../../../index.schema.js";
+import type { ErrorSchema, JobResultsSchema } from "../../../index.schema.js";
 
-const JobResultsSchema = Type.Object({
-  message: Type.Literal("Success")
-})
+export type JobResultsHandlerSuccess = JobResultsSchema;
+export type JobResultsHandlerError = ErrorSchema;
 
-export type JobResultsPostHandlerSuccess = Static<typeof JobResultsSchema>;
-export type JobResultsPostHandlerError = ErrorSchema;
-
-export const JobResultPostHandlerSchema: FastifySchema = {
-  description: "Post results for your running job.",
+export const JobResultsHandlerSchema: FastifySchema = {
+  description: "Returns a jobs results.",
   tags: ["Jobs"],
   headers: {
     $ref: "Headers",
   },
   response: {
     200: {
-      description: "Job results details.",
+      description: "Job results.",
       content: {
         "application/json": {
-          schema: JobResultsSchema,
+          schema: {
+            $ref: "JobResults",
+          },
         },
       },
     },

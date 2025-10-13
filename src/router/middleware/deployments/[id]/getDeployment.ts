@@ -1,6 +1,6 @@
 import type { RouteHandler } from "fastify";
 
-import { ErrorsMessages } from "../../../../errors/index.js";
+import { ErrorMessages } from "../../../../errors/index.js";
 import { fetchDeployments } from "../../../helper/fetchDeployments.js";
 
 import type { HeadersSchema } from "../../../schema/index.schema.js";
@@ -17,7 +17,7 @@ export const getDeploymentMiddleware: RouteHandler<{
     const deployments = await fetchDeployments({ id, owner }, db.deployments);
 
     if (deployments.length === 0) {
-      res.status(404).send({ error: ErrorsMessages.deployments.NOT_FOUND });
+      res.status(404).send({ error: ErrorMessages.deployments.NOT_FOUND });
       return;
     }
 
@@ -26,7 +26,7 @@ export const getDeploymentMiddleware: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
     return;
   }
 };

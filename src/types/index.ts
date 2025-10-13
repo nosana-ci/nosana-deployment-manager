@@ -1,12 +1,15 @@
 import { JobDefinition } from "@nosana/sdk";
 import { Collection, Document } from "mongodb";
 
+import { JobResultsSchema } from "../router/schema/index.schema.js";
+
 export type DeploymentsConfig = {
   network: "mainnet" | "devnet";
   nos_address: string;
   rpc_network: string;
   frps_address: string;
   tasks_batch_size: number;
+  confidential_by_default: boolean;
   deployment_manager_port: number;
   docdb: {
     hostname: string;
@@ -64,6 +67,7 @@ export type DeploymentDocumentBase = {
   timeout: number;
   endpoints: Endpoint[];
   active_revision: number;
+  confidential: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -115,6 +119,13 @@ export type RevisionDocument = {
 
 export type RevisionCollection = Collection<RevisionDocument>;
 
+export type JobResultsDocument = {
+  job: string;
+  results: JobResultsSchema;
+}
+
+export type JobResultsCollection = Collection<JobResultsDocument>
+
 export type Collections = {
   deployments: DeploymentCollection;
   events: EventsCollection;
@@ -122,6 +133,7 @@ export type Collections = {
   tasks: TasksCollection;
   jobs: JobsCollection;
   revisions: RevisionCollection;
+  results: JobResultsCollection;
 };
 
 export type DeploymentAggregation = DeploymentDocument & {
@@ -153,7 +165,7 @@ export type JobsDocument = {
   deployment: string;
   revision: number;
   tx: string;
-  status: "PENDING" | "CONFIRMED";
+  status: "PENDING" | "CONFIRMED" | "COMPLETED";
   created_at: Date;
 };
 

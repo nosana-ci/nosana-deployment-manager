@@ -1,7 +1,7 @@
 import type { RouteHandler } from "fastify";
 import { Keypair } from "@solana/web3.js";
 
-import { ErrorsMessages } from "../../../../../errors/index.js";
+import { ErrorMessages } from "../../../../../errors/index.js";
 import { TokenManager } from "../../../../../tokenManager/index.js";
 import { covertStringToIterable } from "../../../../../tasks/utils/convertStringToIterable.js";
 
@@ -41,6 +41,6 @@ export const vaultWithdrawHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 };

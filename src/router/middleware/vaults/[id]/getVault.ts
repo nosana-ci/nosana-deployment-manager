@@ -1,6 +1,6 @@
 import type { RouteHandler } from "fastify";
 
-import { ErrorsMessages } from "../../../../errors/index.js";
+import { ErrorMessages } from "../../../../errors/index.js";
 
 import type { HeadersSchema } from "../../../schema/index.schema.js";
 
@@ -19,7 +19,7 @@ export const getVaultMiddleware: RouteHandler<{
     });
 
     if (vault === null) {
-      res.status(404).send({ error: ErrorsMessages.vaults.NOT_FOUND });
+      res.status(404).send({ error: ErrorMessages.vaults.NOT_FOUND });
       return;
     }
 
@@ -28,6 +28,6 @@ export const getVaultMiddleware: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 };

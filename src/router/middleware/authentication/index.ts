@@ -1,2 +1,2 @@
 export * from "./authMiddleware.js";
-export * from "./authJobsMiddleware.js";
+export * from "./authJobHostMiddleware.js";

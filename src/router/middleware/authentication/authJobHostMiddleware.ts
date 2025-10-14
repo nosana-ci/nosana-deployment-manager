@@ -9,7 +9,7 @@ import { ErrorMessages } from "../../../errors/index.js";
 
 export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/jobs/") && (method !== "GET" && !url.endsWith("results"))
 
-export const authJobsMiddleware: RouteHandler<{
+export const authJobHostMiddleware: RouteHandler<{
   Params: { job: string };
   Headers: HeadersSchema;
 }> = async (req, res) => {
@@ -48,6 +48,7 @@ export const authJobsMiddleware: RouteHandler<{
       if (
         !authorizationManager.validateHeader(req.headers, {
           publicKey: new PublicKey(job.node),
+          expected_message: req.params.job,
           expiry: 300,
         })
       ) {

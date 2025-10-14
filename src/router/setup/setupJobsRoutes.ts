@@ -2,7 +2,8 @@ import { FastifyInstance } from "fastify";
 
 import { routes } from "../routes/index.js";
 import { routeSchemas } from "../schema/index.schema.js";
-import { authJobsMiddleware } from "../middleware/authentication/authJobsMiddleware.js";
+
+import { authJobHostMiddleware } from "../middleware/authentication/authJobHostMiddleware.js";
 
 const {
   get: { jobDefinitionHandler, jobResultsHandler },
@@ -14,7 +15,7 @@ const {
 } = routeSchemas;
 
 export function setupJobsRoutes(server: FastifyInstance) {
-  server.addHook("onRequest", authJobsMiddleware);
+  server.addHook("onRequest", authJobHostMiddleware);
 
   // GET
   server.get(

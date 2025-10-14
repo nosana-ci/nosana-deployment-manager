@@ -1,10 +1,11 @@
 import { Wallet } from "@coral-xyz/anchor";
+import type { RouteHandler } from "fastify";
 import { AuthorizationManager } from "@nosana/sdk";
 import { Keypair, PublicKey } from "@solana/web3.js";
 
-import type { RouteHandler } from "fastify";
+import { isJobHostRoute } from "./authJobHostMiddleware.js";
+
 import type { HeadersSchema } from "../../schema/index.schema.js";
-import { isJobHostRoute } from "./authJobsMiddleware.js";
 
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;

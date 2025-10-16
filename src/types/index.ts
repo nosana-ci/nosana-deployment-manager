@@ -1,4 +1,4 @@
-import { JobDefinition } from "@nosana/sdk";
+import { FlowState, JobDefinition } from "@nosana/sdk";
 import { Collection, Document } from "mongodb";
 
 import { JobResultsSchema } from "../router/schema/index.schema.js";
@@ -173,6 +173,7 @@ export type JobsCollection = Collection<JobsDocument>;
 
 export type ResultsDocument = {
   job: string;
+  results: FlowState;
 }
 
 export type ResultsCollection = Collection<ResultsDocument>;

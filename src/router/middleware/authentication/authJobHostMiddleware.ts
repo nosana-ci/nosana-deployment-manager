@@ -7,7 +7,7 @@ import type { HeadersSchema } from "../../schema/index.schema.js";
 import { getSdk } from "../../../sdk/index.js";
 import { ErrorMessages } from "../../../errors/index.js";
 
-export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/jobs/") && (method !== "GET" && !url.endsWith("results"))
+export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/job/") && !(method === "GET" && url.endsWith("results"))
 
 export const authJobHostMiddleware: RouteHandler<{
   Params: { job: string };
@@ -23,10 +23,9 @@ export const authJobHostMiddleware: RouteHandler<{
       new Wallet(new Keypair())
     );
 
-    const userId = req.headers["x-user-id"];
-    const authToken = req.headers["authorization"];
+    const authToken = req.headers.authorization;
 
-    if (typeof userId !== "string" || typeof authToken !== "string") {
+    if (typeof authToken !== "string") {
       res.status(401).send("Unauthorized");
       return;
     }

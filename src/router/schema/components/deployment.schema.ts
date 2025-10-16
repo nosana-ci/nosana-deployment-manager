@@ -34,6 +34,7 @@ export const DeploymentSchema = Type.Intersect([
     jobs: Type.Array(JobsSchema),
     events: Type.Array(EventsSchema),
     endpoints: Type.Array(EndpointSchema),
+    confidential: Type.Boolean(),
     active_revision: Type.Number({ minimum: 1 }),
     created_at: Type.String({ format: "date-time" }),
     updated_at: Type.String({ format: "date-time" }),

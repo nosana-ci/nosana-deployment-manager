@@ -14,7 +14,10 @@ export const JobResultPostHandlerSchema: FastifySchema = {
   description: "Post results for your running job.",
   tags: ["Jobs"],
   headers: {
-    $ref: "Headers",
+    $ref: "HostHeaders",
+  },
+  body: {
+    $ref: "JobResults",
   },
   response: {
     200: {

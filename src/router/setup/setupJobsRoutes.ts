@@ -19,7 +19,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
 
   // GET
   server.get(
-    "/api/jobs/:job/job-definition",
+    "/api/job/:job/job-definition",
     {
       schema: JobDefinitionHandlerSchema,
     },
@@ -27,7 +27,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
   );
 
   server.get(
-    "api/jobs/:job/results",
+    "/api/job/:job/results",
     {
       schema: JobResultsHandlerSchema
     },
@@ -36,7 +36,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
 
   // POST
   server.post(
-    "/api/jobs/:job/results",
+    "/api/job/:job/results",
     {
       schema: JobResultPostHandlerSchema
     },

@@ -9,7 +9,7 @@ import { JobsSchema } from "./components/job.schema.js";
 import { TaskSchema } from "./components/task.schema.js";
 import { ErrorSchema } from "./components/error.schema.js";
 import { EventsSchema } from "./components/event.schema.js";
-import { HeadersSchema } from "./components/headers.schema.js";
+import { HeadersSchema, HostHeadersSchema } from "./components/headers.schema.js";
 import { EndpointSchema } from "./components/endpoint.schema.js";
 import { RevisionSchema } from "./components/revision.schema.js";
 import { PublicKeySchema } from "./components/publicKey.schema.js";
@@ -43,6 +43,11 @@ export function addSchemas(server: FastifyInstance) {
     $id: "Headers",
     ...HeadersSchema,
   });
+
+  server.addSchema({
+    $id: "HostHeaders",
+    ...HostHeadersSchema
+  })
 
   server.addSchema({
     $id: "Deployment",

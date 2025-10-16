@@ -15,3 +15,16 @@ export const HeadersSchema = Type.Object(
 );
 
 export type HeadersSchema = Static<typeof HeadersSchema>;
+
+export const HostHeadersSchema = Type.Object(
+  {
+    authorization: Type.String({
+      description: "Signed authentication message,",
+    }),
+  },
+  {
+    description: "Headers for deployment routes",
+  }
+);
+
+export type HostHeadersSchema = Static<typeof HostHeadersSchema>

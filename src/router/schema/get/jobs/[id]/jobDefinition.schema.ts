@@ -11,7 +11,7 @@ export const JobDefinitionHandlerSchema: FastifySchema = {
   description: "Returns the job definition for a job.",
   tags: ["Jobs"],
   headers: {
-    $ref: "Headers",
+    $ref: "HostHeaders",
   },
   response: {
     200: {

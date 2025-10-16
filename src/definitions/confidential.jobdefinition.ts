@@ -10,12 +10,14 @@ export const confidentialJobDefinition: JobDefinition = {
     "send": {
       "type": "api",
       "args": {
-        "endpoint": "http://localhost:3000/api/jobs/%%global.job%%/job-definition"
+        "endpoint": "http://localhost:3000/api/job/%%global.job%%/job-definition"
       }
     },
     "receive": {
-      "type": "api-listen",
-      "args": {}
+      "type": "api",
+      "args": {
+        "endpoint": "http://localhost:3000/api/job/%%global.job%%/results"
+      }
     }
   },
   "ops": []

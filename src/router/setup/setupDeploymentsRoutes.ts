@@ -18,12 +18,15 @@ const {
   },
   post: {
     deploymentCreateHandler,
+    deploymentCreateRevisionHandler,
     deploymentStartHandler,
     deploymentStopHandler,
   },
   patch: {
     deploymentArchiveHandler,
+    deploymentUpdateActiveRevisionHandler,
     deploymentUpdateReplicaCountHandler,
+    deploymentUpdateScheduleHandler,
     deploymentUpdateTimeoutHandler,
   },
 } = routes;
@@ -35,10 +38,12 @@ const {
     GetDeploymentScheduledTasksSchema,
     GetDeploymentHeaderSchema
   },
-  post: { DeploymentCreateSchema, DeploymentStartSchema, DeploymentStopSchema },
+  post: { DeploymentCreateSchema, DeploymentCreateRevisionSchema, DeploymentStartSchema, DeploymentStopSchema },
   patch: {
     DeploymentArchiveSchema,
+    DeploymentUpdateActiveRevisionSchema,
     DeploymentUpdateReplicaCountSchema,
+    DeploymentUpdateScheduleSchema,
     DeploymentUpdateTimeoutSchema,
   },
 } = routeSchemas;
@@ -90,6 +95,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.post(
+    "/api/deployment/:deployment/create-revision",
+    {
+      schema: DeploymentCreateRevisionSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentCreateRevisionHandler
+  );
+
+  server.post(
     "/api/deployment/:deployment/start",
     {
       schema: DeploymentStartSchema,
@@ -118,12 +132,30 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.patch(
+    "/api/deployment/:deployment/update-active-revision",
+    {
+      schema: DeploymentUpdateActiveRevisionSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentUpdateActiveRevisionHandler
+  );
+
+  server.patch(
     "/api/deployment/:deployment/update-replica-count",
     {
       schema: DeploymentUpdateReplicaCountSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentUpdateReplicaCountHandler
+  );
+
+  server.patch(
+    "/api/deployment/:deployment/update-schedule",
+    {
+      schema: DeploymentUpdateScheduleSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentUpdateScheduleHandler
   );
 
   server.patch(

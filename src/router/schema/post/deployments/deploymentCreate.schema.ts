@@ -6,6 +6,11 @@ import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../
 import { DeploymentStrategy } from "../../../../types/index.js";
 import { JobDefinitionSchema } from "../../components/jobDefinition.schema.js";
 
+export const DeploymentScheduleSchema = Type.String({
+  description: "Cron expression for scheduled deployments",
+  pattern: "^\\s*(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s*$",
+})
+
 export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
     name: Type.String(),
@@ -26,10 +31,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     }),
     Type.Object({
       strategy: Type.Literal("SCHEDULED"),
-      schedule: Type.String({
-        description: "Cron expression for scheduled deployments",
-        pattern: "^\\s*(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s*$",
-      }),
+      schedule: DeploymentScheduleSchema,
     }),
   ]),
 ]);

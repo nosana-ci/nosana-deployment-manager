@@ -1,4 +1,4 @@
-import { Db } from "mongodb";
+import type { Db } from "mongodb";
 
 import type {
   TaskDocument,
@@ -10,7 +10,8 @@ export async function scheduleTask(
   db: Db,
   task: TaskType,
   deploymentId: string,
-  due_at = new Date()
+  due_at = new Date(),
+  active_revision?: number,
 ) {
   const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
 
@@ -19,6 +20,7 @@ export async function scheduleTask(
     due_at,
     deploymentId,
     tx: undefined,
+    active_revision,
     created_at: new Date(),
   });
 

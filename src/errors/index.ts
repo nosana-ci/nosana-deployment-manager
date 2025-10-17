@@ -16,12 +16,17 @@ export const ErrorMessages = {
   deployments: {
     NOT_FOUND: "Deployment not found.",
     ARCHIVED: "Cannot modify an archived deployment.",
+    INCORRECT_STATE: "Deployment is in the incorrect state.",
+    INCORRECT_STRATEGY: "Deployment is using an incorrect strategy.",
+    FAILED_TO_UPDATE_SCHEDULE: "Failed to update deployment schedule.",
     FAILED_STARTING: "Failed to start deployment.",
     FAILED_TO_STOP: "Failed to stop deployment.",
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
-    INCORRECT_STATE: "Deployment is in the incorrect state.",
+    INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
+    FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",
+    FAILED_TO_CREATE_NEW_REVISION: "Failed to create a new deployment revision.",
   },
   job: {
     NOT_FOUND: "Job not found.",

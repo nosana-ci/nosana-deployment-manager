@@ -155,6 +155,7 @@ export type TaskDocument = {
   due_at: Date;
   deploymentId: string;
   tx: string | undefined;
+  active_revision?: number;
   created_at: Date;
 };
 

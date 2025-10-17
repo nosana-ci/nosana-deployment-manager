@@ -33,6 +33,7 @@ export function spawnStopTask(
     task: {
       $ne: "STOP",
     },
+    ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
   });
 
   const worker = new Worker("./stop/worker.js", {
@@ -61,7 +62,9 @@ export function spawnStopTask(
   });
 
   worker.on("exit", async () => {
-    await onStopExit(errorStatus, deploymentsCollection, task);
+    if (!task.active_revision) {
+      await onStopExit(errorStatus, deploymentsCollection, task);
+    }
     complete();
   });
 

@@ -16,4 +16,4 @@ export type Filters<T> =
 
 export type EventCallback<T> = (data: T) => void;
 export type InsertEvent<T> = ["insert", EventCallback<T>];
-export type UpdateEvent<T> = ["update", EventCallback<T>, Filters<T>];
+export type UpdateEvent<T> = ["update", EventCallback<T>, { fields?: (keyof T)[]; filters?: Filters<T> }];

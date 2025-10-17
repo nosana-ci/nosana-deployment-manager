@@ -32,7 +32,10 @@ const client = new Client(network, covertStringToIterable(vault), {
   solana: { network: rpc_network },
 });
 
-for (const { job } of task.jobs) {
+for (const { job, revision } of task.jobs) {
+  if (task.active_revision && task.active_revision === revision) {
+    continue;
+  }
   try {
     const { state } = await client.jobs.get(job);
 

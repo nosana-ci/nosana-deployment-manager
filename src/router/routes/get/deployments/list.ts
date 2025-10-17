@@ -26,6 +26,7 @@ export const deploymentsHandler: RouteHandler<{
     });
 
     res.status(200);
+
     return deployments.map((deployment) => ({
       ...deployment,
       created_at: deployment.created_at.toISOString(),

@@ -14,10 +14,6 @@ export const authMiddleware: RouteHandler<{
     return;
   }
 
-  const authorizationManager = new AuthorizationManager(
-    new Wallet(new Keypair())
-  );
-
   const userId = req.headers["x-user-id"];
   const authToken = req.headers["authorization"];
 
@@ -26,13 +22,19 @@ export const authMiddleware: RouteHandler<{
     return;
   }
 
-  if (
-    !authorizationManager.validateHeader(req.headers, {
-      publicKey: new PublicKey(userId as string),
-      expiry: 300,
-    })
-  ) {
-    res.status(401).send("Unauthorized");
-    return;
+  if (!authToken.startsWith("nos_")) {
+    const authorizationManager = new AuthorizationManager(
+      new Wallet(new Keypair())
+    );
+
+    if (
+      !authorizationManager.validateHeader(req.headers, {
+        publicKey: new PublicKey(userId as string),
+        expiry: 300,
+      })
+    ) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
   }
 };

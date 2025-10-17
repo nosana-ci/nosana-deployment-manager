@@ -40,7 +40,7 @@ services:
       - TASKS_BATCH_SIZE=10
       - DEPLOYMENT_MANAGER_PORT=3000
       - CONFIDENTIAL_BY_DEFAULT=true
-      - NETWORK=devnet
+      - NETWORK=mainnet
       - DOCDB_HOST=host.docker.internal
       - DOCDB_PORT=27017
       - DOCDB_USERNAME=
@@ -49,7 +49,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "3000:3000"
+      - "3001:3000"
     networks:
       - deployments_network
     volumes:
@@ -62,4 +62,4 @@ volumes:
 
 networks:
   deployments_network:
-    driver: bridge
+    external: true

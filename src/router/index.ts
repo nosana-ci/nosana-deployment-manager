@@ -111,7 +111,10 @@ export async function startDeploymentManagerApi(db: Db) {
     },
   });
 
-  server.get("/documentation/json", async (req, res) => {
+  server.get("/documentation/json", {
+    logLevel: "silent",
+    schema: { hide: true }
+  }, async (_req, res) => {
     res.header("Content-Type", "application/json");
     return server.swagger();
   });

@@ -1,19 +1,19 @@
 import { FilterOperators } from "../types.js";
 
-export function matchValue<T>(value: T, operator: FilterOperators<T>): boolean {
+export function matchValue<T>(fieldValue: T, condition: FilterOperators<T>): boolean {
   const isComparable = (v: unknown): v is number | Date =>
     typeof v === "number" || v instanceof Date;
 
-  if ("$eq" in operator && value !== operator.$eq) return false;
-  if ("$ne" in operator && value === operator.$ne) return false;
+  if ("$eq" in condition && fieldValue !== condition.$eq) return false;
+  if ("$ne" in condition && fieldValue === condition.$ne) return false;
 
-  if ("$gt" in operator && isComparable(value) && value <= operator.$gt!)
+  if ("$gt" in condition && isComparable(fieldValue) && fieldValue <= condition.$gt!)
     return false;
-  if ("$gte" in operator && typeof value === "number" && value < operator.$gte!)
+  if ("$gte" in condition && typeof fieldValue === "number" && fieldValue < condition.$gte!)
     return false;
-  if ("$lt" in operator && isComparable(value) && value >= operator.$lt!)
+  if ("$lt" in condition && isComparable(fieldValue) && fieldValue >= condition.$lt!)
     return false;
-  if ("$lte" in operator && typeof value === "number" && value > operator.$lte!)
+  if ("$lte" in condition && typeof fieldValue === "number" && fieldValue > condition.$lte!)
     return false;
 
   return true;

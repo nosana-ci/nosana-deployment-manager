@@ -8,7 +8,7 @@ export type JobResultsHandlerError = ErrorSchema;
 
 export const JobResultsHandlerSchema: FastifySchema = {
   description: "Returns a jobs results.",
-  tags: ["Jobs"],
+  tags: ["Deployments Jobs"],
   headers: {
     $ref: "Headers",
   },

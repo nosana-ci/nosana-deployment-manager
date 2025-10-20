@@ -16,7 +16,7 @@ export type VaultWithdrawError = ErrorSchema;
 
 export const VaultWithdrawSchema: FastifySchema = {
   description: "Withdraw from a vault.",
-  tags: ["Vaults"],
+  tags: ["Deployments Vaults"],
   headers: {
     $ref: "Headers",
   },

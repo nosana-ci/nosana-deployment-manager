@@ -4,6 +4,7 @@ import { routes } from "../routes/index.js";
 import { routeSchemas } from "../schema/index.schema.js";
 
 import { authJobHostMiddleware } from "../middleware/authentication/authJobHostMiddleware.js";
+import { API_PREFIX } from "../../definitions/api.js";
 
 const {
   get: { jobDefinitionHandler, jobResultsHandler },
@@ -14,12 +15,14 @@ const {
   post: { JobResultPostHandlerSchema }
 } = routeSchemas;
 
+const JOBS_API_PREFIX = `${API_PREFIX}/jobs`;
+
 export function setupJobsRoutes(server: FastifyInstance) {
   server.addHook("onRequest", authJobHostMiddleware);
 
   // GET
   server.get(
-    "/api/job/:job/job-definition",
+    `${JOBS_API_PREFIX}/:job/job-definition`,
     {
       schema: JobDefinitionHandlerSchema,
     },
@@ -27,7 +30,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
   );
 
   server.get(
-    "/api/job/:job/results",
+    `${JOBS_API_PREFIX}/:job/results`,
     {
       schema: JobResultsHandlerSchema
     },
@@ -36,7 +39,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
 
   // POST
   server.post(
-    "/api/job/:job/results",
+    `${JOBS_API_PREFIX}/:job/results`,
     {
       schema: JobResultPostHandlerSchema
     },

@@ -34,7 +34,7 @@ const useNosanaApiKey = key.startsWith("nos_");
 
 const client = useNosanaApiKey ? new Client(network, undefined, {
   apiKey: key,
-}) : new Client(network, covertStringToIterable(vault), {
+}) : new Client(network, covertStringToIterable(key), {
   solana: { network: rpc_network },
 });
 

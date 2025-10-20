@@ -25,15 +25,17 @@ export function startDeploymentListener(db: Db) {
 
   listener.addListener(
     "update",
-    ({ id, strategy, schedule }) =>
+    ({ id, strategy, schedule, status }) => {
       scheduleTask(
         db,
         TaskType.LIST,
         id,
+        status,
         strategy === DeploymentStrategy.SCHEDULED
           ? getNextTaskTime(schedule)
           : undefined
-      ),
+      )
+    },
     {
       fields: ["status"],
       filters: {
@@ -44,7 +46,9 @@ export function startDeploymentListener(db: Db) {
 
   listener.addListener(
     "update",
-    ({ id }) => scheduleTask(db, TaskType.STOP, id),
+    ({ id, status }) => {
+      scheduleTask(db, TaskType.STOP, id, status)
+    },
     {
       fields: ["status"],
       filters: {
@@ -60,19 +64,25 @@ export function startDeploymentListener(db: Db) {
     },
     {
       fields: ["schedule"],
+      filters: {
+        status: { $ne: DeploymentStatus.DRAFT },
+      }
     }
   );
 
   listener.addListener(
     "update",
-    ({ id, active_revision, schedule, strategy }) => {
-      scheduleTask(db, TaskType.STOP, id, new Date(), active_revision);
-      scheduleTask(db, TaskType.LIST, id, strategy === DeploymentStrategy.SCHEDULED
+    ({ id, active_revision, schedule, strategy, status }) => {
+      scheduleTask(db, TaskType.STOP, id, status, new Date(), active_revision);
+      scheduleTask(db, TaskType.LIST, id, status, strategy === DeploymentStrategy.SCHEDULED
         ? getNextTaskTime(schedule)
         : undefined, active_revision);
     },
     {
       fields: ["active_revision"],
+      filters: {
+        status: { $ne: DeploymentStatus.DRAFT },
+      }
     }
   );
 

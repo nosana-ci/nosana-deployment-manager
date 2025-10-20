@@ -1,6 +1,9 @@
 import type { Db } from "mongodb";
 
-import type {
+import {
+  DeploymentCollection,
+  DeploymentDocument,
+  DeploymentStatus,
   TaskDocument,
   TasksCollection,
   TaskType,
@@ -10,10 +13,12 @@ export async function scheduleTask(
   db: Db,
   task: TaskType,
   deploymentId: string,
+  deploymentStatus: DeploymentStatus,
   due_at = new Date(),
   active_revision?: number,
 ) {
   const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
+  const deployments: DeploymentCollection = db.collection<DeploymentDocument>("deployments");
 
   const { acknowledged } = await tasks.insertOne({
     task,
@@ -27,6 +32,17 @@ export async function scheduleTask(
   if (!acknowledged) {
     console.error(
       `Failed to schedule ${task} task for deployment ${deploymentId}.`
+    );
+  }
+
+  if (deploymentStatus === DeploymentStatus.STARTING) {
+    await deployments.updateOne(
+      { id: deploymentId },
+      {
+        $set: {
+          status: DeploymentStatus.RUNNING,
+        },
+      }
     );
   }
 }

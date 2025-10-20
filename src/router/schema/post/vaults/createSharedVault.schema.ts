@@ -13,7 +13,7 @@ export type CreateSharedVaultError = ErrorSchema;
 
 export const CreateSharedVaultSchema: FastifySchema = {
   description: "Create a shared vault.",
-  tags: ["Vaults"],
+  tags: ["Deployments Vaults"],
   headers: {
     $ref: "Headers",
   },

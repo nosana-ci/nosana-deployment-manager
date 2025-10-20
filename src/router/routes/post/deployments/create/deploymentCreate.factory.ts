@@ -18,27 +18,13 @@ import {
   type RevisionDocument,
 } from "../../../../../types/index.js";
 
-export async function createNewDeploymentRevision(
-  currentRevision: number,
+export function createDeploymentRevisionEndpoints(
   deployment: string,
   vault: string,
   jobDefinition: JobDefinition
-): Promise<{ revision: RevisionDocument, endpoints: Endpoint[] }> {
-  const client = getSdk();
-
+) {
   const endpoints: Endpoint[] = [];
   const deploymentHash = createHash(`${deployment}:${vault}`, 45);
-
-  const finalJobDefinition: JobDefinition = {
-    ...jobDefinition,
-    deployment_id: deployment,
-    meta: {
-      ...jobDefinition.meta,
-      trigger: "deployment-manager",
-    },
-  }
-
-  const newIpfsHash = await client.ipfs.pin(finalJobDefinition);
 
   for (const op of jobDefinition.ops) {
     if (op.type === "container/run") {
@@ -68,6 +54,36 @@ export async function createNewDeploymentRevision(
       }
     }
   }
+
+  return endpoints;
+}
+
+export async function createNewDeploymentRevision(
+  currentRevision: number,
+  deployment: string,
+  vault: string,
+  jobDefinition: JobDefinition
+): Promise<{ revision: RevisionDocument, endpoints: Endpoint[] }> {
+  const client = getSdk();
+
+  const endpoints: Endpoint[] = createDeploymentRevisionEndpoints(
+    deployment,
+    vault,
+    jobDefinition
+  );
+
+  const finalJobDefinition: JobDefinition = {
+    ...jobDefinition,
+    deployment_id: deployment,
+    meta: {
+      ...jobDefinition.meta,
+      trigger: "deployment-manager",
+    },
+  }
+
+  const newIpfsHash = await client.ipfs.pin(finalJobDefinition);
+
+
 
   return {
     revision: {

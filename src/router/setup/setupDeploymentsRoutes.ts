@@ -8,6 +8,7 @@ import {
 import { routes } from "../routes/index.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
+import { API_PREFIX } from "../../definitions/api.js";
 
 const {
   get: {
@@ -51,7 +52,7 @@ const {
 export function setupDeploymentsRoutes(server: FastifyInstance) {
   // GET
   server.get(
-    "/api/deployments",
+    API_PREFIX,
     {
       schema: DeploymentsHandlerSchema,
     },
@@ -59,7 +60,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.get(
-    "/api/deployment/:deployment",
+    `${API_PREFIX}/:deployment`,
     {
       schema: DeploymentByIdSchema,
       preHandler: [getDeploymentMiddleware],
@@ -68,7 +69,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.get(
-    "/api/deployment/:deployment/tasks",
+    `${API_PREFIX}/:deployment/tasks`,
     {
       schema: GetDeploymentScheduledTasksSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -77,7 +78,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.get(
-    "/api/deployment/:deployment/header",
+    `${API_PREFIX}/:deployment/header`,
     {
       schema: GetDeploymentHeaderSchema,
       preHandler: [getDeploymentMiddleware],
@@ -87,7 +88,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
 
   // POST
   server.post(
-    "/api/deployment/create",
+    `${API_PREFIX}/create`,
     {
       schema: DeploymentCreateSchema,
     },
@@ -95,7 +96,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.post(
-    "/api/deployment/:deployment/create-revision",
+    `${API_PREFIX}/:deployment/create-revision`,
     {
       schema: DeploymentCreateRevisionSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -104,7 +105,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.post(
-    "/api/deployment/:deployment/start",
+    `${API_PREFIX}/:deployment/start`,
     {
       schema: DeploymentStartSchema,
       preHandler: [getDeploymentMiddleware],
@@ -113,7 +114,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.post(
-    "/api/deployment/:deployment/stop",
+    `${API_PREFIX}/:deployment/stop`,
     {
       schema: DeploymentStopSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -122,8 +123,8 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   // PATCH
-  server.patch(
-    "/api/deployment/:deployment/archive",
+  server.post(
+    `${API_PREFIX}/:deployment/archive`,
     {
       schema: DeploymentArchiveSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -132,7 +133,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.patch(
-    "/api/deployment/:deployment/update-active-revision",
+    `${API_PREFIX}/:deployment/update-active-revision`,
     {
       schema: DeploymentUpdateActiveRevisionSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -141,7 +142,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.patch(
-    "/api/deployment/:deployment/update-replica-count",
+    `${API_PREFIX}/:deployment/update-replica-count`,
     {
       schema: DeploymentUpdateReplicaCountSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -150,7 +151,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.patch(
-    "/api/deployment/:deployment/update-schedule",
+    `${API_PREFIX}/:deployment/update-schedule`,
     {
       schema: DeploymentUpdateScheduleSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
@@ -159,7 +160,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   server.patch(
-    "/api/deployment/:deployment/update-timeout",
+    `${API_PREFIX}/:deployment/update-timeout`,
     {
       schema: DeploymentUpdateTimeoutSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],

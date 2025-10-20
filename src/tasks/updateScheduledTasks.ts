@@ -9,8 +9,7 @@ export async function updateScheduledTasks(db: Db, deploymentId: string, due_at:
       deploymentId: {
         $eq: deploymentId
       },
-      due_at: { $lt: new Date() },
-      tx: { $exists: false }
+      tx: { $eq: null }
     },
     { $set: { due_at } }
   );

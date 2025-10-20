@@ -4,6 +4,7 @@ import { ErrorSchema } from "../../../index.schema";
 
 const DeploymentUpdateActiveRevisionSuccess = Type.Object({
   active_revision: Type.Number(),
+  endpoints: Type.Array(Type.Ref("Endpoint")),
   updated_at: Type.String(),
 });
 

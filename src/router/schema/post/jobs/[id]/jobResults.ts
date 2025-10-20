@@ -12,7 +12,7 @@ export type JobResultsPostHandlerError = ErrorSchema;
 
 export const JobResultPostHandlerSchema: FastifySchema = {
   description: "Post results for your running job.",
-  tags: ["Jobs"],
+  tags: ["Deployments Jobs"],
   headers: {
     $ref: "HostHeaders",
   },

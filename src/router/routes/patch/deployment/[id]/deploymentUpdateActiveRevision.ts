@@ -7,6 +7,7 @@ import type {
   DeploymentUpdateActiveRevisionSuccess,
   DeploymentUpdateActiveRevisionError,
 } from "../../../../schema/patch/index.schema.js";
+import { createDeploymentRevisionEndpoints } from "../../../post/deployments/create/deploymentCreate.factory.js";
 
 export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
   Body: { active_revision: number };
@@ -19,7 +20,9 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
   const deployment = res.locals.deployment!;
   const userId = req.headers["x-user-id"];
 
-  if (deployment.revisions.findIndex((r) => r.revision === active_revision) === -1) {
+  const revision = deployment.revisions.find((r) => r.revision === active_revision);
+
+  if (!revision) {
     res.status(400).send({
       error: ErrorMessages.deployments.INVALID_ACTIVE_REVISION,
     });
@@ -28,6 +31,7 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
 
   try {
     const updated_at = new Date();
+    const endpoints = createDeploymentRevisionEndpoints(deployment.id, deployment.vault, revision.job_definition);
     const { acknowledged } = await db.deployments.updateOne(
       {
         id: { $eq: deployment.id },
@@ -37,6 +41,7 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
       {
         $set: {
           active_revision,
+          endpoints,
           updated_at,
         },
       }
@@ -51,6 +56,7 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
 
     res.status(200).send({
       active_revision,
+      endpoints,
       updated_at: updated_at.toISOString(),
     });
   } catch (error) {

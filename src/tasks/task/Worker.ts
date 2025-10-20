@@ -1,6 +1,6 @@
 import path from "path";
 import { fileURLToPath, URL } from "url";
-import { Worker as NodeWorker, WorkerOptions } from "worker_threads";
+import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
 
 export class Worker extends NodeWorker {
   constructor(fileName: string | URL, options: WorkerOptions) {
@@ -9,6 +9,12 @@ export class Worker extends NodeWorker {
       fileName = path.resolve(__dirname, fileName);
     }
 
-    super(fileName, options);
+    super(
+      fileName,
+      {
+        ...options,
+        env: SHARE_ENV,
+      },
+    );
   }
 }

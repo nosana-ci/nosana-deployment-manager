@@ -39,9 +39,10 @@ services:
     environment:
       - TASKS_BATCH_SIZE=10
       - DEPLOYMENT_MANAGER_PORT=3000
-      - CONFIDENTIAL_BY_DEFAULT=true
+      - CONFIDENTIAL_BY_DEFAULT=false
       - VAULT_KEY=change_me
-      - NETWORK=mainnet
+      - NETWORK=devnet
+      - DASHBOARD_BACKEND_URL=http://host.docker.internal:3000
       - DOCDB_HOST=host.docker.internal
       - DOCDB_PORT=27017
       - DOCDB_USERNAME=

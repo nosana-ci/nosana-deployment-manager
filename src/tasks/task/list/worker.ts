@@ -26,7 +26,7 @@ type WorkerData = {
 const {
   task,
   vault,
-  config: { confidential_ipfs_pin, network, rpc_network },
+  config: { confidential_ipfs_pin, network, rpc_network, dashboard_backend_url },
 } = workerData as WorkerData;
 
 const key = decryptWithKey(vault);
@@ -34,6 +34,7 @@ const useNosanaApiKey = key.startsWith("nos_");
 
 const client = useNosanaApiKey ? new Client(network, undefined, {
   apiKey: key,
+  ...(dashboard_backend_url && { api: { backend_url: dashboard_backend_url } }),
 }) : new Client(network, covertStringToIterable(key), {
   solana: { network: rpc_network },
 });

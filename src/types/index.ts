@@ -13,6 +13,7 @@ export type DeploymentsConfig = {
   confidential_by_default: boolean;
   deployment_manager_port: number;
   vault_key: string | undefined;
+  dashboard_backend_url: string | undefined;
   docdb: {
     hostname: string;
     port: string | number;

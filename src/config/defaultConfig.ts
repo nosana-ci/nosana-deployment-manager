@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const commonConfig: Pick<
   DeploymentsConfig,
-  "confidential_ipfs_pin" | "confidential_by_default" | "deployment_manager_port" | "docdb" | "tasks_batch_size" | "vault_key"
+  "confidential_ipfs_pin" | "confidential_by_default" | "deployment_manager_port" | "docdb" | "tasks_batch_size" | "vault_key" | "dashboard_backend_url"
 > = {
   tasks_batch_size: process.env.TASKS_BATCH_SIZE
     ? parseInt(process.env.TASKS_BATCH_SIZE)
@@ -18,6 +18,7 @@ const commonConfig: Pick<
     : 3000,
   confidential_by_default: process.env.CONFIDENTIAL_BY_DEFAULT === "true",
   vault_key: process.env.VAULT_KEY || undefined,
+  dashboard_backend_url: process.env.DASHBOARD_BACKEND_URL || undefined,
   confidential_ipfs_pin: "",
   docdb: {
     hostname: process.env.DOCDB_HOST ?? "120.0.0.1",

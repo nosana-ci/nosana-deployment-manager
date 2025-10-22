@@ -76,7 +76,7 @@ for (let i = 0; i < replicas; i++) {
         });
       }
     } else {
-      const res = client.jobs.list(ipfs_definition_hash, timeout, market, undefined)
+      const res = await client.jobs.list(ipfs_definition_hash, timeout, market, undefined)
         .catch((err) => {
           parentPort!.postMessage({
             event: "ERROR",

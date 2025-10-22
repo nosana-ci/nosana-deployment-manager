@@ -28,6 +28,13 @@ export async function getOutstandingTasks(
       from: "jobs",
       localField: "deploymentId",
       foreignField: "deployment",
+      pipeline: [
+        {
+          $match: {
+            status: "PENDING"
+          }
+        }
+      ],
       as: "jobs",
     })
     .unwind({

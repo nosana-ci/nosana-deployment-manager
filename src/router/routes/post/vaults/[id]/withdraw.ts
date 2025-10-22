@@ -11,6 +11,7 @@ import type {
   VaultWithdrawError,
   VaultWithdrawSuccess,
 } from "../../../../schema/post/vaults/[id]/withdraw.schema.js";
+import { decryptWithKey } from "../../../../../vault/decrypt.js";
 
 export const vaultWithdrawHandler: RouteHandler<{
   Params: { vault: string };
@@ -19,6 +20,14 @@ export const vaultWithdrawHandler: RouteHandler<{
   Response: VaultWithdrawSuccess | VaultWithdrawError;
 }> = async (req, res) => {
   const vault = res.locals.vault!;
+  const key = decryptWithKey(vault.vault_key);
+
+  if (key.startsWith("nos_")) {
+    res
+      .status(400)
+      .send({ error: ErrorMessages.vaults.WITHDRAW_NOSANA_API_KEY_VAULT });
+    return;
+  }
 
   try {
     const tokenManager = new TokenManager(
@@ -32,7 +41,7 @@ export const vaultWithdrawHandler: RouteHandler<{
 
     const tx = await tokenManager.signAndSerialize(
       Keypair.fromSecretKey(
-        new Uint8Array(covertStringToIterable(vault.vault_key))
+        new Uint8Array(covertStringToIterable(key))
       )
     );
 

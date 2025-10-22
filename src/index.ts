@@ -4,12 +4,12 @@ import { initSdk } from "./sdk/index.js";
 import { startDeploymentManagerApi } from "./router/index.js";
 import { DeploymentsConnection } from "./connection/deployments.js";
 import { startDeploymentManagerListeners } from "./listeners/index.js";
-import { confidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
+import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
 import { setConfig } from "./config/index.js";
 
 const sdk = initSdk();
 
-const confidentialIpfsPin = await sdk.ipfs.pin(confidentialJobDefinition);
+const confidentialIpfsPin = await sdk.ipfs.pin(createConfidentialJobDefinition());
 
 setConfig("confidential_ipfs_pin", confidentialIpfsPin);
 

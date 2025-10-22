@@ -1,8 +1,10 @@
 import { Db } from "mongodb";
+import { DeploymentStatus } from "@nosana/sdk";
+
+import { getSdk } from "../../../sdk/index.js";
 
 import { DeploymentDocument } from "../../../types/index.js";
 import { createNewDeploymentRevision } from "../../../router/routes/post/deployments/create/deploymentCreate.factory.js";
-import { getSdk } from "../../../sdk/index.js";
 
 type OldDeploymentDocument = Omit<DeploymentDocument, "active_revision"> & {
   ipfs_definition_hash: string;
@@ -15,30 +17,43 @@ export default async function migrateDeploymentsToEndpoints(db: Db) {
   }).toArray();
 
   for (const { ipfs_definition_hash, ...deploymentWithIPFSHash } of deployments) {
-    const jobDefinition = await sdk.ipfs.retrieve(ipfs_definition_hash);
-    const { revision } = await createNewDeploymentRevision(0, deploymentWithIPFSHash.id, deploymentWithIPFSHash.vault, jobDefinition);
+    try {
+      const jobDefinition = await sdk.ipfs.retrieve(ipfs_definition_hash);
+      const { revision } = await createNewDeploymentRevision(0, deploymentWithIPFSHash.id, deploymentWithIPFSHash.vault, jobDefinition);
 
-    const { acknowledged: revisionAcknowledged } = await db.collection("revisions").insertOne(revision);
+      const { acknowledged: revisionAcknowledged } = await db.collection("revisions").insertOne(revision);
 
-    if (!revisionAcknowledged) {
-      console.error(`Failed to create deployment revision for deployment ${deploymentWithIPFSHash.id}`);
-      continue;
-    }
+      if (!revisionAcknowledged) {
+        console.error(`Failed to create deployment revision for deployment ${deploymentWithIPFSHash.id}`);
+        continue;
+      }
 
-    const updatedDeployment = {
-      ...deploymentWithIPFSHash,
-      active_revision: revision.revision,
-      updated_at: new Date(),
-    };
+      const updatedDeployment = {
+        ...deploymentWithIPFSHash,
+        active_revision: revision.revision,
+        updated_at: new Date(),
+      };
 
-    const { acknowledged } = await db.collection("deployments").updateOne(
-      { id: deploymentWithIPFSHash.id },
-      { $set: updatedDeployment, $unset: { ipfs_definition_hash: "" } }
-    );
+      const { acknowledged } = await db.collection("deployments").updateOne(
+        { id: deploymentWithIPFSHash.id },
+        { $set: updatedDeployment, $unset: { ipfs_definition_hash: "" } }
+      );
 
-    if (!acknowledged) {
-      console.error(`Failed to update deployment ${deploymentWithIPFSHash.id}`);
-      continue;
+      if (!acknowledged) {
+        console.error(`Failed to update deployment ${deploymentWithIPFSHash.id}`);
+        continue;
+      }
+    } catch (error) {
+      await db.collection("deployments").updateOne(
+        { id: deploymentWithIPFSHash.id },
+        {
+          $set: {
+            status: DeploymentStatus.ERROR, active_revision: 0, updated_at: new Date(),
+          }, $unset: { ipfs_definition_hash: "" }
+        }
+      );
+
+      console.error(`Error processing deployment ${deploymentWithIPFSHash.id}:`, error);
     }
   }
 }

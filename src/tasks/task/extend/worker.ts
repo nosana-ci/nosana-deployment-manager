@@ -32,42 +32,49 @@ const {
 const key = decryptWithKey(vault);
 const useNosanaApiKey = key.startsWith("nos_");
 
-const client = useNosanaApiKey ? new Client(network, undefined, {
-  apiKey: key,
-  ...(dashboard_backend_url && { api: { backend_url: dashboard_backend_url } }),
-}) : new Client(network, covertStringToIterable(key), {
-  solana: { network: rpc_network },
-});
+try {
+  const client = useNosanaApiKey ? new Client(network, undefined, {
+    apiKey: key,
+    ...(dashboard_backend_url && { api: { backend_url: dashboard_backend_url } }),
+  }) : new Client(network, covertStringToIterable(key), {
+    solana: { network: rpc_network },
+  });
 
-const {
-  deployment: { timeout },
-  jobs,
-} = task;
+  const {
+    deployment: { timeout },
+    jobs,
+  } = task;
 
-for (const { job } of jobs) {
-  try {
-    if (useNosanaApiKey) {
-      const res = await client.api.jobs.extend({ jobAddress: job, extensionSeconds: timeout });
-      if (res) {
-        parentPort?.postMessage({
-          event: "CONFIRMED",
-          tx: res.transactionId,
-          job: res.jobAddress,
-        });
+  for (const { job } of jobs) {
+    try {
+      if (useNosanaApiKey) {
+        const res = await client.api.jobs.extend({ jobAddress: job, extensionSeconds: timeout });
+        if (res) {
+          parentPort?.postMessage({
+            event: "CONFIRMED",
+            tx: res.transactionId,
+            job: res.jobAddress,
+          });
+        }
+      } else {
+        const res = await client.jobs.extend(job, timeout);
+        if (res) {
+          parentPort?.postMessage({
+            event: "CONFIRMED",
+            ...res
+          });
+        }
       }
-    } else {
-      const res = await client.jobs.extend(job, timeout);
-      if (res) {
-        parentPort?.postMessage({
-          event: "CONFIRMED",
-          ...res
-        });
-      }
+    } catch (error) {
+      parentPort?.postMessage({
+        event: "ERROR",
+        error
+      });
     }
-  } catch (error) {
-    parentPort?.postMessage({
-      event: "ERROR",
-      error
-    });
   }
+} catch (error) {
+  parentPort?.postMessage({
+    event: "ERROR",
+    error
+  });
 }

@@ -26,7 +26,7 @@ type WorkerData = {
 const {
   task,
   vault,
-  config: { network, rpc_network },
+  config: { network, rpc_network, dashboard_backend_url },
 } = workerData as WorkerData;
 
 const key = decryptWithKey(vault);
@@ -34,6 +34,7 @@ const useNosanaApiKey = key.startsWith("nos_");
 
 const client = useNosanaApiKey ? new Client(network, undefined, {
   apiKey: key,
+  ...(dashboard_backend_url && { api: { backend_url: dashboard_backend_url } }),
 }) : new Client(network, covertStringToIterable(key), {
   solana: { network: rpc_network },
 });
@@ -66,7 +67,7 @@ for (const { job } of jobs) {
   } catch (error) {
     parentPort?.postMessage({
       event: "ERROR",
-      error,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }

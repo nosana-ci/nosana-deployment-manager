@@ -1,6 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "url";
-import { Worker } from "worker_threads";
+import { SHARE_ENV, Worker } from "worker_threads";
 import type { RouteHandler } from "fastify";
 
 import { getConfig } from "../../../../../../config/index.js";
@@ -44,6 +44,7 @@ export const deploymentGetHeaderHandler: RouteHandler<{
             config: getConfig(),
             vault: vaultDocument.vault_key,
           },
+          env: SHARE_ENV,
         });
 
 

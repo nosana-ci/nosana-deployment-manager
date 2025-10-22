@@ -8,7 +8,7 @@ export type VaultsHandlerError = ErrorSchema;
 
 export const VaultsHandlerSchema: FastifySchema = {
   description: "List all user vaults.",
-  tags: ["Vaults"],
+  tags: ["Deployments Vaults"],
   headers: {
     $ref: "Headers",
   },

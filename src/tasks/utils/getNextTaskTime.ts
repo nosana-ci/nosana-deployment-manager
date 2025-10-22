@@ -1,6 +1,6 @@
 import { CronExpressionParser } from "cron-parser";
 
-export function getNextTaskTime(schedule: string, taskTime: Date): Date {
+export function getNextTaskTime(schedule: string, taskTime: Date = new Date()): Date {
   const interval = CronExpressionParser.parse(schedule, {
     currentDate: new Date(),
     startDate: taskTime,

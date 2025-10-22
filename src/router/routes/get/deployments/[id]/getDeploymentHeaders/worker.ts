@@ -1,6 +1,7 @@
 import { Client } from "@nosana/sdk";
 import { parentPort, workerData } from "worker_threads";
 
+import { decryptWithKey } from "../../../../../../vault/decrypt.js";
 import { covertStringToIterable } from "../../../../../../tasks/utils/convertStringToIterable.js";
 
 try {
@@ -18,7 +19,9 @@ type WorkerData = {
 
 const { includeTime, config: { network, rpc_network }, vault } = workerData as WorkerData;
 
-const client = new Client(network, covertStringToIterable(vault), {
+const key = decryptWithKey(vault);
+
+const client = new Client(network, covertStringToIterable(key), {
   solana: { network: rpc_network },
 });
 

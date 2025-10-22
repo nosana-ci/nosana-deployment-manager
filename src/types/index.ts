@@ -1,12 +1,20 @@
+import { FlowState, JobDefinition } from "@nosana/sdk";
 import { Collection, Document } from "mongodb";
 
+import { JobResultsSchema } from "../router/schema/index.schema.js";
+
 export type DeploymentsConfig = {
+  base_url: string;
   network: "mainnet" | "devnet";
   nos_address: string;
   rpc_network: string;
   frps_address: string;
   tasks_batch_size: number;
+  confidential_ipfs_pin: string;
+  confidential_by_default: boolean;
   deployment_manager_port: number;
+  vault_key: string | undefined;
+  dashboard_backend_url: string | undefined;
   docdb: {
     hostname: string;
     port: string | number;
@@ -59,10 +67,11 @@ export type DeploymentDocumentBase = {
   owner: string; // Owners PublicKey
   name: string;
   status: DeploymentStatus;
-  ipfs_definition_hash: string;
-  endpoints: Endpoint[];
   replicas: number;
   timeout: number;
+  endpoints: Endpoint[];
+  active_revision: number;
+  confidential: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -91,7 +100,6 @@ export type EventDocument = {
 
 export type EventsCollection = Collection<EventDocument>;
 
-
 export type VaultDocument = {
   vault: string;
   vault_key: string;
@@ -105,17 +113,37 @@ export type VaultDocument = {
 
 export type VaultCollection = Collection<VaultDocument>;
 
+export type RevisionDocument = {
+  revision: number;
+  deployment: string;
+  ipfs_definition_hash: string;
+  job_definition: JobDefinition;
+  created_at: Date;
+};
+
+export type RevisionCollection = Collection<RevisionDocument>;
+
+export type JobResultsDocument = {
+  job: string;
+  results: JobResultsSchema;
+}
+
+export type JobResultsCollection = Collection<JobResultsDocument>
+
 export type Collections = {
   deployments: DeploymentCollection;
   events: EventsCollection;
   vaults: VaultCollection;
   tasks: TasksCollection;
   jobs: JobsCollection;
+  revisions: RevisionCollection;
+  results: JobResultsCollection;
 };
 
 export type DeploymentAggregation = DeploymentDocument & {
   events: EventDocument[];
   jobs: JobsDocument[];
+  revisions: RevisionDocument[];
 };
 
 export const TaskType = {
@@ -130,7 +158,8 @@ export type TaskDocument = {
   task: TaskType;
   due_at: Date;
   deploymentId: string;
-  tx: string | undefined;
+  tx: string | undefined | null;
+  active_revision?: number;
   created_at: Date;
 };
 
@@ -139,11 +168,20 @@ export type TasksCollection = Collection<TaskDocument>;
 export type JobsDocument = {
   job: string;
   deployment: string;
+  revision: number;
   tx: string;
+  status: "PENDING" | "CONFIRMED" | "COMPLETED";
   created_at: Date;
 };
 
 export type JobsCollection = Collection<JobsDocument>;
+
+export type ResultsDocument = {
+  job: string;
+  results: FlowState;
+}
+
+export type ResultsCollection = Collection<ResultsDocument>;
 
 export interface WorkerEventMessage {
   event: "CONFIRMED" | string;
@@ -159,4 +197,5 @@ export type OutstandingTasksDocument = Document &
       vault: VaultDocument;
     };
     jobs: JobsDocument[];
+    revisions: RevisionDocument[];
   };

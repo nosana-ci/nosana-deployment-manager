@@ -26,6 +26,7 @@ export const deploymentsHandler: RouteHandler<{
     });
 
     res.status(200);
+
     return deployments.map((deployment) => ({
       ...deployment,
       created_at: deployment.created_at.toISOString(),
@@ -37,6 +38,10 @@ export const deploymentsHandler: RouteHandler<{
       events: deployment.events.map((event) => ({
         ...event,
         created_at: event.created_at.toISOString(),
+      })),
+      revisions: deployment.revisions.map((revision) => ({
+        ...revision,
+        created_at: revision.created_at.toISOString(),
       })),
     }));
   } catch (error) {

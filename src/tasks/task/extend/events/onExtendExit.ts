@@ -12,7 +12,7 @@ import {
 export async function onExtendExit(
   errorStatus: DeploymentStatus | undefined,
   deployments: DeploymentCollection,
-  { deploymentId, deployment: { timeout } }: OutstandingTasksDocument,
+  { deploymentId, deployment: { timeout, status } }: OutstandingTasksDocument,
   db: Db
 ) {
   if (errorStatus) {
@@ -35,6 +35,7 @@ export async function onExtendExit(
     db,
     TaskType.EXTEND,
     deploymentId,
+    status,
     new Date(new Date().getTime() + timeout * 1000)
   );
 }

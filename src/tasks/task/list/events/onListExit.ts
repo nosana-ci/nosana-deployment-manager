@@ -5,7 +5,6 @@ import { getNextTaskTime } from "../../../utils/index.js";
 import { scheduleTask } from "../../../scheduleTask.js";
 
 import {
-  DeploymentStatus,
   DeploymentStrategy,
   TaskType,
 } from "../../../../types/index.js";
@@ -13,10 +12,10 @@ import {
 export async function onListExit(
   {
     error,
-    collections: { tasks, documents },
+    collections: { tasks },
     task: {
       deploymentId,
-      deployment: { timeout, strategy, schedule },
+      deployment: { timeout, strategy, schedule, status },
       due_at,
     },
   }: OnListEventParams,
@@ -28,10 +27,11 @@ export async function onListExit(
         db,
         TaskType.EXTEND,
         deploymentId,
+        status,
         new Date(
           new Date().getTime() +
-            (timeout - Math.min(Math.max(timeout - timeout * 0.9, 60), 300)) *
-              1000
+          (timeout - Math.min(Math.max(timeout - timeout * 0.9, 60), 300)) *
+          1000
         )
       );
     }
@@ -47,15 +47,4 @@ export async function onListExit(
       created_at: new Date(),
     });
   }
-
-  documents.updateOne(
-    {
-      id: { $eq: deploymentId },
-    },
-    {
-      $set: {
-        status: error || DeploymentStatus.RUNNING,
-      },
-    }
-  );
 }

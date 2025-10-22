@@ -2,7 +2,9 @@ import {
   DeploymentAggregation,
   DeploymentCollection,
   EventsCollection,
+  JobResultsCollection,
   JobsCollection,
+  RevisionCollection,
   TasksCollection,
   VaultCollection,
   VaultDocument,
@@ -20,6 +22,8 @@ declare module "fastify" {
         vaults: VaultCollection;
         jobs: JobsCollection;
         tasks: TasksCollection;
+        revisions: RevisionCollection;
+        results: JobResultsCollection;
       };
     };
   }

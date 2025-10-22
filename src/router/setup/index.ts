@@ -1,2 +1,3 @@
 export * from "./setupDeploymentsRoutes.js";
-export * from "./setupVaultRoutes.js";
+export * from "./setupJobsRoutes.js";
+export * from "./setupVaultsRoutes.js";

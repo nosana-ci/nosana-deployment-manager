@@ -1,12 +1,12 @@
 import solana from "@solana/web3.js";
 import {
-  Client,
   createHash,
   getExposeIdHash,
   JobDefinition,
   OperationArgsMap,
 } from "@nosana/sdk";
 
+import { getSdk } from "../../../../../sdk/index.js";
 import { getConfig } from "../../../../../config/index.js";
 import { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
 
@@ -15,31 +15,16 @@ import {
   DeploymentStatus,
   DeploymentStrategy,
   type Endpoint,
+  type RevisionDocument,
 } from "../../../../../types/index.js";
 
-async function createDeploymentEndpoints(
+export function createDeploymentRevisionEndpoints(
   deployment: string,
   vault: string,
-  ipfs_definition_hash: string
-): Promise<{ endpoints: Endpoint[]; newIpfsHash: string }> {
+  jobDefinition: JobDefinition
+) {
   const endpoints: Endpoint[] = [];
-  const client = new Client(getConfig().network);
   const deploymentHash = createHash(`${deployment}:${vault}`, 45);
-
-  let jobDefinition: JobDefinition = await client.ipfs.retrieve(
-    ipfs_definition_hash
-  );
-
-  jobDefinition.deployment_id = deployment;
-
-  const newIpfsHash = await client.ipfs.pin({
-    ...jobDefinition,
-    deployment_id: deployment,
-    meta: {
-      ...jobDefinition.meta,
-      trigger: "deployment-manager",
-    },
-  });
 
   for (const op of jobDefinition.ops) {
     if (op.type === "container/run") {
@@ -70,23 +55,62 @@ async function createDeploymentEndpoints(
     }
   }
 
-  return { endpoints, newIpfsHash };
+  return endpoints;
+}
+
+export async function createNewDeploymentRevision(
+  currentRevision: number,
+  deployment: string,
+  vault: string,
+  jobDefinition: JobDefinition
+): Promise<{ revision: RevisionDocument, endpoints: Endpoint[] }> {
+  const client = getSdk();
+
+  const endpoints: Endpoint[] = createDeploymentRevisionEndpoints(
+    deployment,
+    vault,
+    jobDefinition
+  );
+
+  const finalJobDefinition: JobDefinition = {
+    ...jobDefinition,
+    deployment_id: deployment,
+    meta: {
+      ...jobDefinition.meta,
+      trigger: "deployment-manager",
+    },
+  }
+
+  const newIpfsHash = await client.ipfs.pin(finalJobDefinition);
+
+
+
+  return {
+    revision: {
+      revision: currentRevision + 1,
+      deployment: deployment,
+      ipfs_definition_hash: newIpfsHash,
+      job_definition: finalJobDefinition,
+      created_at: new Date(),
+    }, endpoints,
+  };
 }
 
 export async function createDeployment(
   {
     name,
     market,
-    ipfs_definition_hash,
+    job_definition,
     replicas,
     strategy,
     schedule,
+    confidential,
     timeout,
   }: DeploymentCreateBody,
   vault: string,
   owner: string,
   created_at: Date
-): Promise<DeploymentDocument> {
+): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
   const baseFields = {
     id: solana.Keypair.generate().publicKey.toString(),
     vault,
@@ -94,33 +118,37 @@ export async function createDeployment(
     market,
     owner,
     status: DeploymentStatus.DRAFT,
-    ipfs_definition_hash,
     replicas,
     timeout,
+    active_revision: 1,
+    confidential: confidential ?? getConfig().confidential_by_default,
     created_at,
     updated_at: created_at,
   };
 
-  const { endpoints, newIpfsHash } = await createDeploymentEndpoints(
+  const { revision, endpoints } = await createNewDeploymentRevision(
+    0,
     baseFields.id,
     vault,
-    ipfs_definition_hash
+    job_definition as JobDefinition
   );
-
-  baseFields.ipfs_definition_hash = newIpfsHash;
 
   if (strategy === DeploymentStrategy.SCHEDULED) {
     return {
-      ...baseFields,
-      strategy,
-      schedule,
-      endpoints,
+      deployment: {
+        ...baseFields,
+        strategy,
+        schedule,
+        endpoints
+      }, revision
     };
   }
 
   return {
-    ...baseFields,
-    strategy,
-    endpoints,
+    deployment: {
+      ...baseFields,
+      strategy,
+      endpoints
+    }, revision
   };
 }

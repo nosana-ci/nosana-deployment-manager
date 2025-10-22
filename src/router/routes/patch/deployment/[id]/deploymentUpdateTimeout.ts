@@ -1,6 +1,6 @@
 import type { RouteHandler } from "fastify";
 
-import { ErrorsMessages } from "../../../../../errors/index.js";
+import { ErrorMessages } from "../../../../../errors/index.js";
 
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
 import type {
@@ -37,7 +37,7 @@ export const deploymentUpdateTimeoutHandler: RouteHandler<{
 
     if (!acknowledged) {
       res.status(500).send({
-        error: ErrorsMessages.deployments.FAILED_TIMEOUT_UPDATE,
+        error: ErrorMessages.deployments.FAILED_TIMEOUT_UPDATE,
       });
       return;
     }
@@ -50,6 +50,6 @@ export const deploymentUpdateTimeoutHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 };

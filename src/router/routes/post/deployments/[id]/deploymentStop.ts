@@ -1,5 +1,5 @@
 import type { RouteHandler } from "fastify";
-import { ErrorsMessages } from "../../../../../errors/index.js";
+import { ErrorMessages } from "../../../../../errors/index.js";
 
 import { DeploymentStatus } from "../../../../../types/index.js";
 
@@ -23,7 +23,7 @@ export const deploymentStopHandler: RouteHandler<{
     deployment.status !== DeploymentStatus.ERROR &&
     deployment.status !== DeploymentStatus.INSUFFICIENT_FUNDS
   ) {
-    res.status(500).send({ error: ErrorsMessages.deployments.INCORRECT_STATE });
+    res.status(500).send({ error: ErrorMessages.deployments.INCORRECT_STATE });
     return;
   }
 
@@ -46,7 +46,7 @@ export const deploymentStopHandler: RouteHandler<{
     if (!acknowledgedDeployments) {
       res
         .status(500)
-        .send({ error: ErrorsMessages.deployments.FAILED_TO_STOP });
+        .send({ error: ErrorMessages.deployments.FAILED_TO_STOP });
       return;
     }
 
@@ -59,6 +59,6 @@ export const deploymentStopHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorsMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
   }
 };

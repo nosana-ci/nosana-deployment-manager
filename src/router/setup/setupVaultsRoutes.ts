@@ -1,23 +1,25 @@
 import { FastifyInstance } from "fastify";
 
 import { routes } from "../routes/index.js";
+import { API_PREFIX } from "../../definitions/api.js";
 import { getVaultMiddleware } from "../middleware/index.js";
-import { createSharedVaultHandler } from "../routes/post/vault/createSharedVault/createSharedVault.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
-import { VaultsHandlerSchema } from "../schema/get/index.schema.js";
+
+const VAULTS_API_PREFIX = `${API_PREFIX}/vaults`;
 
 const {
   get: { vaultsHandler },
-  post: { vaultWithdrawHandler },
+  post: { vaultWithdrawHandler, createSharedVaultHandler },
 } = routes;
 const {
+  get: { VaultsHandlerSchema },
   post: { VaultWithdrawSchema, CreateSharedVaultSchema },
 } = routeSchemas;
 
 export function setupVaultRoutes(server: FastifyInstance) {
   server.get(
-    "/api/vaults",
+    VAULTS_API_PREFIX,
     {
       schema: VaultsHandlerSchema,
     },
@@ -25,7 +27,7 @@ export function setupVaultRoutes(server: FastifyInstance) {
   )
 
   server.post(
-    "/api/vault/create",
+    `${VAULTS_API_PREFIX}/create`,
     {
       schema: CreateSharedVaultSchema,
     },
@@ -33,7 +35,7 @@ export function setupVaultRoutes(server: FastifyInstance) {
   )
 
   server.post(
-    "/api/vault/:vault/withdraw",
+    `${VAULTS_API_PREFIX}/:vault/withdraw`,
     {
       schema: VaultWithdrawSchema,
       preHandler: [getVaultMiddleware],

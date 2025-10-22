@@ -6,4 +6,6 @@ export const CollectionsNames: Array<keyof Collections> = [
   "vaults",
   "jobs",
   "tasks",
+  "revisions",
+  "results"
 ];

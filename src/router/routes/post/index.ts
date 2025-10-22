@@ -1,5 +1,10 @@
+// Deployments
 export * from "./deployments/create/deploymentCreate.js";
+export * from "./deployments/[id]/deploymentCreateRevision.js";
 export * from "./deployments/[id]/deploymentStart.js";
 export * from "./deployments/[id]/deploymentStop.js";
-export * from "./vault/[id]/withdraw.js";
-export * from "./vault/createSharedVault/createSharedVault.js";
+// Jobs
+export * from "./jobs/[id]/jobResults.js";
+// Vaults
+export * from "./vaults/[id]/withdraw.js";
+export * from "./vaults/createSharedVault/createSharedVault.js";

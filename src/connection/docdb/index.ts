@@ -28,7 +28,8 @@ export async function init_db(db: Db, use_tls: boolean = false) {
 
   const migrations = fs
     .readdirSync(`${__dirname}/migrations`)
-    .filter((file) => file.endsWith(".js"));
+    .filter((file) => file.endsWith(".js"))
+    .sort((a, b) => Number(a.split("-")[0]) - Number(b.split("-")[0]));
 
   for (const migration of migrations) {
     const applied = await db.collection("_migrations").findOne({ migration });

@@ -13,6 +13,7 @@ import {
   OutstandingTasksDocument,
   TaskDocument,
   VaultDocument,
+  JobsCollection,
 } from "../../../types/index.js";
 
 export function spawnStopTask(
@@ -21,10 +22,10 @@ export function spawnStopTask(
   complete: () => void
 ): Worker {
   const config = getConfig();
-  const tasksCollection = db.collection<TaskDocument>("tasks");
+  const deploymentsCollection = db.collection<DeploymentDocument>("deployments");
+  const jobsCollection = db.collection<JobsCollection>("jobs");
   const eventsCollection = db.collection<EventDocument>("events");
-  const deploymentsCollection =
-    db.collection<DeploymentDocument>("deployments");
+  const tasksCollection = db.collection<TaskDocument>("tasks");
 
   let errorStatus: DeploymentStatus | undefined = undefined;
 
@@ -33,6 +34,7 @@ export function spawnStopTask(
     task: {
       $ne: "STOP",
     },
+    ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
   });
 
   const worker = new Worker("./stop/worker.js", {
@@ -61,7 +63,9 @@ export function spawnStopTask(
   });
 
   worker.on("exit", async () => {
-    await onStopExit(errorStatus, deploymentsCollection, task);
+    if (!task.active_revision) {
+      await onStopExit(errorStatus, deploymentsCollection, jobsCollection, task);
+    }
     complete();
   });
 

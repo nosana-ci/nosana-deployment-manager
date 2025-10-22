@@ -19,19 +19,19 @@ export function createCollectionListener<T extends Document>(
   const collection: Collection<T> = db.collection(key);
   const insertCallbacks: Array<EventCallback<T>> = [];
   const updateCallbacks: Array<{
-    filters?: Filters<T>;
+    options?: { fields?: (keyof T)[]; filters?: Filters<T> };
     callback: EventCallback<T>;
   }> = [];
 
   const addListener = (...params: InsertEvent<T> | UpdateEvent<T>): void => {
-    const [eventType, callback, filters] = params;
+    const [eventType, callback, options] = params;
     switch (eventType) {
       case "insert":
         insertCallbacks.push(callback);
         break;
       case "update":
         updateCallbacks.push({
-          filters: filters,
+          options,
           callback: callback,
         });
     }
@@ -48,15 +48,16 @@ export function createCollectionListener<T extends Document>(
           insertCallbacks.forEach((callback) => callback(event.fullDocument));
           break;
         case "update":
-          updateCallbacks.forEach(({ filters, callback }) => {
-            if (!event.updateDescription.updatedFields) return;
+          updateCallbacks.forEach(({ options, callback }) => {
+            const updatedFields = event.updateDescription.updatedFields;
+            if (!updatedFields) return;
 
-            if (filters) {
-              if (
-                !matchFilter(event.updateDescription.updatedFields, filters)
-              ) {
-                return;
-              }
+            if (options?.fields && !options.fields.some((field) => field in updatedFields)) {
+              return;
+            }
+
+            if (options?.filters && !matchFilter(updatedFields, options.filters)) {
+              return;
             }
 
             if (event.fullDocument) {

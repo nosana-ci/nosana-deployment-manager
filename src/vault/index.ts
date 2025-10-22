@@ -11,6 +11,9 @@ import { TokenManager } from "../tokenManager/index.js";
 import { ConnectionSelector } from "../connection/index.js";
 import { getNosTokenAddressForAccount } from "../tokenManager/helpers/NOS/getNosTokenAddressForAccount.js";
 
+export const salt = 'vault-encryption';
+export const algorithm = 'aes-256-gcm';
+
 export class Vault {
   public publicKey: PublicKey;
   private wallet: Wallet;

@@ -18,10 +18,10 @@ export async function fetchDeployments(
     .match({
       ...(id
         ? {
-            id: {
-              $eq: id,
-            },
-          }
+          id: {
+            $eq: id,
+          },
+        }
         : {}),
       owner: {
         $eq: owner,
@@ -39,8 +39,15 @@ export async function fetchDeployments(
       foreignField: "deployment",
       as: "jobs",
     })
+    .lookup({
+      from: "revisions",
+      localField: "id",
+      foreignField: "deployment",
+      as: "revisions",
+    })
     .project({
       _id: false,
+      "revisions._id": false,
       "events._id": false,
       "jobs._id": false,
       "jobs.run": false,

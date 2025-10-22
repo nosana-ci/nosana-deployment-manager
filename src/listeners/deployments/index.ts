@@ -13,6 +13,7 @@ import {
   DeploymentStrategy,
   TaskType,
 } from "../../types/index.js";
+import { updateScheduledTasks } from "../../tasks/updateScheduledTasks.js";
 
 export function startDeploymentListener(db: Db) {
   const listener: CollectionListener<DeploymentDocument> =
@@ -24,25 +25,64 @@ export function startDeploymentListener(db: Db) {
 
   listener.addListener(
     "update",
-    ({ id, strategy, schedule }) =>
+    ({ id, strategy, schedule, status }) => {
       scheduleTask(
         db,
         TaskType.LIST,
         id,
+        status,
         strategy === DeploymentStrategy.SCHEDULED
-          ? getNextTaskTime(schedule, new Date())
+          ? getNextTaskTime(schedule)
           : undefined
-      ),
+      )
+    },
     {
-      status: { $eq: DeploymentStatus.STARTING },
+      fields: ["status"],
+      filters: {
+        status: { $eq: DeploymentStatus.STARTING },
+      }
     }
   );
 
   listener.addListener(
     "update",
-    ({ id }) => scheduleTask(db, TaskType.STOP, id),
+    ({ id, status }) => {
+      scheduleTask(db, TaskType.STOP, id, status)
+    },
     {
-      status: { $eq: DeploymentStatus.STOPPING },
+      fields: ["status"],
+      filters: {
+        status: { $eq: DeploymentStatus.STOPPING },
+      }
+    }
+  );
+
+  listener.addListener(
+    "update",
+    ({ id, schedule }) => {
+      updateScheduledTasks(db, id, getNextTaskTime(schedule!));
+    },
+    {
+      fields: ["schedule"],
+      filters: {
+        status: { $ne: DeploymentStatus.DRAFT },
+      }
+    }
+  );
+
+  listener.addListener(
+    "update",
+    ({ id, active_revision, schedule, strategy, status }) => {
+      scheduleTask(db, TaskType.STOP, id, status, new Date(), active_revision);
+      scheduleTask(db, TaskType.LIST, id, status, strategy === DeploymentStrategy.SCHEDULED
+        ? getNextTaskTime(schedule)
+        : undefined, active_revision);
+    },
+    {
+      fields: ["active_revision"],
+      filters: {
+        status: { $ne: DeploymentStatus.DRAFT },
+      }
     }
   );
 

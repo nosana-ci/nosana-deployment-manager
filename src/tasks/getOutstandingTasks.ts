@@ -28,6 +28,13 @@ export async function getOutstandingTasks(
       from: "jobs",
       localField: "deploymentId",
       foreignField: "deployment",
+      pipeline: [
+        {
+          $match: {
+            status: "PENDING"
+          }
+        }
+      ],
       as: "jobs",
     })
     .unwind({
@@ -39,6 +46,12 @@ export async function getOutstandingTasks(
       localField: "deployment.vault",
       foreignField: "vault",
       as: "deployment.vault",
+    })
+    .lookup({
+      from: "revisions",
+      localField: "deploymentId",
+      foreignField: "deployment",
+      as: "revisions",
     })
     .unwind({
       path: "$deployment.vault",

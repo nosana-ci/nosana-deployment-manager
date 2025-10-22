@@ -2,9 +2,9 @@ import { Db } from "mongodb";
 import { DeploymentStatus } from "@nosana/sdk";
 
 import { getSdk } from "../../../sdk/index.js";
-
-import { DeploymentDocument } from "../../../types/index.js";
 import { createNewDeploymentRevision } from "../../../router/routes/post/deployments/create/deploymentCreate.factory.js";
+
+import { DeploymentDocument, EventDocument, EventType } from "../../../types/index.js";
 
 type OldDeploymentDocument = Omit<DeploymentDocument, "active_revision"> & {
   ipfs_definition_hash: string;
@@ -52,6 +52,14 @@ export default async function migrateDeploymentsToEndpoints(db: Db) {
           }, $unset: { ipfs_definition_hash: "" }
         }
       );
+
+      db.collection<EventDocument>("events").insertOne({
+        category: EventType.DEPLOYMENT,
+        deploymentId: deploymentWithIPFSHash.id,
+        type: "MIGRATION_ERROR",
+        message: `Error processing deployment ${deploymentWithIPFSHash.id}: ${(error as Error).message}`,
+        created_at: new Date(),
+      });
 
       console.error(`Error processing deployment ${deploymentWithIPFSHash.id}:`, error);
     }

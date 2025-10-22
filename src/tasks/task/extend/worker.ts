@@ -67,7 +67,7 @@ for (const { job } of jobs) {
   } catch (error) {
     parentPort?.postMessage({
       event: "ERROR",
-      error: error instanceof Error ? error.message : String(error),
+      error
     });
   }
 }

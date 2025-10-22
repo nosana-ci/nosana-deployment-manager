@@ -90,7 +90,7 @@ for (const { job, revision } of task.jobs) {
   } catch (error) {
     parentPort!.postMessage({
       event: "ERROR",
-      error: error instanceof Error ? error.message : String(error),
+      error
     });
   }
 }

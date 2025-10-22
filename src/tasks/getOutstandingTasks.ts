@@ -7,7 +7,7 @@ export async function getOutstandingTasks(
   keys: ObjectId[],
   batchSize: number
 ): Promise<OutstandingTasksDocument[]> {
-  return collection
+  const results = await collection
     .aggregate()
     .match({
       due_at: {
@@ -28,13 +28,6 @@ export async function getOutstandingTasks(
       from: "jobs",
       localField: "deploymentId",
       foreignField: "deployment",
-      pipeline: [
-        {
-          $match: {
-            status: "PENDING"
-          }
-        }
-      ],
       as: "jobs",
     })
     .unwind({
@@ -57,5 +50,11 @@ export async function getOutstandingTasks(
       path: "$deployment.vault",
       preserveNullAndEmptyArrays: false,
     })
-    .toArray() as Promise<OutstandingTasksDocument[]>;
+    .toArray() as OutstandingTasksDocument[];
+
+  // Filter jobs in memory after the aggregation
+  return results.map(doc => ({
+    ...doc,
+    jobs: doc.jobs.filter(job => job.status === "PENDING"),
+  }));
 }

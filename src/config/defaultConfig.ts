@@ -15,12 +15,12 @@ const commonConfig: Omit<
     : 10,
   deployment_manager_port: process.env.DEPLOYMENT_MANAGER_PORT
     ? parseInt(process.env.DEPLOYMENT_MANAGER_PORT)
-    : 3000,
+    : 3001,
   confidential_by_default: process.env.CONFIDENTIAL_BY_DEFAULT === "true",
   vault_key: process.env.VAULT_KEY || undefined,
   dashboard_backend_url: process.env.DASHBOARD_BACKEND_URL || undefined,
   confidential_ipfs_pin: "",
-  address: process.env.ADDRESS || "http://localhost:3001",
+  base_url: process.env.BASE_URL || `http://localhost:${process.env.DEPLOYMENT_MANAGER_PORT ?? 3001}`,
   docdb: {
     hostname: process.env.DOCDB_HOST ?? "120.0.0.1",
     port: process.env.DOCDB_PORT ?? "27017",

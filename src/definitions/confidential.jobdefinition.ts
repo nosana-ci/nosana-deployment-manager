@@ -3,7 +3,7 @@ import { JobDefinition } from "@nosana/sdk";
 import { getConfig } from "../config/index.js";
 
 export const createConfidentialJobDefinition = (): JobDefinition => {
-  const { address } = getConfig();
+  const { base_url } = getConfig();
   return {
     "version": "0.1",
     "type": "container",
@@ -14,13 +14,13 @@ export const createConfidentialJobDefinition = (): JobDefinition => {
       "send": {
         "type": "api",
         "args": {
-          "endpoint": `${address}/api/deployments/jobs/%%global.job%%/job-definition`
+          "endpoint": `${base_url}/api/deployments/jobs/%%global.job%%/job-definition`
         }
       },
       "receive": {
         "type": "api",
         "args": {
-          "endpoint": `${address}/api/deployments/jobs/%%global.job%%/results`
+          "endpoint": `${base_url}/api/deployments/jobs/%%global.job%%/results`
         }
       }
     },

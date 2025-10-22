@@ -4,7 +4,7 @@ import { Collection, Document } from "mongodb";
 import { JobResultsSchema } from "../router/schema/index.schema.js";
 
 export type DeploymentsConfig = {
-  address: string;
+  base_url: string;
   network: "mainnet" | "devnet";
   nos_address: string;
   rpc_network: string;

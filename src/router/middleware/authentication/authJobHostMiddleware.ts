@@ -7,7 +7,7 @@ import type { HeadersSchema } from "../../schema/index.schema.js";
 import { getSdk } from "../../../sdk/index.js";
 import { ErrorMessages } from "../../../errors/index.js";
 
-export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/job/") && !(method === "GET" && url.endsWith("results"))
+export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/deployments/jobs/") && !(method === "GET" && url.endsWith("results"))
 
 export const authJobHostMiddleware: RouteHandler<{
   Params: { job: string };

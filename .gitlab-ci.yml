@@ -25,6 +25,16 @@ npm format:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
+npm test:
+  image: node:20.11.1
+  stage: test
+  script:
+    - npm ci
+    - npm test
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 auto deploy prd:
   stage: .post
   extends: .auto-deploy

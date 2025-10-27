@@ -15,11 +15,23 @@ variables:
   AUTO_BUMP_FILE: helm-deployment-manager.tf
   AUTO_BUMP_SCG_PREFIX: image_tag [^}]*= { dev = \"
 
+npm install:
+  image: node:20.11.1
+  stage: build
+  script:
+    - npm ci
+  artifacts:
+    untracked: true
+  rules:
+    - if: $CI_MERGE_REQUEST_ID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 npm format:
   image: node:20.11.1
   stage: test
+  dependencies:
+    - npm install
   script:
-    - npm ci
     - npm run format
   rules:
     - if: $CI_MERGE_REQUEST_ID
@@ -28,8 +40,9 @@ npm format:
 npm test:
   image: node:20.11.1
   stage: test
+  dependencies:
+    - npm install
   script:
-    - npm ci
     - npm test
   rules:
     - if: $CI_MERGE_REQUEST_ID

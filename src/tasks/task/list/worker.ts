@@ -1,48 +1,16 @@
+import { Client } from "@nosana/sdk";
 import { parentPort, workerData } from "worker_threads";
 
-import { Client } from "@nosana/sdk";
+import { prepareWorker, workerErrorFormatter } from "../Worker.js";
 
-import { decryptWithKey } from "../../../vault/decrypt.js";
-import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
-
-import type {
-  DeploymentsConfig,
-  OutstandingTasksDocument,
-} from "../../../types/index.js";
+type ApiListResponse = Awaited<ReturnType<Client["api"]["jobs"]["list"]>>
 
 try {
-  const { register } = await import("ts-node");
-  register();
-} catch {
-  /* empty */
-}
-
-type WorkerData = {
-  task: OutstandingTasksDocument;
-  vault: string;
-  config: DeploymentsConfig;
-};
-
-const {
-  task,
-  vault,
-  config: { confidential_ipfs_pin, network, rpc_network, dashboard_backend_url },
-} = workerData as WorkerData;
-
-const key = decryptWithKey(vault);
-const useNosanaApiKey = key.startsWith("nos_");
-
-try {
-  const client = useNosanaApiKey ? new Client(network, undefined, {
-    apiKey: key,
-    ...(dashboard_backend_url && { api: { backend_url: dashboard_backend_url } }),
-  }) : new Client(network, covertStringToIterable(key), {
-    solana: { network: rpc_network },
-  });
+  const { client, useNosanaApiKey, task } = await prepareWorker(workerData);
 
   const { active_revision, confidential, market, replicas, timeout } = task.deployment;
 
-  let ipfs_definition_hash: string = confidential_ipfs_pin;
+  let ipfs_definition_hash: string = workerData.confidential_ipfs_pin;
 
   if (!confidential) {
     const activeRevision = task.revisions.find(({ revision }) => revision === active_revision);
@@ -58,51 +26,41 @@ try {
     ipfs_definition_hash = activeRevision.ipfs_definition_hash;
   }
 
-  // TODO, convert to Single instruction
-  for (let i = 0; i < replicas; i++) {
-    try {
-      if (useNosanaApiKey) {
-        const res = await client.api.jobs.list({ ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market }).catch((err) => {
-          parentPort!.postMessage({
-            event: "ERROR",
-            error: typeof err === "object" ? JSON.stringify(err) : String(err),
-          });
-        });
-        if (res) {
+  const transformApiResponse = (res: ApiListResponse) => ({
+    tx: res.reservationId,
+    job: res.jobAddress,
+    run: ""
+  });
+
+  await Promise.all(
+    Array.from({ length: replicas }, async () => {
+      try {
+        if (useNosanaApiKey) {
+          const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
+          const res = await client.api.jobs.list(listArgs);
           parentPort!.postMessage({
             event: "CONFIRMED",
-            tx: res.reservationId,
-            job: res.jobAddress,
-            run: ""
+            ...transformApiResponse(res),
           });
-        }
-      } else {
-        const res = await client.jobs.list(ipfs_definition_hash, timeout, market, undefined)
-          .catch((err) => {
-            parentPort!.postMessage({
-              event: "ERROR",
-              error: err instanceof Error ? err.message : String(err),
-            });
-          });
-
-        if (res) {
+        } else {
+          const res = await client.jobs.list(ipfs_definition_hash, timeout * 60, market);
           parentPort!.postMessage({
             event: "CONFIRMED",
             ...res,
           });
         }
+      } catch (error) {
+        parentPort!.postMessage({
+          event: "ERROR",
+          error: `catch_error: ${workerErrorFormatter(error)}`,
+        });
       }
-    } catch (err) {
-      parentPort!.postMessage({
-        event: "ERROR",
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-} catch (err) {
+    })
+  );
+} catch (error) {
   parentPort!.postMessage({
     event: "ERROR",
-    error: err
+    error: `main_catch_error: ${workerErrorFormatter(error)}`,
   });
 }
 

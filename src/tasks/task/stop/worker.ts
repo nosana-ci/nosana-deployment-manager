@@ -1,63 +1,29 @@
 import { parentPort, workerData } from "worker_threads";
 
-import { Client } from "@nosana/sdk";
+import { prepareWorker } from "../Worker.js";
 
-import { covertStringToIterable } from "../../utils/convertStringToIterable.js";
-
-import {
-  DeploymentsConfig,
-  OutstandingTasksDocument,
-} from "../../../types/index.js";
-import { decryptWithKey } from "../../../vault/decrypt.js";
+const { client, useNosanaApiKey, task } = await prepareWorker(workerData);
 
 try {
-  const { register } = await import("ts-node");
-  register();
-} catch {
-  /* empty */
-}
-
-type WorkerData = {
-  task: OutstandingTasksDocument;
-  vault: string;
-  config: DeploymentsConfig;
-};
-
-const {
-  task,
-  vault,
-  config: { network, rpc_network, dashboard_backend_url },
-} = workerData as WorkerData;
-
-const key = decryptWithKey(vault);
-const useNosanaApiKey = key.startsWith("nos_");
-
-try {
-  const client = useNosanaApiKey ? new Client(network, undefined, {
-    apiKey: key,
-    ...(dashboard_backend_url && { api: { backend_url: dashboard_backend_url } }),
-  }) : new Client(network, covertStringToIterable(key), {
-    solana: { network: rpc_network },
+  const tasks = task.jobs.filter(({ revision }) => {
+    return !(task.active_revision && task.active_revision === revision);
   });
 
-  for (const { job, revision } of task.jobs) {
-    if (task.active_revision && task.active_revision === revision) {
-      continue;
-    }
+  await Promise.all(tasks.map(async ({ job }) => {
     try {
-      const { state } = await client.jobs.get(job);
+      if (useNosanaApiKey) {
+        const res = await client.api.jobs.stop({ jobAddress: job });
+        if (res) {
+          parentPort!.postMessage({
+            event: "CONFIRMED",
+            job: res.jobAddress,
+            tx: res.transactionId
+          });
+        }
+      } else {
+        const { state } = await client.jobs.get(job);
 
-      if (state === "QUEUED") {
-        if (useNosanaApiKey) {
-          const res = await client.api.jobs.stop({ jobAddress: job });
-          if (res) {
-            parentPort!.postMessage({
-              event: "CONFIRMED",
-              job: res.jobAddress,
-              tx: res.transactionId
-            });
-          }
-        } else {
+        if (state === "QUEUED") {
           const res = await client.jobs.delist(job);
           if (res) {
             parentPort!.postMessage({
@@ -66,20 +32,9 @@ try {
             });
           }
         }
-      }
 
-      if (state === "RUNNING") {
-        if (useNosanaApiKey) {
-          const res = await client.api.jobs.stop({ jobAddress: job })
-          if (res) {
-            parentPort!.postMessage({
-              event: "CONFIRMED",
-              job: res.jobAddress,
-              tx: res.transactionId
-            });
-          }
-        } else {
-          const res = useNosanaApiKey ? await client.api.jobs.stop({ jobAddress: job }) : await client.jobs.end(job);
+        if (state === "RUNNING") {
+          const res = await client.jobs.end(job);
           if (res) {
             parentPort!.postMessage({
               event: "CONFIRMED",
@@ -94,7 +49,7 @@ try {
         error
       });
     }
-  }
+  }));
 } catch (error) {
   parentPort!.postMessage({
     event: "ERROR",

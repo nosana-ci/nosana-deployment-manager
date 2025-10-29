@@ -115,7 +115,7 @@ export async function createDeployment(
     id: solana.Keypair.generate().publicKey.toString(),
     vault,
     name,
-    market,
+    market: market.trim(),
     owner,
     status: DeploymentStatus.DRAFT,
     replicas,

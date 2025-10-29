@@ -14,12 +14,13 @@ import {
   TaskDocument,
   VaultDocument,
   JobsCollection,
+  TaskFinishedReason,
 } from "../../../types/index.js";
 
 export function spawnStopTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void
+  complete: (successCount: number, reason: TaskFinishedReason) => void
 ): Worker {
   const config = getConfig();
   const deploymentsCollection = db.collection<DeploymentDocument>("deployments");
@@ -27,6 +28,7 @@ export function spawnStopTask(
   const eventsCollection = db.collection<EventDocument>("events");
   const tasksCollection = db.collection<TaskDocument>("tasks");
 
+  let successCount = 0;
   let errorStatus: DeploymentStatus | undefined = undefined;
 
   tasksCollection.deleteMany({
@@ -48,6 +50,7 @@ export function spawnStopTask(
   worker.on("message", ({ event, error, tx }: WorkerEventMessage) => {
     switch (event) {
       case "CONFIRMED":
+        successCount += 1;
         onStopConfirmed(tx, eventsCollection, task);
         break;
       case "ERROR":
@@ -66,7 +69,7 @@ export function spawnStopTask(
     if (!task.active_revision) {
       await onStopExit(errorStatus, deploymentsCollection, jobsCollection, task);
     }
-    complete();
+    complete(successCount, errorStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

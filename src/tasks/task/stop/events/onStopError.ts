@@ -8,7 +8,7 @@ import {
 
 export function onStopError(
   tx: string | undefined,
-  error: object | Error | string | null = "",
+  error: string | null | undefined,
   collection: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument,
   setErrorType: (status: DeploymentStatus) => void
@@ -20,17 +20,9 @@ export function onStopError(
     category: "Deployment",
     type: "JOB_STOP_ERROR",
     tx,
-    message:
-      error instanceof Error
-        ? error.message
-        : typeof error === "object"
-        ? JSON.stringify(error)
-        : error,
+    message: error,
     created_at: new Date(),
   });
 
-  if (typeof error === "string" && error.includes("InsufficientFundsForRent")) {
-    setErrorType(DeploymentStatus.INSUFFICIENT_FUNDS);
-  }
-  setErrorType(DeploymentStatus.ERROR);
+  setErrorType(error.includes("InsufficientFundsForRent") ? DeploymentStatus.INSUFFICIENT_FUNDS : DeploymentStatus.ERROR);
 }

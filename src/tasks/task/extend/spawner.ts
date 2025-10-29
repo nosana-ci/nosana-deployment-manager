@@ -16,18 +16,20 @@ import {
   WorkerEventMessage,
   OutstandingTasksDocument,
   VaultDocument,
+  TaskFinishedReason,
 } from "../../../types/index.js";
 
 export function spawnExtendTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void
+  complete: (successCount: number, reason: TaskFinishedReason) => void
 ): Worker {
-  let errorStatus: DeploymentStatus | undefined = undefined;
-
   const config = getConfig();
   const events = db.collection<EventDocument>("events");
   const deployments = db.collection<DeploymentDocument>("documents");
+
+  let successCount = 0;
+  let errorStatus: DeploymentStatus | undefined = undefined;
 
   const worker = new Worker("./extend/worker.js", {
     workerData: {
@@ -40,6 +42,7 @@ export function spawnExtendTask(
   worker.on("message", ({ event, error, tx }: WorkerEventMessage) => {
     switch (event) {
       case "CONFIRMED":
+        successCount += 1;
         onExtendConfirmed(tx, events, task);
         break;
       case "ERROR":
@@ -56,7 +59,7 @@ export function spawnExtendTask(
   worker.on("exit", async () => {
     await onExtendExit(errorStatus, deployments, task, db);
 
-    complete();
+    complete(successCount, errorStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

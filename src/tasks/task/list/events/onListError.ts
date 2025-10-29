@@ -4,7 +4,7 @@ import { DeploymentStatus } from "../../../../types/index.js";
 
 export function onListError(
   tx: string | undefined,
-  error: object | Error | string | null = "",
+  error: string | null | undefined,
   { collections: { events }, task, setErrorType }: OnListEventParams
 ) {
   if (!error || error === null) return;
@@ -14,17 +14,9 @@ export function onListError(
     category: "Deployment",
     type: "JOB_LIST_ERROR",
     tx,
-    message:
-      error instanceof Error
-        ? error.message
-        : typeof error === "object"
-        ? JSON.stringify(error)
-        : error,
+    message: error,
     created_at: new Date(),
   });
 
-  if (typeof error === "string" && error.includes("InsufficientFundsForRent")) {
-    setErrorType(DeploymentStatus.INSUFFICIENT_FUNDS);
-  }
-  setErrorType(DeploymentStatus.ERROR);
+  setErrorType(error.includes("InsufficientFundsForRent") ? DeploymentStatus.INSUFFICIENT_FUNDS : DeploymentStatus.ERROR);
 }

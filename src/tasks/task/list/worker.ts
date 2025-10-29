@@ -52,7 +52,7 @@ try {
       } catch (error) {
         parentPort!.postMessage({
           event: "ERROR",
-          error: `catch_error: ${workerErrorFormatter(error)}`,
+          error: workerErrorFormatter(error),
         });
       }
     })
@@ -60,7 +60,7 @@ try {
 } catch (error) {
   parentPort!.postMessage({
     event: "ERROR",
-    error: `main_catch_error: ${workerErrorFormatter(error)}`,
+    error: workerErrorFormatter(error),
   });
 }
 

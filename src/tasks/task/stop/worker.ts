@@ -1,6 +1,6 @@
 import { parentPort, workerData } from "worker_threads";
 
-import { prepareWorker } from "../Worker.js";
+import { prepareWorker, workerErrorFormatter } from "../Worker.js";
 
 const { client, useNosanaApiKey, task } = await prepareWorker(workerData);
 
@@ -46,13 +46,13 @@ try {
     } catch (error) {
       parentPort!.postMessage({
         event: "ERROR",
-        error
+        error: workerErrorFormatter(error)
       });
     }
   }));
 } catch (error) {
   parentPort!.postMessage({
     event: "ERROR",
-    error
+    error: workerErrorFormatter(error)
   });
 }

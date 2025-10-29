@@ -6,6 +6,7 @@ export const JobsSchema = Type.Object({
   tx: Type.String(),
   job: PublicKeySchema,
   deployment: PublicKeySchema,
+  revision: Type.Number({ minimum: 1 }),
   status: Type.Union([Type.Literal("PENDING"), Type.Literal("CONFIRMED"), Type.Literal("COMPLETED")]),
   created_at: Type.String({ format: "date-time" }),
 });

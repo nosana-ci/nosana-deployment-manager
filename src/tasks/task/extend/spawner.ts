@@ -29,7 +29,7 @@ export function spawnExtendTask(
   const deployments = db.collection<DeploymentDocument>("documents");
 
   let successCount = 0;
-  let errorStatus: DeploymentStatus | undefined = undefined;
+  let deploymentStatus: DeploymentStatus | undefined = undefined;
 
   const worker = new Worker("./extend/worker.js", {
     workerData: {
@@ -48,7 +48,7 @@ export function spawnExtendTask(
       case "ERROR":
         onExtendError(
           error,
-          (status: DeploymentStatus) => (errorStatus = status),
+          (status: DeploymentStatus) => (deploymentStatus = status),
           events,
           task
         );
@@ -57,9 +57,9 @@ export function spawnExtendTask(
   });
 
   worker.on("exit", async () => {
-    await onExtendExit(errorStatus, deployments, task, db);
+    await onExtendExit(deploymentStatus, deployments, task, db);
 
-    complete(successCount, errorStatus ? "FAILED" : "COMPLETED");
+    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

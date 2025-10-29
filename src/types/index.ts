@@ -185,7 +185,7 @@ export type ResultsCollection = Collection<ResultsDocument>;
 
 export interface WorkerEventMessage {
   event: "CONFIRMED" | string;
-  error?: string | null;
+  error?: string;
   job: string;
   run: string;
   tx: string;

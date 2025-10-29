@@ -10,12 +10,12 @@ import {
 } from "../../../../types/index.js";
 
 export async function onExtendExit(
-  errorStatus: DeploymentStatus | undefined,
+  deploymentStatus: DeploymentStatus | undefined,
   deployments: DeploymentCollection,
   { deploymentId, deployment: { timeout, status } }: OutstandingTasksDocument,
   db: Db
 ) {
-  if (errorStatus) {
+  if (deploymentStatus) {
     deployments.updateOne(
       {
         id: {
@@ -24,7 +24,7 @@ export async function onExtendExit(
       },
       {
         $set: {
-          status: errorStatus,
+          status: deploymentStatus,
         },
       }
     );

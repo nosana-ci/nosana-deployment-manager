@@ -29,7 +29,7 @@ export function spawnStopTask(
   const tasksCollection = db.collection<TaskDocument>("tasks");
 
   let successCount = 0;
-  let errorStatus: DeploymentStatus | undefined = undefined;
+  let deploymentErrorStatus: DeploymentStatus;
 
   tasksCollection.deleteMany({
     deploymentId: task.deploymentId,
@@ -59,7 +59,7 @@ export function spawnStopTask(
           error,
           eventsCollection,
           task,
-          (type: DeploymentStatus) => (errorStatus = type)
+          (status: DeploymentStatus) => (deploymentErrorStatus = status)
         );
         break;
     }
@@ -67,9 +67,9 @@ export function spawnStopTask(
 
   worker.on("exit", async () => {
     if (!task.active_revision) {
-      await onStopExit(errorStatus, deploymentsCollection, jobsCollection, task);
+      await onStopExit(deploymentErrorStatus, deploymentsCollection, jobsCollection, task);
     }
-    complete(successCount, errorStatus ? "FAILED" : "COMPLETED");
+    complete(successCount, deploymentErrorStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

@@ -7,12 +7,12 @@ import {
 } from "../../../../types/index.js";
 
 export function onExtendError(
-  error: string | null | undefined,
+  error: string | undefined,
   setError: (status: DeploymentStatus) => void,
   events: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument
 ) {
-  if (!error || error === null) return;
+  if (!error) return;
 
   events.insertOne({
     deploymentId,

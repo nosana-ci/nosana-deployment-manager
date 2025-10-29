@@ -21,7 +21,7 @@ export interface OnListEventParams {
   code?: number;
   error: DeploymentStatus;
   task: OutstandingTasksDocument;
-  setErrorType: (type: DeploymentStatus) => void;
+  setDeploymentErrorStatus: (type: DeploymentStatus) => void;
   collections: {
     events: Collection<EventDocument>;
     documents: Collection<DeploymentDocument>;
@@ -45,8 +45,8 @@ export function spawnListTask(
   };
 
   let successCount = 0;
-  let errorType: DeploymentStatus;
-  const setErrorType = (type: DeploymentStatus) => (errorType = type);
+  let deploymentStatus: DeploymentStatus;
+  const setDeploymentErrorStatus = (status: DeploymentStatus) => (deploymentStatus = status);
 
   const worker = new Worker("./list/worker.js", {
     workerData: {
@@ -65,16 +65,16 @@ export function spawnListTask(
           onListConfirmed(tx, job, {
             task,
             collections,
-            error: errorType,
-            setErrorType,
+            error: deploymentStatus,
+            setDeploymentErrorStatus,
           });
           break;
         case "ERROR":
           onListError(tx, error, {
             task,
             collections,
-            error: errorType,
-            setErrorType,
+            error: deploymentStatus,
+            setDeploymentErrorStatus,
           });
           break;
       }
@@ -87,12 +87,12 @@ export function spawnListTask(
         code,
         task,
         collections,
-        error: errorType,
-        setErrorType,
+        error: deploymentStatus,
+        setDeploymentErrorStatus,
       },
       db
     );
-    complete(successCount, errorType ? "FAILED" : "COMPLETED");
+    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

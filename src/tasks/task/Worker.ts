@@ -1,5 +1,5 @@
 import path from "path";
-import { Client } from "@nosana/sdk";
+import { Client, ClientConfig } from "@nosana/sdk";
 import { fileURLToPath, URL } from "url";
 import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
 
@@ -47,10 +47,16 @@ export async function prepareWorker(workerData: WorkerData): Promise<
   const config = getConfig();
   const key = decryptWithKey(workerData.vault);
   const useNosanaApiKey = key.startsWith("nos_");
+
+  const clientConfig: Partial<ClientConfig> = useNosanaApiKey ? { apiKey: key } : { solana: { network: config.rpc_network } }
+  if (config.dashboard_backend_url) {
+    clientConfig.api = { backend_url: config.dashboard_backend_url };
+  }
+
   const client = new Client(...[
     config.network,
     useNosanaApiKey ? undefined : covertStringToIterable(key),
-    useNosanaApiKey ? { apiKey: key } : { solana: { network: config.rpc_network } },
+    clientConfig
   ]);
 
   return {

@@ -7,7 +7,8 @@ import { spawnStopTask } from "./task/stop/spawner.js";
 import { spawnExtendTask } from "./task/extend/spawner.js";
 import { getOutstandingTasks } from "./getOutstandingTasks.js";
 
-import { TaskDocument, TaskType } from "../types/index.js";
+import { TaskDocument, TaskFinishedReason, TaskType } from "../types/index.js";
+import { addTaskStat, removeTaskStat } from "../stats/index.js";
 
 export function startTaskListener(db: Db) {
   const tasks = new Map<ObjectId, Worker>();
@@ -15,14 +16,27 @@ export function startTaskListener(db: Db) {
   const { tasks_batch_size } = getConfig();
   let fetchTasksInterval: NodeJS.Timeout | undefined = undefined;
 
-  const completeTask = async (id: ObjectId) => {
+  const completeTask = async (id: ObjectId, successCount: number, reason: TaskFinishedReason) => {
     const { acknowledged } = await collection.deleteOne({
       _id: { $eq: id },
     });
 
     if (acknowledged) {
       tasks.delete(id);
+      removeTaskStat(id, successCount, reason);
     }
+  };
+
+  const spawnNewTask = (taskId: ObjectId, worker: Worker) => {
+    tasks.set(taskId, worker);
+
+    setTimeout(() => {
+      if (tasks.has(taskId)) {
+        const worker = tasks.get(taskId)!;
+        completeTask(taskId, 0, "TIMEOUT");
+        worker.terminate();
+      }
+    }, 120 * 1000);
   };
 
   const fetchNewTasks = async () => {
@@ -37,23 +51,24 @@ export function startTaskListener(db: Db) {
     );
 
     newTasks.forEach((task) => {
+      addTaskStat(task._id, task.task);
       switch (task.task) {
         case TaskType.LIST:
-          tasks.set(
+          spawnNewTask(
             task._id,
-            spawnListTask(db, task, () => completeTask(task._id))
+            spawnListTask(db, task, (successCount: number, reason: TaskFinishedReason) => completeTask(task._id, successCount, reason))
           );
           break;
         case TaskType.EXTEND:
-          tasks.set(
+          spawnNewTask(
             task._id,
-            spawnExtendTask(db, task, () => completeTask(task._id))
+            spawnExtendTask(db, task, (successCount: number, reason: TaskFinishedReason) => completeTask(task._id, successCount, reason))
           );
           break;
         case TaskType.STOP:
-          tasks.set(
+          spawnNewTask(
             task._id,
-            spawnStopTask(db, task, () => completeTask(task._id))
+            spawnStopTask(db, task, (successCount: number, reason: TaskFinishedReason) => completeTask(task._id, successCount, reason))
           );
           break;
       }

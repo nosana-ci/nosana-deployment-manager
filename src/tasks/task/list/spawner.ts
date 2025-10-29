@@ -2,8 +2,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Db, Collection } from "mongodb";
 
-import { getConfig } from "../../../config/index.js";
-
 import { Worker } from "../Worker.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
 
@@ -14,15 +12,16 @@ import {
   JobsDocument,
   OutstandingTasksDocument,
   TaskDocument,
-  VaultDocument,
+  TaskFinishedReason,
   WorkerEventMessage,
 } from "../../../types/index.js";
+import { getConfig } from "../../../config/index.js";
 
 export interface OnListEventParams {
   code?: number;
   error: DeploymentStatus;
   task: OutstandingTasksDocument;
-  setErrorType: (type: DeploymentStatus) => void;
+  setDeploymentErrorStatus: (type: DeploymentStatus) => void;
   collections: {
     events: Collection<EventDocument>;
     documents: Collection<DeploymentDocument>;
@@ -36,12 +35,8 @@ export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export function spawnListTask(
   db: Db,
   task: OutstandingTasksDocument,
-  complete: () => void
+  complete: (successCount: number, reason: TaskFinishedReason) => void
 ): Worker {
-  let errorType: DeploymentStatus;
-  const setErrorType = (type: DeploymentStatus) => (errorType = type);
-
-  const config = getConfig();
   const collections = {
     documents: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),
@@ -49,32 +44,37 @@ export function spawnListTask(
     tasks: db.collection<TaskDocument>("tasks"),
   };
 
+  let successCount = 0;
+  let deploymentStatus: DeploymentStatus;
+  const setDeploymentErrorStatus = (status: DeploymentStatus) => (deploymentStatus = status);
+
   const worker = new Worker("./list/worker.js", {
     workerData: {
       task,
-      config,
-      vault: (task.deployment.vault as VaultDocument).vault_key,
+      vault: task.deployment.vault.vault_key,
+      confidential_ipfs_pin: getConfig().confidential_ipfs_pin
     },
   });
 
   worker.on(
     "message",
-    async ({ event, error, job, tx }: WorkerEventMessage) => {
+    ({ event, error, job, tx }: WorkerEventMessage) => {
       switch (event) {
         case "CONFIRMED":
-          await onListConfirmed(tx, job, {
+          successCount += 1;
+          onListConfirmed(tx, job, {
             task,
             collections,
-            error: errorType,
-            setErrorType,
+            error: deploymentStatus,
+            setDeploymentErrorStatus,
           });
           break;
         case "ERROR":
-          await onListError(tx, error, {
+          onListError(tx, error, {
             task,
             collections,
-            error: errorType,
-            setErrorType,
+            error: deploymentStatus,
+            setDeploymentErrorStatus,
           });
           break;
       }
@@ -87,12 +87,12 @@ export function spawnListTask(
         code,
         task,
         collections,
-        error: errorType,
-        setErrorType,
+        error: deploymentStatus,
+        setDeploymentErrorStatus,
       },
       db
     );
-    complete();
+    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

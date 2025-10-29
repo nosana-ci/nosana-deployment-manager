@@ -8,7 +8,7 @@ import {
 } from "../../../../types/index.js";
 
 export function onStopExit(
-  errorStatus: DeploymentStatus | undefined,
+  deploymentStatus: DeploymentStatus | undefined,
   deploymentsCollection: Collection<DeploymentDocument>,
   jobsCollection: Collection<JobsCollection>,
   { active_revision, deploymentId, jobs }: OutstandingTasksDocument
@@ -19,7 +19,7 @@ export function onStopExit(
     },
     {
       $set: {
-        status: errorStatus ?? DeploymentStatus.STOPPED,
+        status: deploymentStatus ?? DeploymentStatus.STOPPED,
       },
     }
   );

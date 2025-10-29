@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 import { initSdk } from "./sdk/index.js";
+import { initStats } from "./stats/index.js";
+import { setConfig } from "./config/index.js";
 import { startDeploymentManagerApi } from "./router/index.js";
 import { DeploymentsConnection } from "./connection/deployments.js";
 import { startDeploymentManagerListeners } from "./listeners/index.js";
 import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
-import { setConfig } from "./config/index.js";
+
+initStats();
 
 const sdk = initSdk();
 

@@ -185,7 +185,7 @@ export type ResultsCollection = Collection<ResultsDocument>;
 
 export interface WorkerEventMessage {
   event: "CONFIRMED" | string;
-  error?: string | object | Error | null;
+  error?: string;
   job: string;
   run: string;
   tx: string;
@@ -199,3 +199,11 @@ export type OutstandingTasksDocument = Document &
     jobs: JobsDocument[];
     revisions: RevisionDocument[];
   };
+
+export type WorkerData = {
+  task: OutstandingTasksDocument;
+  vault: string;
+  confidential_ipfs_pin: string;
+};
+
+export type TaskFinishedReason = "COMPLETED" | "FAILED" | "TIMEOUT";

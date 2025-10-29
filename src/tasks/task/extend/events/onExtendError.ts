@@ -7,26 +7,20 @@ import {
 } from "../../../../types/index.js";
 
 export function onExtendError(
-  error: object | Error | string | null = "",
+  error: string | undefined,
   setError: (status: DeploymentStatus) => void,
   events: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument
 ) {
+  if (!error) return;
+
   events.insertOne({
     deploymentId,
     category: "Deployment",
     type: "JOB_EXTEND_FAILED",
-    message:
-      error instanceof Error
-        ? error.message
-        : typeof error === "object"
-        ? JSON.stringify(error)
-        : error,
+    message: error,
     created_at: new Date(),
   });
 
-  if (typeof error === "string" && error.includes("InsufficientFundsForRent")) {
-    setError(DeploymentStatus.INSUFFICIENT_FUNDS);
-  }
-  setError(DeploymentStatus.ERROR);
+  setError(error.includes("InsufficientFundsForRent") ? DeploymentStatus.INSUFFICIENT_FUNDS : DeploymentStatus.ERROR);
 }

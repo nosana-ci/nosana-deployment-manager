@@ -9,7 +9,7 @@ import { getConfig } from "../config/index.js";
 import { authMiddleware } from "./middleware/index.js";
 import { nosanaLogo, swaggerGenerateAuth } from "./ui/index.js";
 import { CollectionsNames } from "../definitions/collection.js";
-import { setupDeploymentsRoutes, setupJobsRoutes, setupVaultRoutes } from "./setup/index.js";
+import { setupDeploymentsRoutes, setupJobsRoutes, setupStatsRoutes, setupVaultRoutes } from "./setup/index.js";
 
 import { addSchemas } from "./schema/index.schema.js";
 
@@ -123,6 +123,7 @@ export async function startDeploymentManagerApi(db: Db) {
 
   setupDeploymentsRoutes(server);
   setupJobsRoutes(server);
+  setupStatsRoutes(server);
   setupVaultRoutes(server);
 
   server.get("/", { logLevel: "silent", schema: { hide: true } }, (_req, res) =>

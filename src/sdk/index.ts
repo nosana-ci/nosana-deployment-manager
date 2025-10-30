@@ -8,4 +8,11 @@ export const initSdk = (): Client => {
   return sdk;
 }
 
-export const getSdk = () => sdk || (sdk = new Client(getConfig().network));
+export const getSdk = () => sdk || (sdk = new Client(getConfig().network, undefined, {
+  api: {
+    backend_url: getConfig().dashboard_backend_url,
+  },
+  solana: {
+    network: getConfig().rpc_network
+  }
+}));

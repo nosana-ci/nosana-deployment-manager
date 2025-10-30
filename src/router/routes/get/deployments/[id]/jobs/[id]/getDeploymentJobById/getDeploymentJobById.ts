@@ -1,6 +1,7 @@
 import type { RouteHandler } from "fastify";
 
-import { getSdk } from "../../../../../../../sdk/index.js";
+import { getSdk } from "../../../../../../../../sdk/index.js";
+import { buildDeploymentJobResponse } from "./buildDeploymentJobResponse.js";
 
 export const getDeploymentJobByIdHandler: RouteHandler<{
   Params: { deployment: string; job: string };
@@ -28,25 +29,24 @@ export const getDeploymentJobByIdHandler: RouteHandler<{
     return;
   }
 
-  let results = await resultsCollection.findOne({
+  const jobData = await sdk.api.jobs.get(jobId);
+
+  if (!jobData) {
+    res.status(500).send({
+      error: "Job not found in indexer",
+    });
+    return;
+  }
+
+  const results = await resultsCollection.findOne({
     job: job.job,
   });
 
-  const onChain = await sdk.jobs.get(jobId);
-
-  if (results === null && onChain.state === "COMPLETED") {
-    results = await sdk.ipfs.retrieve(onChain.ipfsResult);
-  }
-
-  res.status(200).send({
-    price: onChain.price,
-    market: onChain.market.toString(),
-    state: onChain.state,
-    node: onChain.node,
-    confidential: deployment.confidential,
-    revision: job.revision,
-    jobDefinition: revision.job_definition,
+  res.status(200).send(await buildDeploymentJobResponse(
+    deployment,
+    job,
+    revision,
     results,
-    created_at: job.created_at.toISOString(),
-  });
+    jobData
+  ));
 } 

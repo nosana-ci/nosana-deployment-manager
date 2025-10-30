@@ -1,7 +1,6 @@
 import { getSdk } from "../../../../../../../../sdk/index.js";
 
 import type { GetJobByAddressResponse } from "@nosana/sdk/dist/services/api/types"
-import type { JobResultsSchema, } from "../../../../../../../schema/index.schema.js";
 import type { DeploymentJobByIdSuccess } from "../../../../../../../schema/get/index.schema.js";
 import type { DeploymentAggregation, JobResultsDocument, JobsDocument, RevisionDocument } from "../../../../../../../../types/index.js";
 
@@ -13,7 +12,7 @@ export async function buildDeploymentJobResponse(
   jobData: GetJobByAddressResponse
 ): Promise<DeploymentJobByIdSuccess> {
   const sdk = getSdk();
-  
+
   let jobResponse = {
     confidential: deployment.confidential,
     revision: job.revision,
@@ -29,7 +28,7 @@ export async function buildDeploymentJobResponse(
   }
 
   if (jobData.state > 1 && jobResponse.jobResult === null && jobData.ipfsResult) {
-    jobResponse.jobResult = await sdk.ipfs.retrieve(jobData.ipfsResult) as JobResultsSchema;
+    jobResponse.jobResult = await sdk.ipfs.retrieve(jobData.ipfsResult);
   }
 
   return jobResponse

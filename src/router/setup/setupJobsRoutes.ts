@@ -7,11 +7,11 @@ import { authJobHostMiddleware } from "../middleware/authentication/authJobHostM
 import { API_PREFIX } from "../../definitions/api.js";
 
 const {
-  get: { jobDefinitionHandler, jobResultsHandler },
+  get: { jobDefinitionHandler },
   post: { jobResultsPostHandler }
 } = routes;
 const {
-  get: { JobDefinitionHandlerSchema, JobResultsHandlerSchema },
+  get: { JobDefinitionHandlerSchema },
   post: { JobResultPostHandlerSchema }
 } = routeSchemas;
 
@@ -28,14 +28,6 @@ export function setupJobsRoutes(server: FastifyInstance) {
     },
     jobDefinitionHandler
   );
-
-  server.get(
-    `${JOBS_API_PREFIX}/:job/results`,
-    {
-      schema: JobResultsHandlerSchema
-    },
-    jobResultsHandler
-  )
 
   // POST
   server.post(

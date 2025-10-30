@@ -16,6 +16,7 @@ const {
     deploymentGetHeaderHandler,
     getDeploymentByIdHandler,
     deploymentsHandler,
+    deploymentJobByIdHandler
   },
   post: {
     deploymentCreateHandler,
@@ -37,7 +38,8 @@ const {
     DeploymentsHandlerSchema,
     DeploymentByIdSchema,
     GetDeploymentScheduledTasksSchema,
-    GetDeploymentHeaderSchema
+    GetDeploymentHeaderSchema,
+    DeploymentJobByIdSchema
   },
   post: { DeploymentCreateSchema, DeploymentCreateRevisionSchema, DeploymentStartSchema, DeploymentStopSchema },
   patch: {
@@ -85,6 +87,14 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     },
     deploymentGetHeaderHandler
   )
+
+  server.get(`${API_PREFIX}/:deployment/jobs/:job`,
+    {
+      schema: DeploymentJobByIdSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    deploymentJobByIdHandler
+  );
 
   // POST
   server.post(

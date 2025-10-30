@@ -2,7 +2,7 @@ import { getSdk } from "../../../../../../../../sdk/index.js";
 
 import type { GetJobByAddressResponse } from "@nosana/sdk/dist/services/api/types"
 import type { JobResultsSchema, } from "../../../../../../../schema/index.schema.js";
-import { DeploymentJobByIdSuccess } from "../../../../../../../schema/get/index.schema.js";
+import type { DeploymentJobByIdSuccess } from "../../../../../../../schema/get/index.schema.js";
 import type { DeploymentAggregation, JobResultsDocument, JobsDocument, RevisionDocument } from "../../../../../../../../types/index.js";
 
 export async function buildDeploymentJobResponse(

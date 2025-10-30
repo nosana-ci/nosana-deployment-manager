@@ -13,6 +13,7 @@ export async function buildDeploymentJobResponse(
   jobData: GetJobByAddressResponse
 ): Promise<DeploymentJobByIdSuccess> {
   const sdk = getSdk();
+  
   let jobResponse = {
     confidential: deployment.confidential,
     revision: job.revision,
@@ -27,7 +28,7 @@ export async function buildDeploymentJobResponse(
     listedAt: jobData.listedAt,
   }
 
-  if (!jobResponse.confidential && jobResponse.jobResult !== null && jobData.ipfsResult) {
+  if (jobData.state > 1 && jobResponse.jobResult === null && jobData.ipfsResult) {
     jobResponse.jobResult = await sdk.ipfs.retrieve(jobData.ipfsResult) as JobResultsSchema;
   }
 

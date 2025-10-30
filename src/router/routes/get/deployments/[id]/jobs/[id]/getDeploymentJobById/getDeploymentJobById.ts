@@ -3,8 +3,13 @@ import type { RouteHandler } from "fastify";
 import { getSdk } from "../../../../../../../../sdk/index.js";
 import { buildDeploymentJobResponse } from "./buildDeploymentJobResponse.js";
 
-export const getDeploymentJobByIdHandler: RouteHandler<{
+import type { HeadersSchema } from "../../../../../../../schema/index.schema.js";
+import type { DeploymentJobByIdError, DeploymentJobByIdSuccess } from "../../../../../../../schema/get/index.schema.js";
+
+export const deploymentJobByIdHandler: RouteHandler<{
   Params: { deployment: string; job: string };
+  Headers: HeadersSchema;
+  Reply: DeploymentJobByIdSuccess | DeploymentJobByIdError;
 }> = async (req, res) => {
   const sdk = getSdk()
   const { job: jobId } = req.params;

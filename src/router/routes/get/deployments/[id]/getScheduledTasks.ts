@@ -20,7 +20,7 @@ export const deploymentGetScheduledTasksHandler: RouteHandler<{
     const taskDocuments = await tasks
       .find({
         deploymentId: deployment,
-      })
+      }).sort({ created_at: -1 })
       .toArray();
 
     res.status(200);

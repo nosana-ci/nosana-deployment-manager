@@ -8,7 +8,7 @@ type ApiListResponse = Awaited<ReturnType<Client["api"]["jobs"]["list"]>>
 try {
   const { client, useNosanaApiKey, task } = await prepareWorker(workerData);
 
-  const { active_revision, confidential, market, replicas, timeout } = task.deployment;
+  const { active_revision, confidential, market, replicas, timeout, strategy } = task.deployment;
 
   let ipfs_definition_hash: string = workerData.confidential_ipfs_pin;
 
@@ -33,29 +33,32 @@ try {
   });
 
   await Promise.all(
-    Array.from({ length: replicas }, async () => {
-      try {
-        if (useNosanaApiKey) {
-          const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
-          const res = await client.api.jobs.list(listArgs);
+    Array.from(
+      { length: strategy === "SIMPLE" || strategy === "SIMPLE-EXTEND" ? replicas - task.jobs.length : replicas },
+      async () => {
+        try {
+          if (useNosanaApiKey) {
+            const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
+            const res = await client.api.jobs.list(listArgs);
+            parentPort!.postMessage({
+              event: "CONFIRMED",
+              ...transformApiResponse(res),
+            });
+          } else {
+            const res = await client.jobs.list(ipfs_definition_hash, timeout * 60, market);
+            parentPort!.postMessage({
+              event: "CONFIRMED",
+              ...res,
+            });
+          }
+        } catch (error) {
           parentPort!.postMessage({
-            event: "CONFIRMED",
-            ...transformApiResponse(res),
-          });
-        } else {
-          const res = await client.jobs.list(ipfs_definition_hash, timeout * 60, market);
-          parentPort!.postMessage({
-            event: "CONFIRMED",
-            ...res,
+            event: "ERROR",
+            error: workerErrorFormatter(error),
           });
         }
-      } catch (error) {
-        parentPort!.postMessage({
-          event: "ERROR",
-          error: workerErrorFormatter(error),
-        });
       }
-    })
+    )
   );
 } catch (error) {
   parentPort!.postMessage({

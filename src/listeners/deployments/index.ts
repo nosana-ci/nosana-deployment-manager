@@ -72,6 +72,18 @@ export function startDeploymentListener(db: Db) {
 
   listener.addListener(
     "update",
+    ({ id, status }) => {
+      scheduleTask(db, TaskType.LIST, id, status)
+    }, {
+    fields: ["replicas"],
+    filters: {
+      strategy: { $or: [DeploymentStrategy.SIMPLE, DeploymentStrategy["SIMPLE-EXTEND"]] }
+    }
+  }
+  )
+
+  listener.addListener(
+    "update",
     ({ id, active_revision, schedule, strategy, status }) => {
       scheduleTask(db, TaskType.STOP, id, status, new Date(), active_revision);
       scheduleTask(db, TaskType.LIST, id, status, strategy === DeploymentStrategy.SCHEDULED

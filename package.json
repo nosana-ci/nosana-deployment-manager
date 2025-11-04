@@ -14,7 +14,6 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
   },
   "author": "",
@@ -47,13 +46,5 @@
     "mongodb": "^4.17.2",
     "openapi-fetch": "^0.14.0",
     "typia": "^9.5.0"
-  },
-  "overrides": {
-    "@nosana/sdk": {
-        "axios": "^1.12.0"
-    },
-    "typia": {
-        "tmp": "^0.2.4"
-    }
   }
 }

@@ -29,6 +29,8 @@ export async function startDeploymentManagerApi(db: Db) {
   server.addContentTypeParser('application/json', { parseAs: 'string' }, function (req, body, done) {
     if (!req) return done(new Error('No request object'));
     try {
+      req.log.info('Parsing JSON body');
+      req.log.info(body);
       const json = JSON.parse(body as string);
       done(null, json);
     } catch (err) {

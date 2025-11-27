@@ -1,12 +1,11 @@
-import { Client } from "@nosana/sdk";
+import { address } from "@solana/addresses";
+import { NosanaApiListJobResponse } from "@nosana/kit";
 import { parentPort, workerData } from "worker_threads";
 
 import { prepareWorker, workerErrorFormatter } from "../Worker.js";
 
-type ApiListResponse = Awaited<ReturnType<Client["api"]["jobs"]["list"]>>
-
 try {
-  const { client, useNosanaApiKey, task } = await prepareWorker(workerData);
+  const { kit, useNosanaApiKey, task } = await prepareWorker(workerData);
 
   const { active_revision, confidential, market, replicas, timeout, strategy } = task.deployment;
 
@@ -26,7 +25,7 @@ try {
     ipfs_definition_hash = activeRevision.ipfs_definition_hash;
   }
 
-  const transformApiResponse = (res: ApiListResponse) => ({
+  const transformApiResponse = (res: NosanaApiListJobResponse) => ({
     tx: res.tx,
     job: res.job,
     run: res.run
@@ -39,13 +38,15 @@ try {
         try {
           if (useNosanaApiKey) {
             const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
-            const res = await client.api.jobs.list(listArgs);
+            const res = await kit.api!.jobs.list(listArgs);
             parentPort!.postMessage({
               event: "CONFIRMED",
               ...transformApiResponse(res),
             });
           } else {
-            const res = await client.jobs.list(ipfs_definition_hash, timeout * 60, market);
+            const res = await kit.jobs.post({
+              ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market: address(market)
+            });
             parentPort!.postMessage({
               event: "CONFIRMED",
               ...res,

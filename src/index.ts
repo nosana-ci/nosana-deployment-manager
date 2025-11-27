@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { initSdk } from "./sdk/index.js";
+import { initKit } from "./kit/index.js";
 import { initStats } from "./stats/index.js";
 import { setConfig } from "./config/index.js";
 import { startDeploymentManagerApi } from "./router/index.js";
@@ -10,9 +10,9 @@ import { createConfidentialJobDefinition } from "./definitions/confidential.jobd
 
 initStats();
 
-const sdk = initSdk();
+const kit = initKit();
 
-const confidentialIpfsPin = await sdk.ipfs.pin(createConfidentialJobDefinition());
+const confidentialIpfsPin = await kit.ipfs.pin(createConfidentialJobDefinition());
 
 setConfig("confidential_ipfs_pin", confidentialIpfsPin);
 

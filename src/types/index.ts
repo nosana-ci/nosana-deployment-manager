@@ -1,11 +1,11 @@
-import { FlowState, JobDefinition } from "@nosana/sdk";
 import { Collection, Document } from "mongodb";
+import { NosanaNetwork, FlowState, JobDefinition } from "@nosana/kit";
 
 import { JobResultsSchema } from "../router/schema/index.schema.js";
 
 export type DeploymentsConfig = {
   base_url: string;
-  network: "mainnet" | "devnet";
+  network: NosanaNetwork;
   nos_address: string;
   rpc_network: string;
   frps_address: string;

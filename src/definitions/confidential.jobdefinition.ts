@@ -1,4 +1,4 @@
-import { JobDefinition } from "@nosana/sdk";
+import { JobDefinition } from "@nosana/kit";
 
 import { getConfig } from "../config/index.js";
 

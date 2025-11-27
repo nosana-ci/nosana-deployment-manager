@@ -1,6 +1,7 @@
 import path from "path";
-import { Client, ClientConfig } from "@nosana/sdk";
 import { fileURLToPath, URL } from "url";
+import { createKeyPairSignerFromBytes } from "@solana/signers";
+import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
 import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
 
 import { getConfig } from "../../config/index.js";
@@ -35,7 +36,7 @@ export function workerErrorFormatter(error: unknown): string {
 }
 
 export async function prepareWorker(workerData: WorkerData): Promise<
-  WorkerData & { client: Client, useNosanaApiKey: boolean }
+  WorkerData & { kit: NosanaClient, useNosanaApiKey: boolean }
 > {
   try {
     const { register } = await import("ts-node");
@@ -48,19 +49,20 @@ export async function prepareWorker(workerData: WorkerData): Promise<
   const key = decryptWithKey(workerData.vault);
   const useNosanaApiKey = key.startsWith("nos_");
 
-  const clientConfig: Partial<ClientConfig> = useNosanaApiKey ? { apiKey: key } : { solana: { network: config.rpc_network } }
+  const clientConfig: Partial<PartialClientConfig> = useNosanaApiKey ? { api: { apiKey: key } } : { solana: { rpcEndpoint: config.rpc_network } }
   if (config.dashboard_backend_url) {
     clientConfig.api = { backend_url: config.dashboard_backend_url };
   }
-
-  const client = new Client(...[
+  const kit = createNosanaClient(
     config.network,
-    useNosanaApiKey ? undefined : covertStringToIterable(key),
-    clientConfig
-  ]);
+    {
+      ...clientConfig,
+      wallet: useNosanaApiKey ? undefined : await createKeyPairSignerFromBytes(new Uint8Array(covertStringToIterable(key))),
+    }
+  );
 
   return {
-    client,
+    kit,
     useNosanaApiKey,
     ...workerData,
   };

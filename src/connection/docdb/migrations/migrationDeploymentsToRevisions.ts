@@ -1,7 +1,7 @@
 import { Db } from "mongodb";
-import { DeploymentStatus } from "@nosana/sdk";
+import { DeploymentStatus, JobDefinition } from "@nosana/kit";
 
-import { getSdk } from "../../../sdk/index.js";
+import { getKit } from "../../../kit/index.js";
 import { createNewDeploymentRevision } from "../../../router/routes/post/deployments/create/deploymentCreate.factory.js";
 
 import { DeploymentDocument, EventDocument, EventType } from "../../../types/index.js";
@@ -11,14 +11,14 @@ type OldDeploymentDocument = Omit<DeploymentDocument, "active_revision"> & {
 };
 
 export default async function migrateDeploymentsToEndpoints(db: Db) {
-  const sdk = await getSdk();
+  const kit = await getKit();
   const deployments = await db.collection<OldDeploymentDocument>("deployments").find({
     active_revision: { $exists: false }, ipfs_definition_hash: { $exists: true }
   }).toArray();
 
   for (const { ipfs_definition_hash, ...deploymentWithIPFSHash } of deployments) {
     try {
-      const jobDefinition = await sdk.ipfs.retrieve(ipfs_definition_hash);
+      const jobDefinition = await kit.ipfs.retrieve<JobDefinition>(ipfs_definition_hash);
       const { revision } = await createNewDeploymentRevision(0, deploymentWithIPFSHash.id, deploymentWithIPFSHash.vault, jobDefinition);
 
       const { acknowledged: revisionAcknowledged } = await db.collection("revisions").insertOne(revision);

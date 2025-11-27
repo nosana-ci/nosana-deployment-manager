@@ -1,6 +1,6 @@
 import { FastifySchema } from "fastify";
 import { Type } from "@sinclair/typebox";
-import { JobDefinition } from "@nosana/sdk";
+import { JobDefinition } from "@nosana/kit";
 
 import type { ErrorSchema } from "../../../index.schema.js";
 

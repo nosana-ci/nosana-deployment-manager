@@ -1,5 +1,6 @@
-import { Client } from "@nosana/sdk";
+import { createNosanaClient } from "@nosana/kit";
 import { parentPort, workerData } from "worker_threads";
+import { createKeyPairSignerFromBytes } from "@solana/signers";
 
 import { decryptWithKey } from "../../../../../../vault/decrypt.js";
 import { covertStringToIterable } from "../../../../../../tasks/utils/convertStringToIterable.js";
@@ -21,12 +22,13 @@ const { includeTime, config: { network, rpc_network }, vault } = workerData as W
 
 const key = decryptWithKey(vault);
 
-const client = new Client(network, covertStringToIterable(key), {
-  solana: { network: rpc_network },
-});
-
 try {
-  const header = await client.authorization.generate("DEPLOYMENT_HEADER", {
+  const kit = createNosanaClient(network, {
+    wallet: await createKeyPairSignerFromBytes(new Uint8Array(covertStringToIterable(key))),
+    solana: { rpcEndpoint: rpc_network },
+  });
+
+  const header = await kit.authorization.generate("DEPLOYMENT_HEADER", {
     includeTime,
   });
 

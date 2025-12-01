@@ -3,7 +3,6 @@ services:
     image: mongo:7.0
     volumes:
       - deploymentsdbdata:/data/db
-      - deploymentsdbconfig:/data/configdb
     networks:
       - deployments_network
     ports:
@@ -53,13 +52,9 @@ services:
       - "3001:3000"
     networks:
       - deployments_network
-    volumes:
-      - deploymentsVault:/.nosana/vault
 
 volumes:
   deploymentsdbdata:
-  deploymentsVault:
-  deploymentsdbconfig:
 
 networks:
   deployments_network:

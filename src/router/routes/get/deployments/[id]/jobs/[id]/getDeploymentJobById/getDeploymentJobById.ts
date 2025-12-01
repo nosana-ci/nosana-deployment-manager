@@ -1,6 +1,6 @@
 import type { RouteHandler } from "fastify";
 
-import { getSdk } from "../../../../../../../../sdk/index.js";
+import { getKit } from "../../../../../../../../kit/index.js";
 import { buildDeploymentJobResponse } from "./buildDeploymentJobResponse.js";
 
 import type { HeadersSchema } from "../../../../../../../schema/index.schema.js";
@@ -11,7 +11,7 @@ export const deploymentJobByIdHandler: RouteHandler<{
   Headers: HeadersSchema;
   Reply: DeploymentJobByIdSuccess | DeploymentJobByIdError;
 }> = async (req, res) => {
-  const sdk = getSdk()
+  const kit = getKit();
   const { job: jobId } = req.params;
   const deployment = res.locals.deployment!
   const { results: resultsCollection } = res.locals.db
@@ -34,7 +34,7 @@ export const deploymentJobByIdHandler: RouteHandler<{
     return;
   }
 
-  const jobData = await sdk.api.jobs.get(jobId);
+  const jobData = await kit.api!.jobs.get(jobId);
 
   if (!jobData) {
     res.status(500).send({

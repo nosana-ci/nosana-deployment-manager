@@ -1,8 +1,10 @@
+import { JobState } from "@nosana/kit";
+import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
 
 import { prepareWorker, workerErrorFormatter } from "../Worker.js";
 
-const { client, useNosanaApiKey, task } = await prepareWorker(workerData);
+const { kit, useNosanaApiKey, task } = await prepareWorker(workerData);
 
 try {
   const tasks = task.jobs.filter(({ revision }) => {
@@ -12,7 +14,7 @@ try {
   await Promise.all(tasks.map(async ({ job }) => {
     try {
       if (useNosanaApiKey) {
-        const res = await client.api.jobs.stop({ jobAddress: job });
+        const res = await kit.api!.jobs.stop(job);
         if (res) {
           parentPort!.postMessage({
             event: "CONFIRMED",
@@ -21,10 +23,10 @@ try {
           });
         }
       } else {
-        const { state } = await client.jobs.get(job);
+        const { state } = await kit.jobs.get(address(job));
 
-        if (state === "QUEUED") {
-          const res = await client.jobs.delist(job);
+        if (state === JobState.QUEUED) {
+          const res = await kit.jobs.delist({ job: address(job) });
           if (res) {
             parentPort!.postMessage({
               event: "CONFIRMED",
@@ -33,8 +35,8 @@ try {
           }
         }
 
-        if (state === "RUNNING") {
-          const res = await client.jobs.end(job);
+        if (state === JobState.RUNNING) {
+          const res = await kit.jobs.end({ job: address(job) });
           if (res) {
             parentPort!.postMessage({
               event: "CONFIRMED",

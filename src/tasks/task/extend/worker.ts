@@ -1,9 +1,10 @@
+import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
 
 import { prepareWorker, workerErrorFormatter } from "../Worker.js";
 
 const {
-  client,
+  kit,
   useNosanaApiKey,
   task: { deployment: { timeout }, jobs }
 } = await prepareWorker(workerData);
@@ -12,7 +13,7 @@ try {
   await Promise.all(jobs.map(async ({ job }) => {
     try {
       if (useNosanaApiKey) {
-        const res = await client.api.jobs.extend({ jobAddress: job, seconds: timeout });
+        const res = await kit.api!.jobs.extend({ address: job, seconds: timeout });
         if (res) {
           parentPort?.postMessage({
             event: "CONFIRMED",
@@ -21,7 +22,7 @@ try {
           });
         }
       } else {
-        const res = await client.jobs.extend(job, timeout);
+        const res = await kit.jobs.extend({ job: address(job), timeout });
         if (res) {
           parentPort?.postMessage({
             event: "CONFIRMED",

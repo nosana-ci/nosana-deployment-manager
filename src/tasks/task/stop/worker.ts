@@ -1,12 +1,9 @@
 import { JobState } from "@nosana/kit";
 import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
-
 import { prepareWorker, workerErrorFormatter } from "../../../worker/Worker.js";
 
-import type { WorkerData } from "../../../types/index.js";
-
-const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
+const { kit, useNosanaApiKey, task } = await prepareWorker(workerData);
 
 try {
   const tasks = task.jobs.filter(({ revision }) => {

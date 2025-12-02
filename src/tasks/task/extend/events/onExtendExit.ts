@@ -8,6 +8,7 @@ import {
   DeploymentCollection,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
+import { getNextExtendTime } from "../../../utils/getNextExtendTime.js";
 
 export async function onExtendExit(
   deploymentStatus: DeploymentStatus | undefined,
@@ -36,6 +37,6 @@ export async function onExtendExit(
     TaskType.EXTEND,
     deploymentId,
     status,
-    new Date(new Date().getTime() + timeout * 1000)
+    getNextExtendTime(timeout, false)
   );
 }

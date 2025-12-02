@@ -20,7 +20,6 @@ import { getConfig } from "../../../config/index.js";
 
 export interface OnListEventParams {
   code?: number;
-  error: DeploymentStatus;
   task: OutstandingTasksDocument;
   setDeploymentErrorStatus: (type: DeploymentStatus) => void;
   collections: {
@@ -66,7 +65,6 @@ export function spawnListTask(
           onListConfirmed(tx, job, {
             task,
             collections,
-            error: deploymentStatus,
             setDeploymentErrorStatus,
           });
           break;
@@ -74,7 +72,6 @@ export function spawnListTask(
           onListError(tx, error, {
             task,
             collections,
-            error: deploymentStatus,
             setDeploymentErrorStatus,
           });
           break;
@@ -88,10 +85,8 @@ export function spawnListTask(
         code,
         task,
         collections,
-        error: deploymentStatus,
         setDeploymentErrorStatus,
       },
-      db
     );
     complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
   });

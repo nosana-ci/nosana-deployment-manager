@@ -16,13 +16,9 @@ import {
 import { updateScheduledTasks } from "../../tasks/updateScheduledTasks.js";
 import { NosanaCollections } from "../../definitions/collection.js";
 
-export function startDeploymentListener(db: Db) {
+export function startDeploymentCollectionListener(db: Db) {
   const listener: CollectionListener<DeploymentDocument> =
     createCollectionListener(NosanaCollections.DEPLOYMENTS, db);
-
-  if (!listener) {
-    throw new Error("Listener setup is required before starting the service.");
-  }
 
   listener.addListener(
     "update",

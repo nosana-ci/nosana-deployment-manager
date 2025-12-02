@@ -10,7 +10,7 @@ import { getOutstandingTasks } from "./getOutstandingTasks.js";
 import { TaskDocument, TaskFinishedReason, TaskType } from "../types/index.js";
 import { addTaskStat, removeTaskStat } from "../stats/index.js";
 
-export function startTaskListener(db: Db) {
+export function startTaskCollectionListener(db: Db) {
   const tasks = new Map<ObjectId, Worker>();
   const collection = db.collection<TaskDocument>("tasks");
   const { tasks_batch_size } = getConfig();

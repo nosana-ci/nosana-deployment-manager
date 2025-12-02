@@ -14,7 +14,8 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "ci:test": "vitest run --coverage --reporter=junit --outputFile=./test-report.xml"
   },
   "author": "",
   "license": "ISC",

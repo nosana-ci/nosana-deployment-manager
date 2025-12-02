@@ -43,7 +43,15 @@ npm test:
   dependencies:
     - npm install
   script:
-    - npm test
+    - npm run ci:test
+  coverage: '/All files[^|]*\|[^|]*\|[^|]*\|[^|]*\|[^\d]*([\d\.]+)/'
+  artifacts:
+    when: always
+    paths:
+      - test-report.xml
+    reports:
+      junit: test-report.xml
+
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

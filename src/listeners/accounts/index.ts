@@ -21,7 +21,7 @@ function convertJobState(state: number): JobState {
   }
 }
 
-export async function startJobListeners(db: Db) {
+export async function startJobAccountsListeners(db: Db) {
   const kit = getKit();
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
 

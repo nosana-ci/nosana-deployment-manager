@@ -11,7 +11,7 @@ vi.mock('../../../tasks/scheduleTask.js', () => ({
 }));
 
 import { scheduleTask } from '../../../tasks/scheduleTask.js';
-import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./values.js";
+import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./shared.js";
 
 const mockNow = new Date('2025-12-02T16:00:00Z');
 const testJobDeployment = 'job-deployment-123';

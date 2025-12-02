@@ -1,10 +1,8 @@
 import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { NosanaCollections } from "../../../definitions/collection.js";
-
-
 import type { StrategyListener } from "../../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobState, TaskType } from "../../../types/index.js";
-import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./values.js";
+import { DeploymentStrategy, JobsDocument, JobState, TaskType } from "../../../types/index.js";
+import {findDeployment, STATE_FIELD, UPDATE_EVENT_TYPE} from "./shared.js";
 
 /**
  * Listener trigger when a job enters running state and the deployment is simple-extended
@@ -16,9 +14,7 @@ import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./values.js";
 export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocument> = [
   UPDATE_EVENT_TYPE,
   async ({ deployment: jobDeployment }, db) => {
-    const deployment = await db
-      .collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS)
-      .findOne({ deployment: jobDeployment });
+    const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || deployment.strategy !== DeploymentStrategy.INFINITE) return;
 
     const runningJobsCount = await db

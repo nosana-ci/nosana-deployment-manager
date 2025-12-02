@@ -35,7 +35,7 @@ export const ErrorMessages = {
     JOB_RESULTS_NOT_FOUND: "Job results not found",
     JOB_NOT_COMPLETED: "This job has not yet completed",
     JOB_ALREADY_COMPLETED: "Job has already been completed.",
-    FAILED_TO_SAVE_RESLTS: "Failed to save the jobs results.",
+    FAILED_TO_SAVE_RESULTS: "Failed to save the jobs results.",
     FAILED_TO_FIND_JOB_DEFINITION: "Failed to find the jobs definition.",
     FAILED_TO_FIND_DEPLOYMENT: "Failed to find the deployments job definition.",
   },

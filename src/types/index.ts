@@ -1,7 +1,7 @@
-import { Collection, Document } from "mongodb";
-import { NosanaNetwork, FlowState, JobDefinition } from "@nosana/kit";
+import type { Collection, Document } from "mongodb";
+import type { NosanaNetwork, FlowState, JobDefinition } from "@nosana/kit";
 
-import { JobResultsSchema } from "../router/schema/index.schema.js";
+import type { JobResultsSchema } from "../router/schema/index.schema.js";
 
 export type DeploymentsConfig = {
   base_url: string;
@@ -161,13 +161,23 @@ export type TaskDocument = {
 
 export type TasksCollection = Collection<TaskDocument>;
 
+export const JobState = {
+  QUEUED: "QUEUED",
+  RUNNING: "RUNNING",
+  COMPLETED: "COMPLETED",
+  STOPPED: "STOPPED",
+} as const;
+
+export type JobState = (typeof JobState)[keyof typeof JobState];
+
 export type JobsDocument = {
   job: string;
   deployment: string;
   revision: number;
   tx: string;
-  status: "PENDING" | "CONFIRMED" | "COMPLETED";
+  state: JobState;
   created_at: Date;
+  updated_at: Date;
 };
 
 export type JobsCollection = Collection<JobsDocument>;

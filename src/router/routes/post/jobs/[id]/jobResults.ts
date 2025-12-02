@@ -14,14 +14,9 @@ export const jobResultsPostHandler: RouteHandler<{
   const jobId = req.params.job;
 
   try {
-    const job = await db.jobs.findOne({ job: { $eq: jobId } });
+    const results = await db.results.findOne({ job: { $eq: jobId } });
 
-    if (!job) {
-      res.status(404).send({ error: ErrorMessages.job.NOT_FOUND });
-      return;
-    }
-
-    if (job.status === "COMPLETED") {
+    if (results) {
       res.status(400).send({ error: ErrorMessages.job.JOB_ALREADY_COMPLETED })
       return;
     }
@@ -29,19 +24,9 @@ export const jobResultsPostHandler: RouteHandler<{
     const { acknowledged } = await db.results.insertOne({ job: jobId, results: req.body });
 
     if (!acknowledged) {
-      res.status(400).send({ error: ErrorMessages.job.FAILED_TO_SAVE_RESLTS })
+      res.status(400).send({ error: ErrorMessages.job.FAILED_TO_SAVE_RESULTS })
       return
     }
-
-    await db.jobs.updateOne({
-      job: {
-        $eq: jobId
-      }
-    }, {
-      $set: {
-        status: "COMPLETED"
-      }
-    })
 
     res.status(200).send({ message: "Success" });
   } catch (error) {

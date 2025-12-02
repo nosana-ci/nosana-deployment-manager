@@ -23,6 +23,7 @@ export const getDeploymentByIdHandler: RouteHandler<{
     jobs: deployment.jobs.map((job) => ({
       ...job,
       created_at: job.created_at.toISOString(),
+      updated_at: job.updated_at.toISOString(),
     })),
     events: deployment.events.map((event) => ({
       ...event,

@@ -25,8 +25,10 @@ export const getKit = (): NosanaClient => {
   if (config.rpc_network) {
     kitOptions.solana = {
       rpcEndpoint: config.rpc_network,
+      wsEndpoint: "wss://api.mainnet-beta.solana.com"
     };
   }
+
   kit = createNosanaClient(config.network, kitOptions);
   return kit;
 };

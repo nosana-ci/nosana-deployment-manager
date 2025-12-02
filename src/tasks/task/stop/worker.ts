@@ -25,8 +25,6 @@ try {
           });
         }
       } else {
-
-
         if (state === JobState.QUEUED) {
           const res = await kit.jobs.delist({ job: address(job) });
           if (res) {

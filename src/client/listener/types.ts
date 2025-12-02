@@ -1,3 +1,5 @@
+import { Db } from "mongodb";
+
 export type FilterOperators<T> =
   | { $eq: T }
   | { $ne: T }
@@ -14,6 +16,8 @@ export type Filters<T> =
   | { $or: Filters<T>[] }
   | { $not: Filters<T> };
 
-export type EventCallback<T> = (data: T) => void;
+export type EventCallback<T> = (data: T, db: Db) => void;
 export type InsertEvent<T> = ["insert", EventCallback<T>];
 export type UpdateEvent<T> = ["update", EventCallback<T>, { fields?: (keyof T)[]; filters?: Filters<T> }];
+
+export type StrategyListener<T> = InsertEvent<T> | UpdateEvent<T>

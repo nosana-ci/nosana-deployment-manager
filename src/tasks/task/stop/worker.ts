@@ -1,7 +1,7 @@
+import { JobState } from "@nosana/kit";
 import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
 import { prepareWorker, workerErrorFormatter } from "../Worker.js";
-import { JobState } from "../../../types/index.js";
 
 const { kit, useNosanaApiKey, task } = await prepareWorker(workerData);
 
@@ -10,7 +10,7 @@ try {
     return !(task.active_revision && task.active_revision === revision);
   });
 
-  await Promise.all(tasks.map(async ({ job, state }) => {
+  await Promise.all(tasks.map(async ({ job }) => {
     try {
       if (useNosanaApiKey) {
         const res = await kit.api!.jobs.stop(job);
@@ -22,6 +22,8 @@ try {
           });
         }
       } else {
+        const { state } = await kit.jobs.get(address(job));
+
         if (state === JobState.QUEUED) {
           const res = await kit.jobs.delist({ job: address(job) });
           if (res) {

@@ -26,25 +26,28 @@ export async function startJobListeners(db: Db) {
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
 
   const stop = await kit.jobs.monitor({
+    // Handle job state changes for completed and stopped jobs
     onJobAccount: ({ address, state }) => {
-      // The state is set to Queued when the entry is first created
-      // The onRunAccount will handle transfer to running state
-      if (state >= 2) {
-        jobsCollection.updateOne(
-          { job: address.toString() },
-          { $set: { state: convertJobState(state), updated_at: new Date() } },
-          { upsert: false }
-        );
-      }
-    },
-    onRunAccount: ({ address }) => {
+      if (state < 2) return;
       jobsCollection.updateOne(
         { job: address.toString() },
+        { $set: { state: convertJobState(state), updated_at: new Date() } },
+        { upsert: false }
+      );
+    },
+    // Handle transition to RUNNING state when a run account is created
+    onRunAccount: ({ address }) => {
+      jobsCollection.updateOne(
+        {
+          job: address.toString(), state: {
+            $nin: [JobState.COMPLETED, JobState.STOPPED]
+          }
+        },
         { $set: { state: JobState.RUNNING, updated_at: new Date() } },
         { upsert: false }
       );
     }
-  })
+  });
 
   process.on('SIGINT', async () => {
     await stop();

@@ -82,10 +82,10 @@ export function startDeploymentCollectionListener(db: Db) {
   listener.addListener(
     "update",
     ({ id, active_revision, schedule, strategy, status }) => {
-      scheduleTask(db, TaskType.STOP, id, status, new Date(), active_revision);
+      scheduleTask(db, TaskType.STOP, id, status, new Date(), { active_revision });
       scheduleTask(db, TaskType.LIST, id, status, strategy === DeploymentStrategy.SCHEDULED
         ? getNextTaskTime(schedule)
-        : undefined, active_revision);
+        : undefined, { active_revision });
     },
     {
       fields: ["active_revision"],

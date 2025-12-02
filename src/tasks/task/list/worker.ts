@@ -32,34 +32,38 @@ try {
     run: res.run
   });
 
+  const length = task.limit
+    ? task.limit
+    : strategy === "SIMPLE" || strategy === "SIMPLE-EXTEND"
+      ? replicas - task.jobs.length
+      : replicas;
+
   await Promise.all(
-    Array.from(
-      { length: strategy === "SIMPLE" || strategy === "SIMPLE-EXTEND" ? replicas - task.jobs.length : replicas },
-      async () => {
-        try {
-          if (useNosanaApiKey) {
-            const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
-            const res = await kit.api!.jobs.list(listArgs);
-            parentPort!.postMessage({
-              event: "CONFIRMED",
-              ...transformApiResponse(res),
-            });
-          } else {
-            const res = await kit.jobs.post({
-              ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market: address(market)
-            });
-            parentPort!.postMessage({
-              event: "CONFIRMED",
-              ...res,
-            });
-          }
-        } catch (error) {
+    Array.from({ length }, async () => {
+      try {
+        if (useNosanaApiKey) {
+          const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
+          const res = await kit.api!.jobs.list(listArgs);
           parentPort!.postMessage({
-            event: "ERROR",
-            error: workerErrorFormatter(error),
+            event: "CONFIRMED",
+            ...transformApiResponse(res),
+          });
+        } else {
+          const res = await kit.jobs.post({
+            ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market: address(market)
+          });
+          parentPort!.postMessage({
+            event: "CONFIRMED",
+            ...res,
           });
         }
+      } catch (error) {
+        parentPort!.postMessage({
+          event: "ERROR",
+          error: workerErrorFormatter(error),
+        });
       }
+    }
     )
   );
 } catch (error) {

@@ -7,11 +7,12 @@ import type { WorkerData } from "../../../types/index.js";
 const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
 
 try {
-  const tasks = task.jobs.filter(({ revision }) => {
-    return !(task.active_revision && task.active_revision === revision);
-  });
+  const jobs = task.jobs
+    .filter(({ revision }) => !(task.active_revision && task.active_revision === revision))
+    .sort(({ updated_at: a }, { updated_at: b }) => a.getTime() - b.getTime())
+    .slice(0, task.limit || task.jobs.length);
 
-  await Promise.all(tasks.map(async ({ job }) => {
+  await Promise.all(jobs.map(async ({ job }) => {
     const { state } = await kit.jobs.get(address(job));
     if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
 

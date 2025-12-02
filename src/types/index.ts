@@ -156,6 +156,7 @@ export type TaskDocument = {
   deploymentId: string;
   tx: string | undefined | null;
   active_revision?: number;
+  limit?: number;
   created_at: Date;
 };
 

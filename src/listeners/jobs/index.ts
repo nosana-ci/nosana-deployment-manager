@@ -37,9 +37,26 @@ export function startJobsCollectionListener(db: Db) {
       }
 
       if (deployment.strategy === DeploymentStrategy.INFINITE) {
-        // TODO: Implement infinite strategy task scheduling
-        // Step 1: check how many current running jobs there are for this deployment
-        // Step 2: if above replicas, schedule stop tasks for excess jobs (We might need to update the schedular to support this as we should only stop the oldest task)
+        const runningJobsCount = await db
+          .collection<JobsDocument>(NosanaCollections.JOBS)
+          .countDocuments({
+            deployment: jobDeployment,
+            state: {
+              $in: [JobState.QUEUED, JobState.RUNNING],
+            },
+          });
+
+        if (runningJobsCount > deployment.replicas) {
+          const excessJobs = runningJobsCount - deployment.replicas;
+          scheduleTask(
+            db,
+            TaskType.STOP,
+            deployment.id,
+            deployment.status,
+            new Date(),
+            { limit: excessJobs }
+          )
+        }
       }
     },
     {
@@ -57,9 +74,26 @@ export function startJobsCollectionListener(db: Db) {
       if (!deployment) return;
 
       if (deployment.strategy === DeploymentStrategy.INFINITE) {
-        // Todo: Handle completed/stopped job for different strategies
-        // Step 1: check how many current running jobs there are for this deployment
-        // Step 2: if below replicas, schedule new job tasks
+        const runningJobsCount = await db
+          .collection<JobsDocument>(NosanaCollections.JOBS)
+          .countDocuments({
+            deployment: jobDeployment,
+            state: {
+              $in: [JobState.QUEUED, JobState.RUNNING],
+            },
+          });
+
+        if (runningJobsCount < deployment.replicas) {
+          const jobsToSchedule = deployment.replicas - runningJobsCount;
+          scheduleTask(
+            db,
+            TaskType.LIST,
+            deployment.id,
+            deployment.status,
+            new Date(),
+            { limit: jobsToSchedule }
+          );
+        }
       }
     },
     {

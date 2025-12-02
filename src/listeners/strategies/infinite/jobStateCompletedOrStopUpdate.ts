@@ -18,29 +18,27 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
     const deployment = await db
       .collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS)
       .findOne({ deployment: jobDeployment });
-    if (!deployment) return;
+    if (!deployment || deployment.strategy !== DeploymentStrategy.INFINITE) return;
 
-    if (deployment.strategy === DeploymentStrategy.INFINITE) {
-      const runningJobsCount = await db
-        .collection<JobsDocument>(NosanaCollections.JOBS)
-        .countDocuments({
-          deployment: jobDeployment,
-          state: {
-            $in: [JobState.QUEUED, JobState.RUNNING],
-          },
-        });
+    const runningJobsCount = await db
+      .collection<JobsDocument>(NosanaCollections.JOBS)
+      .countDocuments({
+        deployment: jobDeployment,
+        state: {
+          $in: [JobState.QUEUED, JobState.RUNNING],
+        },
+      });
 
-      if (runningJobsCount < deployment.replicas) {
-        const jobsToSchedule = deployment.replicas - runningJobsCount;
-        scheduleTask(
-          db,
-          TaskType.LIST,
-          deployment.id,
-          deployment.status,
-          new Date(),
-          { limit: jobsToSchedule }
-        );
-      }
+    if (runningJobsCount < deployment.replicas) {
+      const jobsToSchedule = deployment.replicas - runningJobsCount;
+      scheduleTask(
+        db,
+        TaskType.LIST,
+        deployment.id,
+        deployment.status,
+        new Date(),
+        { limit: jobsToSchedule }
+      );
     }
   },
   {

@@ -4,6 +4,7 @@ import { NosanaCollections } from "../../../definitions/collection.js";
 
 import type { StrategyListener } from "../../../client/listener/types.js";
 import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobState, TaskType } from "../../../types/index.js";
+import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./values.js";
 
 /**
  * Listener trigger when a job enters running state and the deployment is simple-extended
@@ -13,7 +14,7 @@ import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobState, Ta
  * - check if already scheduled - maybe create updateOrScheduleTask?
  */
 export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocument> = [
-  "update",
+  UPDATE_EVENT_TYPE,
   async ({ deployment: jobDeployment }, db) => {
     const deployment = await db
       .collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS)
@@ -42,7 +43,7 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
     }
   },
   {
-    fields: ["state"],
+    fields: [STATE_FIELD],
     filters: { state: { $in: [JobState.COMPLETED, JobState.STOPPED] } },
   }
 ];

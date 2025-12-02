@@ -2,10 +2,9 @@ import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { NosanaCollections } from "../../../definitions/collection.js";
 import type { StrategyListener } from "../../../client/listener/types.js";
 import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobState, TaskType } from "../../../types/index.js";
+import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./values.js";
 
 const TWENTY_MINUTES_IN_SECONDS = 1200;
-export const UPDATE_EVENT_TYPE = "update";
-export const STATE_FIELD = "state";
 
 export function getTimeTwentyMinutesBeforeTimeout(timeout: number) {
   return new Date(Date.now() + (timeout - TWENTY_MINUTES_IN_SECONDS) * 1000);

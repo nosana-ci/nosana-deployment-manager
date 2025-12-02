@@ -11,6 +11,9 @@ try {
   });
 
   await Promise.all(tasks.map(async ({ job }) => {
+    const { state } = await kit.jobs.get(address(job));
+    if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
+
     try {
       if (useNosanaApiKey) {
         const res = await kit.api!.jobs.stop(job);
@@ -22,7 +25,7 @@ try {
           });
         }
       } else {
-        const { state } = await kit.jobs.get(address(job));
+
 
         if (state === JobState.QUEUED) {
           const res = await kit.jobs.delist({ job: address(job) });

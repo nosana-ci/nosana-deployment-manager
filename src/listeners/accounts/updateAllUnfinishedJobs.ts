@@ -12,7 +12,11 @@ export async function updateAllUnfinishedJobs(kit: NosanaClient, db: Db) {
   const now = new Date();
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
 
-  const [jobs, runs] = await Promise.all([kit.jobs.all(), kit.jobs.runs()]);
+  const [jobs, runs] = await Promise.all([
+    kit.jobs.all(),
+    kit.jobs.runs()
+  ]);
+
   const runAccountsSet = new Set(runs.map(run => run.job.toString()));
 
   let batch = [];
@@ -32,6 +36,7 @@ export async function updateAllUnfinishedJobs(kit: NosanaClient, db: Db) {
       updateOne: {
         filter: { job: jobAddress },
         update: { $set: { state, updated_at: now } },
+        upsert: false
       }
     });
 

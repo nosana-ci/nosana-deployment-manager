@@ -25,14 +25,13 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
       });
 
     if (runningJobsCount > deployment.replicas) {
-      const excessJobs = runningJobsCount - deployment.replicas;
       scheduleTask(
         db,
         TaskType.STOP,
         deployment.id,
         deployment.status,
         new Date(),
-        { limit: excessJobs }
+        { limit: 1 }
       )
     } else {
       // No excess jobs to stop

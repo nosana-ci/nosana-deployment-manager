@@ -28,14 +28,13 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       });
 
     if (runningJobsCount < deployment.replicas) {
-      const jobsToSchedule = deployment.replicas - runningJobsCount;
       scheduleTask(
         db,
         TaskType.LIST,
         deployment.id,
         deployment.status,
         new Date(),
-        { limit: jobsToSchedule }
+        { limit: 1 }
       );
     }
   },

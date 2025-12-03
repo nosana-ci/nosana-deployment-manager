@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  getTimeTwentyMinutesBeforeTimeout,
-  infiniteJobRunningUpdate,
-} from './jobRunningUpdate.js';
-import { DeploymentStrategy, DeploymentStatus, JobState, TaskType } from '../../../types/index.js';
 import type { Db } from 'mongodb';
+
+import { infiniteJobRunningUpdate } from '../jobRunningUpdate.js';
+import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../../types/index.js';
 
 vi.mock('../../../tasks/scheduleTask.js', () => ({
   scheduleTask: vi.fn()
 }));
 
-import { scheduleTask } from '../../../tasks/scheduleTask.js';
-import {STATE_FIELD, UPDATE_EVENT_TYPE} from "./shared.js";
+import { scheduleTask } from '../../../../tasks/scheduleTask.js';
+import { OnEvent } from '../../../../client/listener/types.js';
+import { getTimeNthMinutesBeforeTimeout } from '../../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js';
 
 const mockNow = new Date('2025-12-02T16:00:00Z');
 const testJobDeployment = 'job-deployment-123';
@@ -26,6 +25,16 @@ describe('infiniteJobRunningUpdate', () => {
       countDocuments: mockCountDocuments
     })
   } as unknown as Db;
+
+  const mockJobDocument: JobsDocument = {
+    job: 'job-123',
+    deployment: testJobDeployment,
+    tx: 'tx-123',
+    state: JobState.RUNNING,
+    created_at: new Date(),
+    updated_at: new Date(),
+    revision: 0
+  }
 
   const baseDeployment = {
     id: testDeployment,
@@ -57,11 +66,11 @@ describe('infiniteJobRunningUpdate', () => {
 
   describe('listener configuration', () => {
     it('should be an update event', () => {
-      expect(eventType).toBe(UPDATE_EVENT_TYPE);
+      expect(eventType).toBe(OnEvent.UPDATE);
     });
 
     it('should listen to state field changes', () => {
-      expect(options?.fields).toEqual([STATE_FIELD]);
+      expect(options?.fields).toEqual([JobsDocumentFields.STATE]);
     });
 
     it('should filter for RUNNING state', () => {
@@ -73,7 +82,7 @@ describe('infiniteJobRunningUpdate', () => {
     it('should return early when deployment is not found', async () => {
       mockFindOne.mockResolvedValue(null);
 
-      await handler({ deployment: testJobDeployment }, mockDb);
+      await handler(mockJobDocument, mockDb);
 
       expect(mockFindOne).toHaveBeenCalledWith({ deployment: testJobDeployment });
       expect(mockCountDocuments).not.toHaveBeenCalled();
@@ -86,7 +95,7 @@ describe('infiniteJobRunningUpdate', () => {
         strategy: DeploymentStrategy.SIMPLE
       });
 
-      await handler({ deployment: testJobDeployment }, mockDb);
+      await handler(mockJobDocument, mockDb);
 
       expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -97,7 +106,7 @@ describe('infiniteJobRunningUpdate', () => {
         strategy: DeploymentStrategy['SIMPLE-EXTEND']
       });
 
-      await handler({ deployment: testJobDeployment }, mockDb);
+      await handler(mockJobDocument, mockDb);
 
       expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -109,7 +118,7 @@ describe('infiniteJobRunningUpdate', () => {
         schedule: '0 0 * * *'
       });
 
-      await handler({ deployment: testJobDeployment }, mockDb);
+      await handler(mockJobDocument, mockDb);
 
       expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -127,7 +136,7 @@ describe('infiniteJobRunningUpdate', () => {
       it('should schedule STOP task when running jobs exceed replicas by 1', async () => {
         mockCountDocuments.mockResolvedValue(4); // 4 jobs, 3 replicas
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
@@ -142,7 +151,7 @@ describe('infiniteJobRunningUpdate', () => {
       it('should schedule STOP task with correct excess count for multiple excess jobs', async () => {
         mockCountDocuments.mockResolvedValue(8); // 8 jobs, 3 replicas = 5 excess
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
@@ -157,7 +166,7 @@ describe('infiniteJobRunningUpdate', () => {
       it('should count only QUEUED and RUNNING jobs', async () => {
         mockCountDocuments.mockResolvedValue(4);
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         expect(mockCountDocuments).toHaveBeenCalledWith({
           deployment: testJobDeployment,
@@ -172,7 +181,7 @@ describe('infiniteJobRunningUpdate', () => {
       it('should schedule LIST task when running jobs equal replicas', async () => {
         mockCountDocuments.mockResolvedValue(3); // 3 jobs, 3 replicas
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
@@ -189,7 +198,7 @@ describe('infiniteJobRunningUpdate', () => {
       it('should schedule LIST task when running jobs are less than replicas', async () => {
         mockCountDocuments.mockResolvedValue(1); // 1 job, 3 replicas
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
@@ -228,7 +237,7 @@ describe('infiniteJobRunningUpdate', () => {
 
         await handler({ deployment: testJobDeployment }, mockDb);
 
-        const expectedTime = getTimeTwentyMinutesBeforeTimeout(timeout);
+        const expectedTime = getTimeNthMinutesBeforeTimeout(timeout);
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
           TaskType.LIST,
@@ -249,7 +258,7 @@ describe('infiniteJobRunningUpdate', () => {
 
         await handler({ deployment: testJobDeployment }, mockDb);
 
-        const expectedTime = getTimeTwentyMinutesBeforeTimeout(timeout);
+        const expectedTime = getTimeNthMinutesBeforeTimeout(timeout);
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
           TaskType.LIST,

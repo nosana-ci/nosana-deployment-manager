@@ -1,8 +1,8 @@
 import { updateScheduledTasks } from "../../../tasks/updateScheduledTasks.js";
 import { getNextTaskTime } from "../../../tasks/utils/index.js";
 
-import type { StrategyListener } from "../../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentStatus } from "../../../types/index.js";
+import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { type DeploymentDocument, DeploymentDocumentFields, DeploymentStatus } from "../../../types/index.js";
 
 
 /**
@@ -10,12 +10,12 @@ import { type DeploymentDocument, DeploymentStatus } from "../../../types/index.
  * It updates the scheduled tasks for the deployment based on the new schedule.
  */
 export const deploymentScheduleUpdate: StrategyListener<DeploymentDocument> = [
-  "update",
+  OnEvent.UPDATE,
   ({ id, schedule }, db) => {
     updateScheduledTasks(db, id, getNextTaskTime(schedule!));
   },
   {
-    fields: ["schedule"],
+    fields: [DeploymentDocumentFields.SCHEDULE],
     filters: {
       status: { $ne: DeploymentStatus.DRAFT },
     }

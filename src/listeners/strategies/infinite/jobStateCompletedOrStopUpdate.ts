@@ -1,8 +1,9 @@
+import { findDeployment } from "../utils/shared.js";
 import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { NosanaCollections } from "../../../definitions/collection.js";
-import type { StrategyListener } from "../../../client/listener/types.js";
-import { DeploymentStrategy, JobsDocument, JobState, TaskType } from "../../../types/index.js";
-import {findDeployment, STATE_FIELD, UPDATE_EVENT_TYPE} from "./shared.js";
+
+import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../../types/index.js";
 
 /**
  * Listener trigger when a job enters running state and the deployment is simple-extended
@@ -12,7 +13,7 @@ import {findDeployment, STATE_FIELD, UPDATE_EVENT_TYPE} from "./shared.js";
  * - check if already scheduled - maybe create updateOrScheduleTask?
  */
 export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocument> = [
-  UPDATE_EVENT_TYPE,
+  OnEvent.UPDATE,
   async ({ deployment: jobDeployment }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || deployment.strategy !== DeploymentStrategy.INFINITE) return;
@@ -39,7 +40,7 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
     }
   },
   {
-    fields: [STATE_FIELD],
+    fields: [JobsDocumentFields.STATE],
     filters: { state: { $in: [JobState.COMPLETED, JobState.STOPPED] } },
   }
 ];

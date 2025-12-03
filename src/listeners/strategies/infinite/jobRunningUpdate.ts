@@ -1,20 +1,16 @@
+import { findDeployment } from "../utils/shared.js";
 import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { NosanaCollections } from "../../../definitions/collection.js";
-import type { StrategyListener } from "../../../client/listener/types.js";
-import { DeploymentStrategy, JobsDocument, JobState, TaskType } from "../../../types/index.js";
-import {findDeployment, STATE_FIELD, UPDATE_EVENT_TYPE} from "./shared.js";
 
-const TWENTY_MINUTES_IN_SECONDS = 1200;
-
-export function getTimeTwentyMinutesBeforeTimeout(timeout: number) {
-  return new Date(Date.now() + (timeout - TWENTY_MINUTES_IN_SECONDS) * 1000);
-}
+import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../../types/index.js";
+import { getTimeNthMinutesBeforeTimeout } from "../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js";
 
 /**
  * 
  */
 export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
-  UPDATE_EVENT_TYPE,
+  OnEvent.UPDATE,
   async ({ deployment: jobDeployment }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || deployment.strategy !== DeploymentStrategy.INFINITE) return;
@@ -40,20 +36,22 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
       )
     } else {
       // No excess jobs to stop
-      // Schedule a new task for 20 minutes before timeout
-      let twentyMinutesBeforeTimeout = getTimeTwentyMinutesBeforeTimeout(deployment.timeout);
+      // Schedule a new task for Nth minutes before timeout
       scheduleTask(
         db,
         TaskType.LIST,
         deployment.id,
         deployment.status,
-        twentyMinutesBeforeTimeout
+        getTimeNthMinutesBeforeTimeout(deployment.timeout),
+        {
+          limit: 1,
+        }
       )
     }
 
   },
   {
-    fields: [STATE_FIELD],
+    fields: [JobsDocumentFields.STATE],
     filters: { state: { $eq: JobState.RUNNING } },
   }
 ];

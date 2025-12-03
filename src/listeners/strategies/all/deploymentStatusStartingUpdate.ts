@@ -1,8 +1,8 @@
 import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { getNextTaskTime } from "../../../tasks/utils/index.js";
 
-import type { StrategyListener } from "../../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentStrategy, TaskType } from "../../../types/index.js";
+import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { type DeploymentDocument, DeploymentDocumentFields, DeploymentStrategy, TaskType } from "../../../types/index.js";
 
 
 /**
@@ -12,7 +12,7 @@ import { type DeploymentDocument, DeploymentStrategy, TaskType } from "../../../
  * - For other strategies, it schedules the LIST task immediately.
  */
 export const deploymentStatusStartingUpdate: StrategyListener<DeploymentDocument> = [
-  "update",
+  OnEvent.UPDATE,
   ({ id, strategy, schedule, status }, db) => {
     scheduleTask(
       db,
@@ -25,7 +25,7 @@ export const deploymentStatusStartingUpdate: StrategyListener<DeploymentDocument
     )
   },
   {
-    fields: ["status"],
+    fields: [DeploymentDocumentFields.STATUS],
     filters: {
       status: { $eq: "STARTING" },
     },

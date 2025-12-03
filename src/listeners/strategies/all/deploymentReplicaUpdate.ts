@@ -1,8 +1,8 @@
 import { scheduleTask } from "../../../tasks/scheduleTask.js";
 
 
-import type { StrategyListener } from "../../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentStrategy, TaskType } from "../../../types/index.js";
+import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { type DeploymentDocument, DeploymentDocumentFields, DeploymentStrategy, TaskType } from "../../../types/index.js";
 
 /**
  * Listener that triggers when a deployment's replica count is updated.
@@ -14,11 +14,11 @@ import { type DeploymentDocument, DeploymentStrategy, TaskType } from "../../../
  * - Support replica downscaling
  */
 export const deploymentReplicaUpdate: StrategyListener<DeploymentDocument> = [
-  "update",
+  OnEvent.UPDATE,
   ({ id, status }, db) => {
     scheduleTask(db, TaskType.LIST, id, status)
   }, {
-    fields: ["replicas"],
+    fields: [DeploymentDocumentFields.REPLICAS],
     filters: {
       strategy: { $or: [DeploymentStrategy.SIMPLE, DeploymentStrategy["SIMPLE-EXTEND"]] }
     }

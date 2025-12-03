@@ -22,6 +22,7 @@ export type DeploymentsConfig = {
     password: string | undefined;
     use_tls: boolean;
   };
+  default_minutes_before_timeout: number;
 };
 
 export const DeploymentStatus = {
@@ -57,6 +58,24 @@ export type DeploymentDocument =
     strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
     schedule?: never;
   } & DeploymentDocumentBase);
+
+export const DeploymentDocumentFields: Record<Uppercase<keyof DeploymentDocument>, keyof DeploymentDocument> = {
+  ID: "id",
+  VAULT: "vault",
+  MARKET: "market",
+  OWNER: "owner",
+  NAME: "name",
+  STATUS: "status",
+  REPLICAS: "replicas",
+  TIMEOUT: "timeout",
+  ENDPOINTS: "endpoints",
+  ACTIVE_REVISION: "active_revision",
+  CONFIDENTIAL: "confidential",
+  CREATED_AT: "created_at",
+  UPDATED_AT: "updated_at",
+  STRATEGY: "strategy",
+  SCHEDULE: "schedule",
+}
 
 export type DeploymentCollection = Collection<DeploymentDocument>;
 
@@ -170,6 +189,16 @@ export const JobState = {
 } as const;
 
 export type JobState = (typeof JobState)[keyof typeof JobState];
+
+export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof JobsDocument> = {
+  JOB: "job",
+  DEPLOYMENT: "deployment",
+  REVISION: "revision",
+  TX: "tx",
+  STATE: "state",
+  CREATED_AT: "created_at",
+  UPDATED_AT: "updated_at",
+}
 
 export type JobsDocument = {
   job: string;

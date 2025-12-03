@@ -60,7 +60,6 @@ export const deploymentCreateHandler: RouteHandler<{
         res.status(500).send({ error: ErrorMessages.vaults.FAILED_TO_CREATE });
         return;
       }
-
     }
 
     const created_at = new Date();

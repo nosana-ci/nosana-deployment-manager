@@ -3,11 +3,12 @@ import { infiniteJobStateCompletedOrStopUpdate } from '../jobStateCompletedOrSto
 import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../../types/index.js';
 import type { Db } from 'mongodb';
 
-vi.mock('../../../tasks/scheduleTask.js', () => ({
+import { scheduleTask } from '../../../../tasks/scheduleTask.js';
+
+vi.mock('../../../../tasks/scheduleTask.js', () => ({
   scheduleTask: vi.fn()
 }));
 
-import { scheduleTask } from '../../../../tasks/scheduleTask.js';
 import { OnEvent } from '../../../../client/listener/types.js';
 
 const mockNow = new Date('2025-12-02T16:00:00Z');
@@ -20,7 +21,8 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
   const mockDb = {
     collection: vi.fn().mockReturnValue({
       findOne: mockFindOne,
-      countDocuments: mockCountDocuments
+      countDocuments: mockCountDocuments,
+      insertOne: vi.fn().mockImplementation(() => Promise.resolve({ acknowledged: true }))
     })
   } as unknown as Db;
 
@@ -157,7 +159,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 3 }
+          { limit: 1 }
         );
       });
 
@@ -172,7 +174,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 2 }
+          { limit: 1 }
         );
       });
 

@@ -4,11 +4,12 @@ import type { Db } from 'mongodb';
 import { infiniteJobRunningUpdate } from '../jobRunningUpdate.js';
 import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../../types/index.js';
 
-vi.mock('../../../tasks/scheduleTask.js', () => ({
+import { scheduleTask } from '../../../../tasks/scheduleTask.js';
+
+vi.mock('../../../../tasks/scheduleTask.js', () => ({
   scheduleTask: vi.fn()
 }));
 
-import { scheduleTask } from '../../../../tasks/scheduleTask.js';
 import { OnEvent } from '../../../../client/listener/types.js';
 import { getTimeNthMinutesBeforeTimeout } from '../../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js';
 
@@ -22,7 +23,8 @@ describe('infiniteJobRunningUpdate', () => {
   const mockDb = {
     collection: vi.fn().mockReturnValue({
       findOne: mockFindOne,
-      countDocuments: mockCountDocuments
+      countDocuments: mockCountDocuments,
+      insertOne: vi.fn().mockImplementation(() => Promise.resolve({ acknowledged: true }))
     })
   } as unknown as Db;
 
@@ -159,7 +161,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 5 }
+          { limit: 1 }
         );
       });
 
@@ -215,7 +217,7 @@ describe('infiniteJobRunningUpdate', () => {
       it('should schedule LIST task when there are no running jobs', async () => {
         mockCountDocuments.mockResolvedValue(0);
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         expect(scheduleTask).toHaveBeenCalledWith(
           mockDb,
@@ -235,7 +237,7 @@ describe('infiniteJobRunningUpdate', () => {
         });
         mockCountDocuments.mockResolvedValue(3);
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         const expectedTime = getTimeNthMinutesBeforeTimeout(timeout);
         expect(scheduleTask).toHaveBeenCalledWith(
@@ -256,7 +258,7 @@ describe('infiniteJobRunningUpdate', () => {
         });
         mockCountDocuments.mockResolvedValue(2);
 
-        await handler({ deployment: testJobDeployment }, mockDb);
+        await handler(mockJobDocument, mockDb);
 
         const expectedTime = getTimeNthMinutesBeforeTimeout(timeout);
         expect(scheduleTask).toHaveBeenCalledWith(

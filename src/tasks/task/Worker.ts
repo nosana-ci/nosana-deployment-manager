@@ -1,12 +1,12 @@
 import path from "path";
 import { fileURLToPath, URL } from "url";
 import { createKeyPairSignerFromBytes } from "@solana/signers";
-import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
 import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
+import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
 
 import { getConfig } from "../../config/index.js";
 import { decryptWithKey } from "../../vault/decrypt.js";
-import { covertStringToIterable } from "../utils/convertStringToIterable.js";
+import { convertStringToUint8Array } from "../utils/convertStringToUint8Array.js";
 
 import type { WorkerData } from "../../types/index.js";
 
@@ -57,7 +57,7 @@ export async function prepareWorker(workerData: WorkerData): Promise<
     config.network,
     {
       ...clientConfig,
-      wallet: useNosanaApiKey ? undefined : await createKeyPairSignerFromBytes(new Uint8Array(covertStringToIterable(key))),
+      wallet: useNosanaApiKey ? undefined : await createKeyPairSignerFromBytes(convertStringToUint8Array(key)),
     }
   );
 

@@ -1,11 +1,11 @@
-import solana from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 
+import { generateVault } from "../../../../../vault/generate.js";
 import { ConnectionSelector } from "../../../../../connection/index.js";
 import { getNosTokenAddressForAccount } from "../../../../../tokenManager/helpers/NOS/getNosTokenAddressForAccount.js";
 
-import { VaultCollection, VaultDocument } from "../../../../../types/index.js";
-import { CreateSharedVaultSuccess } from "../../../../schema/post/index.schema.js";
-import { encryptWithKey } from "../../../../../vault/encrypt.js";
+import type { VaultCollection, VaultDocument } from "../../../../../types/index.js";
+import type { CreateSharedVaultSuccess } from "../../../../schema/post/index.schema.js";
 
 type StoreVault = Promise<{
   acknowledged: boolean;
@@ -15,7 +15,7 @@ type StoreVault = Promise<{
 function createVaultDocument(vault: string, vault_key: string, owner: string, created_at: Date, nos_ata: string | undefined): VaultDocument {
   return {
     vault,
-    vault_key: encryptWithKey(vault_key),
+    vault_key,
     owner,
     sol: 0,
     nos: 0,
@@ -52,14 +52,13 @@ export async function createAndStoreSharedVault(
   created_at: Date
 ): StoreVault {
   const connection = ConnectionSelector();
-  const vault = solana.Keypair.generate();
+  const [publicKey, privateKey] = await generateVault();
 
   const { account } = await getNosTokenAddressForAccount(
-    vault.publicKey,
+    new PublicKey(publicKey),
     connection
   );
 
-  const result = await storeVaultDocument(vaults, vault.publicKey.toString(), vault.secretKey.toString(), owner, created_at, account.toString());
-
+  const result = await storeVaultDocument(vaults, publicKey, privateKey, owner, created_at, account.toString());
   return result;
 }

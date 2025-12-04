@@ -1,5 +1,6 @@
 import type { Db } from "mongodb";
 import { isAddress } from "@solana/addresses";
+
 import { decryptWithKey, encryptWithKey } from "../../../vault/index.js";
 import { convertStringToUint8Array } from "../../../tasks/utils/convertStringToUint8Array.js";
 

@@ -1,5 +1,4 @@
 import { generateVault } from "../../../../../vault/generate.js";
-
 import type { VaultCollection, VaultDocument } from "../../../../../types/index.js";
 import type { CreateSharedVaultSuccess } from "../../../../schema/post/index.schema.js";
 

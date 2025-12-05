@@ -3,9 +3,10 @@ import { NosanaApiListJobResponse } from "@nosana/kit";
 import { parentPort, workerData } from "worker_threads";
 
 import { prepareWorker, workerErrorFormatter } from "../../../worker/Worker.js";
+import type { WorkerData } from "../../../types/index.js";
 
 try {
-  const { kit, useNosanaApiKey, task } = await prepareWorker(workerData);
+  const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
 
   const { active_revision, confidential, market, replicas, timeout, strategy } = task.deployment;
 

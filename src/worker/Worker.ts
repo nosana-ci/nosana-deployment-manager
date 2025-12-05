@@ -3,9 +3,9 @@ import { fileURLToPath, URL } from "url";
 import { createKeyPairSignerFromBytes } from "@solana/signers";
 import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
 import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
-import {getConfig} from "../config/index.js";
-import {decryptWithKey} from "../vault/index.js";
-import {convertStringToUint8Array} from "../tasks/utils/convertStringToUint8Array.js";
+import { getConfig } from "../config/index.js";
+import { decryptWithKey } from "../vault/decrypt.js";
+import { convertStringToUint8Array } from "../tasks/utils/convertStringToUint8Array.js";
 
 export type VaultWorkerData<T = {}> = { vault: string } & T;
 

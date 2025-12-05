@@ -106,7 +106,6 @@ export type VaultDocument = {
   owner: string;
   sol: number;
   nos: number;
-  nos_ata: string;
   created_at: Date;
   updated_at: Date;
 };

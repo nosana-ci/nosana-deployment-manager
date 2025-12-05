@@ -1,13 +1,15 @@
 import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
 
-import { prepareWorker, workerErrorFormatter } from "../Worker.js";
+import { prepareWorker, workerErrorFormatter } from "../../../worker/Worker.js";
+
+import type { WorkerData } from "../../../types/index.js";
 
 const {
   kit,
   useNosanaApiKey,
   task: { deployment: { timeout }, jobs }
-} = await prepareWorker(workerData);
+} = await prepareWorker<WorkerData>(workerData);
 
 try {
   await Promise.all(jobs.map(async ({ job }) => {

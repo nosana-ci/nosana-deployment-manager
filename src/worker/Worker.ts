@@ -4,14 +4,16 @@ import { createKeyPairSignerFromBytes } from "@solana/signers";
 import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
 import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
 
-import { getConfig } from "../../config/index.js";
-import { decryptWithKey } from "../../vault/decrypt.js";
-import { convertStringToUint8Array } from "../utils/convertStringToUint8Array.js";
+import { getConfig } from "../config/index.js";
+import { decryptWithKey } from "../vault/decrypt.js";
+import { convertStringToUint8Array } from "../tasks/utils/convertStringToUint8Array.js";
 
-import type { WorkerData } from "../../types/index.js";
+export type VaultWorkerData<T = {}> = { vault: string } & T;
 
-export class Worker extends NodeWorker {
-  constructor(fileName: string | URL, options: WorkerOptions) {
+type VaultWorkerOptions<T extends VaultWorkerData> = WorkerOptions & { workerData: T };
+
+export class VaultWorker<T extends VaultWorkerData = VaultWorkerData> extends NodeWorker {
+  constructor(fileName: string | URL, options: VaultWorkerOptions<T>) {
     if (typeof fileName === "string") {
       const __dirname = path.dirname(fileURLToPath(import.meta.url));
       fileName = path.resolve(__dirname, fileName);
@@ -35,8 +37,8 @@ export function workerErrorFormatter(error: unknown): string {
       : String(error);
 }
 
-export async function prepareWorker(workerData: WorkerData): Promise<
-  WorkerData & { kit: NosanaClient, useNosanaApiKey: boolean }
+export async function prepareWorker<T extends VaultWorkerData = VaultWorkerData>(workerData: T): Promise<
+  T & { kit: NosanaClient, useNosanaApiKey: boolean }
 > {
   try {
     const { register } = await import("ts-node");

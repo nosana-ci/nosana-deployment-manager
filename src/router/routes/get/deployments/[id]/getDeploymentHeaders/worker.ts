@@ -1,4 +1,4 @@
-import { createNosanaClient } from "@nosana/kit";
+import { createNosanaClient, NosanaNetwork } from "@nosana/kit";
 import { parentPort, workerData } from "worker_threads";
 import { createKeyPairSignerFromBytes } from "@solana/signers";
 
@@ -14,7 +14,7 @@ try {
 
 type WorkerData = {
   includeTime: boolean;
-  config: { network: "mainnet" | "devnet"; rpc_network: string };
+  config: { network: NosanaNetwork; rpc_network: string };
   vault: string;
 };
 

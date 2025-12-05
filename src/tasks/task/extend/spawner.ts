@@ -7,7 +7,7 @@ import {
 } from "./events/index.js";
 import { getConfig } from "../../../config/index.js";
 
-import { Worker } from "../Worker.js";
+import { VaultWorker } from "../../../worker/Worker.js";
 
 import {
   DeploymentDocument,
@@ -17,13 +17,14 @@ import {
   OutstandingTasksDocument,
   VaultDocument,
   TaskFinishedReason,
+  WorkerData,
 } from "../../../types/index.js";
 
 export function spawnExtendTask(
   db: Db,
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
-): Worker {
+): VaultWorker<WorkerData> {
   const config = getConfig();
   const events = db.collection<EventDocument>("events");
   const deployments = db.collection<DeploymentDocument>("documents");
@@ -31,7 +32,7 @@ export function spawnExtendTask(
   let successCount = 0;
   let deploymentStatus: DeploymentStatus | undefined = undefined;
 
-  const worker = new Worker("./extend/worker.js", {
+  const worker = new VaultWorker("./tasks/task/extend/worker.js", {
     workerData: {
       task,
       config,

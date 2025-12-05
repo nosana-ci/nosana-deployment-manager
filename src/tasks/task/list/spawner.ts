@@ -2,7 +2,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Db, Collection } from "mongodb";
 
-import { Worker } from "../Worker.js";
+import { VaultWorker } from "../../../worker/Worker.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
 
 import {
@@ -13,6 +13,7 @@ import {
   OutstandingTasksDocument,
   TaskDocument,
   TaskFinishedReason,
+  WorkerData,
   WorkerEventMessage,
 } from "../../../types/index.js";
 import { getConfig } from "../../../config/index.js";
@@ -36,7 +37,7 @@ export function spawnListTask(
   db: Db,
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
-): Worker {
+): VaultWorker<WorkerData> {
   const collections = {
     documents: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),
@@ -48,7 +49,7 @@ export function spawnListTask(
   let deploymentStatus: DeploymentStatus;
   const setDeploymentErrorStatus = (status: DeploymentStatus) => (deploymentStatus = status);
 
-  const worker = new Worker("./list/worker.js", {
+  const worker = new VaultWorker("./tasks/task/list/worker.js", {
     workerData: {
       task,
       vault: task.deployment.vault.vault_key,

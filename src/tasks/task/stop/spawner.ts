@@ -2,7 +2,7 @@ import { Db } from "mongodb";
 
 import { getConfig } from "../../../config/index.js";
 
-import { Worker } from "../Worker.js";
+import { VaultWorker } from "../../../worker/Worker.js";
 import { onStopConfirmed, onStopError, onStopExit } from "./events/index.js";
 
 import {
@@ -15,13 +15,14 @@ import {
   VaultDocument,
   JobsCollection,
   TaskFinishedReason,
+  WorkerData,
 } from "../../../types/index.js";
 
 export function spawnStopTask(
   db: Db,
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
-): Worker {
+): VaultWorker<WorkerData> {
   const config = getConfig();
   const deploymentsCollection = db.collection<DeploymentDocument>("deployments");
   const jobsCollection = db.collection<JobsCollection>("jobs");
@@ -39,7 +40,7 @@ export function spawnStopTask(
     ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
   });
 
-  const worker = new Worker("./stop/worker.js", {
+  const worker = new VaultWorker("./tasks/task/stop/worker.js", {
     workerData: {
       task,
       config,

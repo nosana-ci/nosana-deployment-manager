@@ -104,7 +104,7 @@ export type VaultDocument = {
   vault: string;
   vault_key: string;
   owner: string;
-  creategd_at: Date;
+  created_at: Date;
 };
 
 export type VaultCollection = Collection<VaultDocument>;

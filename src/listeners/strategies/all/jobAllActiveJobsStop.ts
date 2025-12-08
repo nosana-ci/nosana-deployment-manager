@@ -4,7 +4,7 @@ import { NosanaCollections } from "../../../definitions/collection.js";
 import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
 import { isSimpleOrSimpleExtendedDeployment } from "../utils/isSimpleOrSimpleExtendedDeployment.js";
 
-import { DeploymentDocument, type JobsDocument, JobsDocumentFields, JobState } from "../../../types/index.js";
+import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFields, JobState } from "../../../types/index.js";
 
 /**
  * 
@@ -26,8 +26,11 @@ export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
 
     if (runningJobsCount === 0) {
       const { acknowledged } = await db.collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS).updateOne(
-        { id: jobDeployment },
-        { $set: { status: 'STOPPED' } }
+        {
+          id: jobDeployment,
+          status: { $nin: [DeploymentStatus.ERROR, DeploymentStatus.INSUFFICIENT_FUNDS] }
+        },
+        { $set: { status: DeploymentStatus.STOPPED } }
       );
 
       if (!acknowledged) {

@@ -1,4 +1,3 @@
-
 import type { Db } from "mongodb";
 
 import { getKit } from "../../kit/index.js";
@@ -14,32 +13,25 @@ export async function startJobAccountsListeners(db: Db) {
 
   updateAllUnfinishedJobs(kit, db).catch(console.error);
 
-  const stop = await kit.jobs.monitor({
-    // Handle job state changes for completed and stopped jobs
-    onJobAccount: ({ address, state }) => {
-      if (state < 2) return;
-      jobsCollection.updateOne(
-        { job: address.toString() },
-        { $set: { state: convertJobState(state), updated_at: new Date() } },
-        { upsert: false }
-      );
-    },
-    // Handle transition to RUNNING state when a run account is created
-    onRunAccount: ({ address }) => {
-      jobsCollection.updateOne(
-        {
-          job: address.toString(), state: {
-            $nin: [JobState.COMPLETED, JobState.STOPPED]
-          }
-        },
-        { $set: { state: JobState.RUNNING, updated_at: new Date() } },
-        { upsert: false }
-      );
-    }
-  });
+  const [stream, stop] = await kit.jobs.monitor();
 
-  process.on('SIGINT', async () => {
-    await stop();
+  process.on('SIGINT', () => {
+    stop();
     process.exit();
   });
+
+  for await (const { type, data } of stream) {
+    if (type !== "job" || data.state === 0) continue;
+
+    const { address, state } = data;
+
+    await jobsCollection.updateOne(
+      {
+        job: address.toString(),
+        state: { $nin: [JobState.COMPLETED, JobState.STOPPED] } // required to ensure states don't regress
+      },
+      { $set: { state: convertJobState(state) } },
+      { upsert: false }
+    );
+  }
 }

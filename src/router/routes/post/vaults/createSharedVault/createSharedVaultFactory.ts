@@ -13,10 +13,7 @@ function createVaultDocument(vault: string, vault_key: string, owner: string, cr
     vault,
     vault_key,
     owner,
-    sol: 0,
-    nos: 0,
-    created_at,
-    updated_at: created_at,
+    created_at
   };
 }
 

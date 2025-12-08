@@ -104,10 +104,7 @@ export type VaultDocument = {
   vault: string;
   vault_key: string;
   owner: string;
-  sol: number;
-  nos: number;
   created_at: Date;
-  updated_at: Date;
 };
 
 export type VaultCollection = Collection<VaultDocument>;

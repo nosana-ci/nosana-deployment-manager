@@ -1,4 +1,4 @@
-import { Db } from "mongodb";
+import type { Db } from "mongodb";
 import { isAddress } from "@solana/addresses";
 
 import { decryptWithKey, encryptWithKey } from "../../../vault/index.js";

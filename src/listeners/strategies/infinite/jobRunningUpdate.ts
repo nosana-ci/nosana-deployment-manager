@@ -3,8 +3,10 @@ import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { NosanaCollections } from "../../../definitions/collection.js";
 
 import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
-import { DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../../types/index.js";
+import { isActiveInfiniteDeployment } from "./utils/isActiveInfiniteDeployment.js";
 import { getTimeNthMinutesBeforeTimeout } from "../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js";
+
+import { type JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../../types/index.js";
 
 /**
  * 
@@ -13,7 +15,7 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
   async ({ deployment: jobDeployment }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
-    if (!deployment || deployment.strategy !== DeploymentStrategy.INFINITE) return;
+    if (!deployment || !isActiveInfiniteDeployment(deployment)) return;
 
     const runningJobsCount = await db
       .collection<JobsDocument>(NosanaCollections.JOBS)

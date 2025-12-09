@@ -9,13 +9,10 @@ import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobsDocument
 /**
  * Listener trigger when a job enters running state and the deployment is simple-extended
  * Schedules the first extend task with an initial buffer
- * 
- * TODO:
- * - check if already scheduled - maybe create updateOrScheduleTask?
  */
 export const simpleExtendedJobRunningUpdate: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
-  async ({ deployment: jobDeployment }, db) => {
+  async ({ deployment: jobDeployment, job }, db) => {
     const deployment = await db.collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS).findOne({ deployment: jobDeployment });
     if (!deployment || deployment.strategy !== DeploymentStrategy["SIMPLE-EXTEND"]) return;
 
@@ -24,7 +21,8 @@ export const simpleExtendedJobRunningUpdate: StrategyListener<JobsDocument> = [
       TaskType.EXTEND,
       deployment.id,
       deployment.status,
-      getNextExtendTime(deployment.timeout)
+      getNextExtendTime(deployment.timeout),
+      { job }
     );
   },
   {

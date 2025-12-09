@@ -12,6 +12,7 @@ import {
 type ScheduleTaskOptions = Partial<{
   active_revision?: number;
   limit?: number;
+  job?: string;
 }>
 
 export async function scheduleTask(
@@ -23,6 +24,7 @@ export async function scheduleTask(
   {
     active_revision,
     limit,
+    job,
   }: ScheduleTaskOptions = {}
 ) {
   const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
@@ -35,6 +37,7 @@ export async function scheduleTask(
     tx: undefined,
     active_revision,
     limit,
+    job,
     created_at: new Date(),
   });
 

@@ -1,20 +1,13 @@
-import { Db } from "mongodb";
-
-import { scheduleTask } from "../../../scheduleTask.js";
-
-import {
+import type {
   DeploymentStatus,
-  TaskType,
   DeploymentCollection,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
-import { getNextExtendTime } from "../../../utils/getNextExtendTime.js";
 
 export async function onExtendExit(
   deploymentStatus: DeploymentStatus | undefined,
   deployments: DeploymentCollection,
-  { deploymentId, deployment: { timeout, status } }: OutstandingTasksDocument,
-  db: Db
+  { deploymentId }: OutstandingTasksDocument,
 ) {
   if (deploymentStatus) {
     deployments.updateOne(
@@ -29,14 +22,5 @@ export async function onExtendExit(
         },
       }
     );
-    return;
   }
-
-  scheduleTask(
-    db,
-    TaskType.EXTEND,
-    deploymentId,
-    status,
-    getNextExtendTime(timeout, false)
-  );
 }

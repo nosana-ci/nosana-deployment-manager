@@ -44,7 +44,7 @@ export function spawnExtendTask(
     switch (event) {
       case "CONFIRMED":
         successCount += 1;
-        onExtendConfirmed(tx, events, task);
+        onExtendConfirmed(tx, events, task, db);
         break;
       case "ERROR":
         onExtendError(
@@ -58,7 +58,7 @@ export function spawnExtendTask(
   });
 
   worker.on("exit", async () => {
-    await onExtendExit(deploymentStatus, deployments, task, db);
+    await onExtendExit(deploymentStatus, deployments, task);
 
     complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
   });

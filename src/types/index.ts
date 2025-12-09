@@ -184,6 +184,7 @@ export type TaskDocument = {
   tx: string | undefined | null;
   active_revision?: number;
   limit?: number;
+  job?: string;
   created_at: Date;
 };
 

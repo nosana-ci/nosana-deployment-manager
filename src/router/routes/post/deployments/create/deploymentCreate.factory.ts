@@ -100,6 +100,7 @@ export async function createDeployment(
     schedule,
     confidential,
     timeout,
+    rotation_time
   }: DeploymentCreateBody,
   vault: string,
   owner: string,
@@ -130,11 +131,26 @@ export async function createDeployment(
   );
 
   if (strategy === DeploymentStrategy.SCHEDULED) {
+    if (!schedule) {
+      throw new Error("Schedule must be provided for scheduled deployments.");
+    }
     return {
       deployment: {
         ...baseFields,
         strategy,
         schedule,
+        endpoints
+      }, revision
+    };
+  }
+
+  if (strategy === DeploymentStrategy.INFINITE) {
+    return {
+      deployment: {
+        ...baseFields,
+        strategy,
+        timeout,
+        rotation_time: rotation_time ?? timeout - getConfig().default_seconds_before_timeout,
         endpoints
       }, revision
     };

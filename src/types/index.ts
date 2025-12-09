@@ -22,7 +22,7 @@ export type DeploymentsConfig = {
     password: string | undefined;
     use_tls: boolean;
   };
-  default_minutes_before_timeout: number;
+  default_seconds_before_timeout: number;
 };
 
 export const DeploymentStatus = {
@@ -53,10 +53,17 @@ export type DeploymentDocument =
   | ({
     strategy: "SCHEDULED";
     schedule: string;
+    rotation_time?: never;
+  } & DeploymentDocumentBase)
+  | ({
+    strategy: "INFINITE";
+    rotation_time: number;
+    schedule?: never;
   } & DeploymentDocumentBase)
   | ({
     strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
     schedule?: never;
+    rotation_time?: never;
   } & DeploymentDocumentBase);
 
 export const DeploymentDocumentFields: Record<Uppercase<keyof DeploymentDocument>, keyof DeploymentDocument> = {
@@ -75,6 +82,7 @@ export const DeploymentDocumentFields: Record<Uppercase<keyof DeploymentDocument
   UPDATED_AT: "updated_at",
   STRATEGY: "strategy",
   SCHEDULE: "schedule",
+  ROTATION_TIME: "rotation_time",
 }
 
 export type DeploymentCollection = Collection<DeploymentDocument>;

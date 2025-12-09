@@ -43,7 +43,7 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
         TaskType.LIST,
         deployment.id,
         deployment.status,
-        getTimeNthMinutesBeforeTimeout(deployment.timeout),
+        getTimeNthMinutesBeforeTimeout(deployment.timeout, deployment.rotation_time),
         {
           limit: 1,
         }

@@ -27,9 +27,9 @@ const commonConfig: Omit<
     password: process.env.DOCDB_PASSWORD,
     use_tls: fs.existsSync(path.join(__dirname, "../../../global-bundle.pem")),
   },
-  default_minutes_before_timeout: process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT
-    ? parseInt(process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT)
-    : 20,
+  default_seconds_before_timeout: process.env.DEFAULT_SECONDS_BEFORE_TIMEOUT
+    ? parseInt(process.env.DEFAULT_SECONDS_BEFORE_TIMEOUT)
+    : 20 * 60,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {

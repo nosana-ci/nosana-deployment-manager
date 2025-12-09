@@ -16,6 +16,7 @@ import type {
   DeploymentCreateSuccess,
 } from "../../../../schema/post/index.schema.js";
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
+import { DeploymentStrategy } from "@nosana/kit";
 
 export const deploymentCreateHandler: RouteHandler<{
   Headers: HeadersSchema;
@@ -33,13 +34,24 @@ export const deploymentCreateHandler: RouteHandler<{
       return;
     }
 
+    if (req.body.strategy === DeploymentStrategy.INFINITE) {
+      if (req.body.timeout < 3600) {
+        res.status(400).send({ error: ErrorMessages.deployments.INVALID_TIMEOUT });
+        return;
+      }
+      if (req.body.rotation_time && req.body.rotation_time >= req.body.timeout - 600) {
+        res.status(400).send({ error: ErrorMessages.deployments.INVALID_ROTATION_TIME });
+        return;
+      }
+    }
+
     let vault = req.body.vault
 
     if (!isNosanaApiRequest) {
       if (vault) {
-        const vaultfound = await db.vaults.findOne({ owner: userId, vault });
+        const existingVault = await db.vaults.findOne({ owner: userId, vault });
 
-        if (!vaultfound) {
+        if (!existingVault) {
           res.status(404).send({ error: ErrorMessages.vaults.NOT_FOUND });
           return;
         }

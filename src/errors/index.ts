@@ -26,9 +26,11 @@ export const ErrorMessages = {
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
-    INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
     FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",
     FAILED_TO_CREATE_NEW_REVISION: "Failed to create a new deployment revision.",
+    INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
+    INVALID_ROTATION_TIME: "Rotation time must be at least 10 minutes less than timeout.",
+    INVALID_TIMEOUT: "Timeout for infinite deployments must be at least 1 hour."
   },
   job: {
     NOT_FOUND: "Job not found.",

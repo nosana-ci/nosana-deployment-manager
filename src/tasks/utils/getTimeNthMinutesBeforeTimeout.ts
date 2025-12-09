@@ -1,5 +1,5 @@
 import { getConfig } from "../../config/index.js";
 
-export function getTimeNthMinutesBeforeTimeout(timeout: number, minutes: number = getConfig().default_minutes_before_timeout) {
-  return new Date(Date.now() + (timeout - minutes * 60) * 1000);
+export function getTimeNthMinutesBeforeTimeout(timeout: number, seconds: number = getConfig().default_seconds_before_timeout) {
+  return new Date(Date.now() + (timeout - seconds) * 1000);
 }

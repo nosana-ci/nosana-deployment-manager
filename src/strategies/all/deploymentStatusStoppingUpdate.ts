@@ -1,7 +1,7 @@
-import { scheduleTask } from "../../../tasks/scheduleTask.js";
+import { scheduleTask } from "../../tasks/scheduleTask.js";
 
-import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentDocumentFields, DeploymentStatus, TaskType } from "../../../types/index.js";
+import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
+import { type DeploymentDocument, DeploymentDocumentFields, DeploymentStatus, TaskType } from "../../types/index.js";
 
 /**
  * Listener to handle deployment status updates to STOPPING.

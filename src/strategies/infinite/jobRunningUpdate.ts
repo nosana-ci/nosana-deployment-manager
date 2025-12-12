@@ -1,12 +1,12 @@
 import { findDeployment } from "../utils/shared.js";
-import { scheduleTask } from "../../../tasks/scheduleTask.js";
-import { NosanaCollections } from "../../../definitions/collection.js";
+import { scheduleTask } from "../../tasks/scheduleTask.js";
+import { NosanaCollections } from "../../definitions/collection.js";
 
-import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
 import { isActiveInfiniteDeployment } from "./utils/isActiveInfiniteDeployment.js";
-import { getTimeNthMinutesBeforeTimeout } from "../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js";
+import { getTimeNthMinutesBeforeTimeout } from "../../tasks/utils/getTimeNthMinutesBeforeTimeout.js";
 
-import { type JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../../types/index.js";
+import { type JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../types/index.js";
 
 /**
  * 

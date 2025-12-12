@@ -1,10 +1,10 @@
 import { findDeployment } from "../utils/shared.js";
-import { NosanaCollections } from "../../../definitions/collection.js";
+import { NosanaCollections } from "../../definitions/collection.js";
 
-import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
+import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
 import { isSimpleOrSimpleExtendedDeployment } from "../utils/isSimpleOrSimpleExtendedDeployment.js";
 
-import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFields, JobState } from "../../../types/index.js";
+import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFields, JobState } from "../../types/index.js";
 
 /**
  * 

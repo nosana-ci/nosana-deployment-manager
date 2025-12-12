@@ -8,8 +8,8 @@ import { infiniteJobRunningUpdate, infiniteJobStateCompletedOrStopUpdate } from 
 import { deploymentScheduleUpdate } from "./scheduled/index.js";
 import { simpleExtendedJobRunningUpdate } from "./simple-extended/index.js";
 
-import type { StrategyListener } from "../../client/listener/types.js";
-import type { DeploymentDocument, JobsDocument } from "../../types/index.js";
+import type { StrategyListener } from "../client/listener/types.js";
+import type { DeploymentDocument, JobsDocument } from "../types/index.js";
 
 interface StrategyListeners {
   deployments: StrategyListener<DeploymentDocument>[];

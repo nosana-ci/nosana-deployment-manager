@@ -4,7 +4,7 @@ import {
   createCollectionListener,
   CollectionListener,
 } from "../../client/listener/index.js";
-import { strategyListeners } from "../strategies/index.js";
+import { strategyListeners } from "../../strategies/index.js";
 import { NosanaCollections } from "../../definitions/collection.js";
 
 import type { JobsDocument } from "../../types/index.js";

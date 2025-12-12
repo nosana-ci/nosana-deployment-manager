@@ -13,8 +13,8 @@ initStats();
 const kit = initKit();
 
 const confidentialIpfsPin = await kit.ipfs.pin(createConfidentialJobDefinition());
-
 setConfig("confidential_ipfs_pin", confidentialIpfsPin);
+
 
 const dbClient = await DeploymentsConnection();
 

@@ -1,10 +1,10 @@
-import { scheduleTask } from "../../../tasks/scheduleTask.js";
-import { NosanaCollections } from "../../../definitions/collection.js";
-import { getNextExtendTime } from "../../../tasks/utils/getNextExtendTime.js";
+import { scheduleTask } from "../../tasks/scheduleTask.js";
+import { NosanaCollections } from "../../definitions/collection.js";
+import { getNextExtendTime } from "../../tasks/utils/getNextExtendTime.js";
 
 
-import { OnEvent, type StrategyListener } from "../../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../../types/index.js";
+import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
+import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../types/index.js";
 
 /**
  * Listener trigger when a job enters running state and the deployment is simple-extended

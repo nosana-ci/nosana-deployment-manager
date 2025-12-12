@@ -7,9 +7,6 @@ export const createConfidentialJobDefinition = (): JobDefinition => {
   return {
     "version": "0.1",
     "type": "container",
-    "meta": {
-      "trigger": "cli"
-    },
     "logistics": {
       "send": {
         "type": "api",

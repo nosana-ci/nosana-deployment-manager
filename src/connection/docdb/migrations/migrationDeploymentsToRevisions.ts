@@ -11,7 +11,7 @@ type OldDeploymentDocument = Omit<DeploymentDocument, "active_revision"> & {
 };
 
 export default async function migrateDeploymentsToEndpoints(db: Db) {
-  const kit = await getKit();
+  const kit = getKit();
   const deployments = await db.collection<OldDeploymentDocument>("deployments").find({
     active_revision: { $exists: false }, ipfs_definition_hash: { $exists: true }
   }).toArray();

@@ -48,6 +48,7 @@ export const ErrorMessages = {
     FAILED_TO_ARCHIVE: "Failed to archive vault.",
     FAILED_TO_FIND_KEY: "Could not find vault.",
     FAILED_TO_UPDATE_BALANCE: "Could not update vaults balance.",
+    WITHDRAW_NO_FUNDS: "Vault has no funds to withdraw.",
     WITHDRAW_NOSANA_API_KEY_VAULT: "Cannot withdraw from a vault containing a Nosana API key.",
   },
 };

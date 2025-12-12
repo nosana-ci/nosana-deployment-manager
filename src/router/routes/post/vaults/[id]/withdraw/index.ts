@@ -1,7 +1,8 @@
 import type { RouteHandler } from "fastify";
 
-import { ErrorMessages } from "../../../../../../errors/index.js";
 import { VaultWorker } from "../../../../../../worker/Worker.js";
+import { ErrorMessages } from "../../../../../../errors/index.js";
+import { decryptWithKey } from "../../../../../../vault/decrypt.js";
 
 import type { HeadersSchema } from "../../../../../schema/index.schema.js";
 import type {
@@ -9,7 +10,6 @@ import type {
   VaultWithdrawError,
   VaultWithdrawSuccess,
 } from "../../../../../schema/post/vaults/[id]/withdraw.schema.js";
-import { decryptWithKey } from "../../../../../../vault/decrypt.js";
 
 export const vaultWithdrawHandler: RouteHandler<{
   Params: { vault: string };
@@ -27,33 +27,26 @@ export const vaultWithdrawHandler: RouteHandler<{
     return;
   }
 
-  new VaultWorker("./router/routes/post/vaults/[id]/withdraw/worker.js", {
+  const worker = new VaultWorker("./router/routes/post/vaults/[id]/withdraw/worker.js", {
     workerData: {
       vault: vault.vault_key,
     }
   })
 
-  try {
-    // const tokenManager = new TokenManager(
-    //   vault.vault,
-    //   vault.owner,
-    //   "DESTINATION"
-    // );
+  worker.on("message", ({ event, data }: { event: string; data: string | null }) => {
+    if (event === "SUCCESS") {
+      if (data === null) {
+        res.status(500).send({ error: ErrorMessages.vaults.WITHDRAW_NO_FUNDS });
+      }
 
-    // await tokenManager.addSOL(req.body.SOL);
-    // await tokenManager.addNOS(req.body.NOS);
-
-    // const tx = await tokenManager.signAndSerialize(
-    //   Keypair.fromSecretKey(
-    //     new Uint8Array(covertStringToIterable(key))
-    //   )
-    // );
-
-    // res.status(200).send({ transaction: tx });
-  } catch (error) {
-    res.log.error(error);
-    res
-      .status(500)
-      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
-  }
+      res.status(200).send({ transaction: data! });
+      return;
+    }
+    if (event === "ERROR") {
+      res
+        .status(500)
+        .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
+      return;
+    }
+  })
 };

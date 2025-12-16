@@ -1,10 +1,9 @@
 import { scheduleTask } from "../../tasks/scheduleTask.js";
-import { NosanaCollections } from "../../definitions/collection.js";
 import { getNextExtendTime } from "../../tasks/utils/getNextExtendTime.js";
 
-
+import { findDeployment } from "../utils/shared.js";
 import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
-import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../types/index.js";
+import { DeploymentStrategy, JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../types/index.js";
 
 /**
  * Listener trigger when a job enters running state and the deployment is simple-extended
@@ -13,9 +12,8 @@ import { type DeploymentDocument, DeploymentStrategy, JobsDocument, JobsDocument
 export const simpleExtendedJobRunningUpdate: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
   async ({ deployment: jobDeployment, job }, db) => {
-    const deployment = await db.collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS).findOne({ deployment: jobDeployment });
+    const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || deployment.strategy !== DeploymentStrategy["SIMPLE-EXTEND"]) return;
-
     scheduleTask(
       db,
       TaskType.EXTEND,

@@ -7,6 +7,7 @@ import { TaskType } from "../../../../types/index.js";
 import type { EventsCollection, OutstandingTasksDocument } from "../../../../types/index.js";
 
 export function onExtendConfirmed(
+  job: string,
   tx: string,
   events: EventsCollection,
   { deploymentId, deployment: { timeout, status } }: OutstandingTasksDocument,
@@ -25,6 +26,9 @@ export function onExtendConfirmed(
     TaskType.EXTEND,
     deploymentId,
     status,
-    getNextExtendTime(timeout, false)
+    getNextExtendTime(timeout, false),
+    {
+      job
+    }
   );
 }

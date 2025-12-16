@@ -48,7 +48,7 @@ export function spawnListTask(
   let deploymentStatus: DeploymentStatus;
   const setDeploymentErrorStatus = (status: DeploymentStatus) => (deploymentStatus = status);
 
-  const worker = new VaultWorker("./tasks/task/list/worker.js", {
+  const worker = new VaultWorker("../tasks/task/list/worker.js", {
     workerData: {
       task,
       vault: task.deployment.vault.vault_key,

@@ -4,6 +4,7 @@ import {
   DeploymentDocument,
   DeploymentStatus,
   JobsCollection,
+  JobState,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
 
@@ -31,7 +32,7 @@ export function onStopExit(
     },
     {
       $set: {
-        status: "COMPLETED",
+        state: JobState.STOPPED,
       },
     }
   );

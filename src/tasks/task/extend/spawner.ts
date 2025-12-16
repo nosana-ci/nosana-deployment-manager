@@ -32,7 +32,7 @@ export function spawnExtendTask(
   let successCount = 0;
   let deploymentStatus: DeploymentStatus | undefined = undefined;
 
-  const worker = new VaultWorker("./tasks/task/extend/worker.js", {
+  const worker = new VaultWorker("../tasks/task/extend/worker.js", {
     workerData: {
       task,
       config,
@@ -40,11 +40,11 @@ export function spawnExtendTask(
     },
   });
 
-  worker.on("message", ({ event, error, tx }: WorkerEventMessage) => {
+  worker.on("message", ({ event, error, tx, job }: WorkerEventMessage) => {
     switch (event) {
       case "CONFIRMED":
         successCount += 1;
-        onExtendConfirmed(tx, events, task, db);
+        onExtendConfirmed(job, tx, events, task, db);
         break;
       case "ERROR":
         onExtendError(

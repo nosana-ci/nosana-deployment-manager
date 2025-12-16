@@ -6,29 +6,25 @@ import { prepareWorker, workerErrorFormatter, VaultWorkerData } from "../../../.
 try {
   const { owner, kit } = await prepareWorker<VaultWorkerData<{ owner: string }>>(workerData);
 
-  const transactions = [];
-  const nosBalance = await kit.nos.getBalance(kit.wallet!.address);
-  const solBalance = await kit.solana.getBalance();
+  const instructions = [];
+  const SOL = await kit.solana.getBalance();
+  const NOS = await kit.nos.getBalance();
 
-  if (solBalance > 0) {
-    const solTransferInstructions = await kit.solana.transfer({
+  if (SOL && SOL > 0) {
+    instructions.push(await kit.solana.transfer({
       to: owner,
-      amount: solBalance,
-    });
-    transactions.push(solTransferInstructions);
+      amount: SOL,
+    }));
   }
 
-  if (nosBalance > 0) {
-    const nosTransferInstructions = await kit.nos.transfer({
+  if (NOS && NOS > 0) {
+    instructions.push(...await kit.nos.transfer({
       to: owner,
-      amount: nosBalance,
-    });
-    for (const instruction of nosTransferInstructions) {
-      transactions.push(instruction);
-    }
+      amount: NOS * 1e6,
+    }));
   }
 
-  if (transactions.length === 0) {
+  if (instructions.length === 0) {
     parentPort!.postMessage({
       event: "SUCCESS",
       data: null,
@@ -36,12 +32,10 @@ try {
     process.exit(0);
   }
 
-  const transaction = await kit.solana.buildTransaction(transactions, {
+  const transaction = await kit.solana.buildTransaction(instructions, {
     feePayer: address(owner)
   });
-
   const partiallySignedTx = await kit.solana.partiallySignTransaction(transaction);
-
   const serializedTx = kit.solana.serializeTransaction(partiallySignedTx);
 
   parentPort!.postMessage({

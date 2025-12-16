@@ -1,6 +1,6 @@
 import path from "path";
 import { fileURLToPath, URL } from "url";
-import { createKeyPairSignerFromBytes } from "@solana/signers";
+import { createKeyPairSignerFromPrivateKeyBytes } from "@solana/signers";
 import { Worker as NodeWorker, SHARE_ENV, WorkerOptions } from "worker_threads";
 import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
 import { getConfig } from "../config/index.js";
@@ -58,7 +58,7 @@ export async function prepareWorker<T extends VaultWorkerData = VaultWorkerData>
     config.network,
     {
       ...clientConfig,
-      wallet: useNosanaApiKey ? undefined : await createKeyPairSignerFromBytes(convertStringToUint8Array(key)),
+      wallet: useNosanaApiKey ? undefined : await createKeyPairSignerFromPrivateKeyBytes(convertStringToUint8Array(key)),
     }
   );
 

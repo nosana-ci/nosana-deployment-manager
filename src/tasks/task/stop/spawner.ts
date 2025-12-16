@@ -40,7 +40,7 @@ export function spawnStopTask(
     ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
   });
 
-  const worker = new VaultWorker("./tasks/task/stop/worker.js", {
+  const worker = new VaultWorker("../tasks/task/stop/worker.js", {
     workerData: {
       task,
       config,

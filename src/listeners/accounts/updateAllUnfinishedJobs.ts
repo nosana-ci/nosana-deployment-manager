@@ -12,25 +12,16 @@ export async function updateAllUnfinishedJobs(kit: NosanaClient, db: Db) {
   const now = new Date();
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
 
-  const [jobs, runs] = await Promise.all([
-    kit.jobs.all(),
-    kit.jobs.runs()
-  ]);
-
-  const runAccountsSet = new Set(runs.map(run => run.job.toString()));
+  const jobs = await kit.jobs.all(undefined, true);
 
   let batch = [];
 
   for (const job of jobs) {
     const jobAddress = job.address.toString();
 
-    const state = job.state >= 2
-      ? convertJobState(job.state)
-      : runAccountsSet.has(jobAddress)
-        ? JobState.RUNNING
-        : null;
+    const state = convertJobState(job.state);
 
-    if (!state) continue; // Continuing because job is still QUEUED
+    if (state === JobState.QUEUED) continue; // Continuing because job is still QUEUED
 
     batch.push({
       updateOne: {

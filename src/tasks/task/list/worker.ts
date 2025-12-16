@@ -7,7 +7,6 @@ import type { WorkerData } from "../../../types/index.js";
 
 try {
   const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
-
   const { active_revision, confidential, market, replicas, timeout, strategy } = task.deployment;
 
   let ipfs_definition_hash: string = workerData.confidential_ipfs_pin;
@@ -49,15 +48,21 @@ try {
             ...transformApiResponse(res),
           });
         } else {
-          const res = await kit.jobs.post({
-            ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market: address(market)
+          const instruction = await kit.jobs.post({
+            ipfsHash: ipfs_definition_hash,
+            timeout: timeout * 60,
+            market: address(market)
           });
+          const tx = await kit.solana.buildSignAndSend(instruction);
           parentPort!.postMessage({
             event: "CONFIRMED",
-            ...res,
+            job: instruction.accounts[0].address.toString(),
+            run: instruction.accounts[2].address.toString(),
+            tx: tx.toString()
           });
         }
       } catch (error) {
+        console.log("Error submitting job:", error);
         parentPort!.postMessage({
           event: "ERROR",
           error: workerErrorFormatter(error),
@@ -67,6 +72,7 @@ try {
     )
   );
 } catch (error) {
+  console.log("Worker encountered an error:", error);
   parentPort!.postMessage({
     event: "ERROR",
     error: workerErrorFormatter(error),

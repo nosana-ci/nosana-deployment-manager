@@ -28,23 +28,21 @@ try {
         }
       } else {
         if (state === JobState.QUEUED) {
-          const res = await kit.jobs.delist({ job: address(job) });
-          if (res) {
-            parentPort!.postMessage({
-              event: "CONFIRMED",
-              ...res,
-            });
-          }
+          const instruction = await kit.jobs.delist({ job: address(job) });
+          const tx = await kit.solana.buildSignAndSend(instruction);
+          parentPort!.postMessage({
+            event: "CONFIRMED",
+            job: instruction.accounts[0].address.toString(), tx,
+          });
         }
 
         if (state === JobState.RUNNING) {
-          const res = await kit.jobs.end({ job: address(job) });
-          if (res) {
-            parentPort!.postMessage({
-              event: "CONFIRMED",
-              ...res,
-            });
-          }
+          const instruction = await kit.jobs.end({ job: address(job) });
+          const tx = await kit.solana.buildSignAndSend(instruction);
+          parentPort!.postMessage({
+            event: "CONFIRMED",
+            job: instruction.accounts[0].address.toString(), tx,
+          });
         }
       }
     } catch (error) {

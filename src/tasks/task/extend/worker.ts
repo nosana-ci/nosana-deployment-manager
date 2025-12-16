@@ -27,13 +27,13 @@ try {
         });
       }
     } else {
-      const res = await kit.jobs.extend({ job: address(job), timeout });
-      if (res) {
-        parentPort?.postMessage({
-          event: "CONFIRMED",
-          ...res
-        });
-      }
+      const instruction = await kit.jobs.extend({ job: address(job), timeout });
+      const tx = await kit.solana.buildSignAndSend(instruction);
+      parentPort?.postMessage({
+        event: "CONFIRMED",
+        job,
+        tx
+      });
     }
   } catch (error) {
     parentPort?.postMessage({

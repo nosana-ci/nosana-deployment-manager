@@ -43,7 +43,7 @@ export const DeploymentSchema = Type.Intersect([
     Type.Object({
       strategy: Type.Union(
         Object.values(DeploymentStrategy)
-          .filter((val) => val !== DeploymentStrategy.SCHEDULED)
+          .filter((strategy) => !([DeploymentStrategy.SCHEDULED, DeploymentStrategy.INFINITE] as DeploymentStrategy[]).includes(strategy))
           .map((val) => Type.Literal(val))
       ),
     }),
@@ -53,6 +53,10 @@ export const DeploymentSchema = Type.Intersect([
         description: "Cron expression for scheduled deployments",
         pattern: "^\\s*(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s*$",
       }),
+    }),
+    Type.Object({
+      strategy: Type.Literal(DeploymentStrategy.INFINITE),
+      rotation_time: Type.Number()
     }),
   ]),
 ]);

@@ -34,11 +34,11 @@ export const deploymentCreateHandler: RouteHandler<{
     }
 
     if (req.body.strategy === DeploymentStrategy.INFINITE) {
-      if (req.body.timeout < 3600) {
+      if (req.body.timeout < 60) {
         res.status(400).send({ error: ErrorMessages.deployments.INVALID_TIMEOUT });
         return;
       }
-      if (req.body.rotation_time && req.body.rotation_time >= req.body.timeout - 600) {
+      if (req.body.rotation_time && req.body.rotation_time >= req.body.timeout - 10) {
         res.status(400).send({ error: ErrorMessages.deployments.INVALID_ROTATION_TIME });
         return;
       }

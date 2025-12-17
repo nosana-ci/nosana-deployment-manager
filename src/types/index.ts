@@ -22,7 +22,7 @@ export type DeploymentsConfig = {
     password: string | undefined;
     use_tls: boolean;
   };
-  default_seconds_before_timeout: number;
+  default_minutes_before_timeout: number;
 };
 
 export const DeploymentStatus = {

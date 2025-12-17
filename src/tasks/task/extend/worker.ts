@@ -18,7 +18,7 @@ try {
 
   try {
     if (useNosanaApiKey) {
-      const res = await kit.api!.jobs.extend({ address: job, seconds: timeout });
+      const res = await kit.api!.jobs.extend({ address: job, seconds: timeout * 60 });
       if (res) {
         parentPort?.postMessage({
           event: "CONFIRMED",
@@ -27,7 +27,7 @@ try {
         });
       }
     } else {
-      const instruction = await kit.jobs.extend({ job: address(job), timeout });
+      const instruction = await kit.jobs.extend({ job: address(job), timeout: timeout * 60 });
       const tx = await kit.solana.buildSignAndSend(instruction);
       parentPort?.postMessage({
         event: "CONFIRMED",

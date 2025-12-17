@@ -41,7 +41,7 @@ export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
   },
   {
     fields: [JobsDocumentFields.STATE],
-    filters: { state: { $in: [JobState.COMPLETED, JobState.STOPPED] } },
+    filters: { state: { $or: [JobState.COMPLETED, JobState.STOPPED] } },
   }
 ];
 

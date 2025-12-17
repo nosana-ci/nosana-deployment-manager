@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { infiniteJobStateCompletedOrStopUpdate } from '../jobStateCompletedOrStopUpdate.js';
-import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../../types/index.js';
+import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../types/index.js';
 import type { Db } from 'mongodb';
 
-import { scheduleTask } from '../../../../tasks/scheduleTask.js';
+import { scheduleTask } from '../../../tasks/scheduleTask.js';
 
-vi.mock('../../../../tasks/scheduleTask.js', () => ({
+vi.mock('../../../tasks/scheduleTask.js', () => ({
   scheduleTask: vi.fn()
 }));
 
-import { OnEvent } from '../../../../client/listener/types.js';
+import { OnEvent } from '../../../client/listener/types.js';
 
 const mockNow = new Date('2025-12-02T16:00:00Z');
 const testJobDeployment = 'job-deployment-123';
@@ -84,7 +84,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
       await handler(mockJobDocument, mockDb);
 
-      expect(mockFindOne).toHaveBeenCalledWith({ deployment: testJobDeployment });
+      expect(mockFindOne).toHaveBeenCalledWith({ id: testJobDeployment });
       expect(mockCountDocuments).not.toHaveBeenCalled();
       expect(scheduleTask).not.toHaveBeenCalled();
     });

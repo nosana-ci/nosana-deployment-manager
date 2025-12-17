@@ -2,19 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Db } from 'mongodb';
 
 import { infiniteJobRunningUpdate } from '../jobRunningUpdate.js';
-import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../../types/index.js';
+import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentFields, JobsDocument } from '../../../types/index.js';
 
-import { scheduleTask } from '../../../../tasks/scheduleTask.js';
+import { scheduleTask } from '../../../tasks/scheduleTask.js';
 
-vi.mock('../../../../tasks/scheduleTask.js', () => ({
+vi.mock('../../../tasks/scheduleTask.js', () => ({
   scheduleTask: vi.fn()
 }));
 
-import { OnEvent } from '../../../../client/listener/types.js';
-import { getTimeNthMinutesBeforeTimeout } from '../../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js';
+import { OnEvent } from '../../../client/listener/types.js';
+import { getTimeNthMinutesBeforeTimeout } from '../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js';
 
 const mockNow = new Date('2025-12-02T16:00:00Z');
 const testJobDeployment = 'job-deployment-123';
+const testJob = 'job-123';
 
 const testDeployment = 'deployment-123';
 describe('infiniteJobRunningUpdate', () => {
@@ -29,7 +30,7 @@ describe('infiniteJobRunningUpdate', () => {
   } as unknown as Db;
 
   const mockJobDocument: JobsDocument = {
-    job: 'job-123',
+    job: testJob,
     deployment: testJobDeployment,
     tx: 'tx-123',
     state: JobState.RUNNING,
@@ -86,7 +87,7 @@ describe('infiniteJobRunningUpdate', () => {
 
       await handler(mockJobDocument, mockDb);
 
-      expect(mockFindOne).toHaveBeenCalledWith({ deployment: testJobDeployment });
+      expect(mockFindOne).toHaveBeenCalledWith({ id: testJobDeployment });
       expect(mockCountDocuments).not.toHaveBeenCalled();
       expect(scheduleTask).not.toHaveBeenCalled();
     });
@@ -190,7 +191,11 @@ describe('infiniteJobRunningUpdate', () => {
           TaskType.LIST,
           testDeployment,
           DeploymentStatus.RUNNING,
-          expect.any(Date)
+          expect.any(Date),
+          {
+            job: testJob,
+            limit: 1
+          }
         );
       });
 
@@ -207,7 +212,10 @@ describe('infiniteJobRunningUpdate', () => {
           TaskType.LIST,
           testDeployment,
           DeploymentStatus.RUNNING,
-          expect.any(Date)
+          expect.any(Date), {
+          job: testJob,
+          limit: 1
+        }
         );
       });
 
@@ -224,7 +232,11 @@ describe('infiniteJobRunningUpdate', () => {
           TaskType.LIST,
           testDeployment,
           DeploymentStatus.RUNNING,
-          expect.any(Date)
+          expect.any(Date),
+          {
+            job: testJob,
+            limit: 1
+          }
         );
       });
 
@@ -245,7 +257,11 @@ describe('infiniteJobRunningUpdate', () => {
           TaskType.LIST,
           testDeployment,
           DeploymentStatus.RUNNING,
-          expectedTime
+          expectedTime,
+          {
+            job: testJob,
+            limit: 1
+          }
         );
       });
 
@@ -266,7 +282,11 @@ describe('infiniteJobRunningUpdate', () => {
           TaskType.LIST,
           testDeployment,
           DeploymentStatus.RUNNING,
-          expectedTime
+          expectedTime,
+          {
+            job: testJob,
+            limit: 1
+          }
         );
       });
     });

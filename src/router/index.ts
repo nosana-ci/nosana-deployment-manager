@@ -15,7 +15,7 @@ import { addSchemas } from "./schema/index.schema.js";
 
 import { Collections } from "../types/index.js";
 
-import pkg from "../../package.json" assert { type: "json" };
+import pkg from "../../package.json" with { type: "json" };
 
 export async function startDeploymentManagerApi(db: Db) {
   const server = fastify({

@@ -2,7 +2,7 @@ import type { Db } from "mongodb";
 import { isAddress } from "@solana/addresses";
 import { createKeyPairSignerFromPrivateKeyBytes } from "@solana/signers";
 
-import { decryptWithKey, encryptWithKey } from "../../../vault/index.js";
+import {decryptWithKey, encryptWithKey} from "../../../vault/index.js";
 import { convertStringToUint8Array } from "../../../tasks/utils/convertStringToUint8Array.js";
 
 import type { VaultDocument } from "../../../types/index.js";
@@ -20,8 +20,8 @@ export default async function migrateVaultKeysToSolanaKit(db: Db) {
     const key = decryptWithKey(vault_key);
     if (key.startsWith("nos_")) continue;
 
-    const newKey = encryptWithKey(convertStringToUint8Array(key).slice(0, 32).toString());
-    const keyPair = await createKeyPairSignerFromPrivateKeyBytes(convertStringToUint8Array(key));
+    const newKey = convertStringToUint8Array(key).slice(0, 32);
+    const keyPair = await createKeyPairSignerFromPrivateKeyBytes(newKey);
     if (keyPair.address.toString() !== vault) {
       throw new Error(`Vault key for vault ${vault} does not match the stored public key`);
     }
@@ -32,7 +32,7 @@ export default async function migrateVaultKeysToSolanaKit(db: Db) {
       }
     }, {
       $set: {
-        vault_key: newKey
+        vault_key: encryptWithKey(newKey.toString())
       }
     });
 

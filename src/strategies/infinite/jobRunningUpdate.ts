@@ -13,9 +13,9 @@ import { type JobsDocument, JobsDocumentFields, JobState, TaskType } from "../..
  */
 export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
-  async ({ deployment: jobDeployment }, db) => {
+  async ({ deployment: jobDeployment, job }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
-    if (!deployment || !isActiveInfiniteDeployment(deployment)) return;
+    if (!deployment || !isActiveInfiniteDeployment(deployment)) return;;
 
     const runningJobsCount = await db
       .collection<JobsDocument>(NosanaCollections.JOBS)
@@ -33,23 +33,23 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
         deployment.id,
         deployment.status,
         new Date(),
-        { limit: 1 }
-      )
-    } else {
-      // No excess jobs to stop
-      // Schedule a new task for Nth minutes before timeout
-      scheduleTask(
-        db,
-        TaskType.LIST,
-        deployment.id,
-        deployment.status,
-        getTimeNthMinutesBeforeTimeout(deployment.timeout, deployment.rotation_time),
         {
-          limit: 1,
-        }
+          limit: 1
+        },
       )
     }
 
+    scheduleTask(
+      db,
+      TaskType.LIST,
+      deployment.id,
+      deployment.status,
+      getTimeNthMinutesBeforeTimeout(deployment.timeout, deployment.rotation_time),
+      {
+        job,
+        limit: 1,
+      }
+    )
   },
   {
     fields: [JobsDocumentFields.STATE],

@@ -1,5 +1,4 @@
-import { DeploymentStrategy } from "@nosana/kit";
-
+import { DeploymentStrategy } from "../../types/index.js";
 import type { DeploymentDocument } from "../../types/index.js";
 
 export function isSimpleOrSimpleExtendedDeployment(deployment: DeploymentDocument): boolean {

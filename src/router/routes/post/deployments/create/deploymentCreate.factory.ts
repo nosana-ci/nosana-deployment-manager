@@ -150,7 +150,7 @@ export async function createDeployment(
         ...baseFields,
         strategy,
         timeout,
-        rotation_time: rotation_time ?? timeout - getConfig().default_minutes_before_timeout,
+        rotation_time: rotation_time ?? getConfig().default_minutes_before_timeout,
         endpoints
       }, revision
     };

@@ -4,16 +4,23 @@ import { NosanaCollections } from "../../definitions/collection.js";
 import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
 import { isSimpleOrSimpleExtendedDeployment } from "../utils/isSimpleOrSimpleExtendedDeployment.js";
 
-import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFields, JobState } from "../../types/index.js";
+import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFields, JobState, TaskDocument } from "../../types/index.js";
 
 /**
  * 
  */
 export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
-  async ({ deployment: jobDeployment }, db) => {
+  async ({ job, deployment: jobDeployment }, db) => {
+    db.collection<TaskDocument>(NosanaCollections.TASKS).deleteMany({
+      deploymentId: jobDeployment,
+      job: {
+        $eq: job,
+      },
+    });
+
     const deployment = await findDeployment(db, jobDeployment);
-    if (!deployment || !isSimpleOrSimpleExtendedDeployment(deployment)) return;
+    if (!deployment || !isSimpleOrSimpleExtendedDeployment(deployment) && deployment.status !== DeploymentStatus.STOPPING) return;
 
     const runningJobsCount = await db
       .collection<JobsDocument>(NosanaCollections.JOBS)
@@ -41,7 +48,7 @@ export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
   },
   {
     fields: [JobsDocumentFields.STATE],
-    filters: { state: { $or: [JobState.COMPLETED, JobState.STOPPED] } },
+    filters: { state: { $in: [JobState.COMPLETED, JobState.STOPPED] } },
   }
 ];
 

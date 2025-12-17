@@ -3,6 +3,8 @@ import { Db } from "mongodb";
 export type FilterOperators<T> =
   | { $eq: T }
   | { $ne: T }
+  | { $in: T[] }
+  | { $nin: T[] }
   | (T extends number ? { $gt?: T; $gte?: T; $lt?: T; $lte?: T } : {})
   | (T extends Date ? { $gt?: T; $lt?: T } : {});
 

@@ -6,7 +6,6 @@ import { VaultWorker } from "../../../worker/Worker.js";
 import { onStopConfirmed, onStopError, onStopExit } from "./events/index.js";
 
 import {
-  DeploymentDocument,
   DeploymentStatus,
   EventDocument,
   WorkerEventMessage,
@@ -24,21 +23,22 @@ export function spawnStopTask(
   complete: (successCount: number, reason: TaskFinishedReason) => void
 ): VaultWorker<WorkerData> {
   const config = getConfig();
-  const deploymentsCollection = db.collection<DeploymentDocument>("deployments");
   const jobsCollection = db.collection<JobsCollection>("jobs");
   const eventsCollection = db.collection<EventDocument>("events");
   const tasksCollection = db.collection<TaskDocument>("tasks");
 
-  let successCount = 0;
+  let stoppedJobs: string[] = [];
   let deploymentErrorStatus: DeploymentStatus;
 
-  tasksCollection.deleteMany({
-    deploymentId: task.deploymentId,
-    task: {
-      $ne: "STOP",
-    },
-    ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
-  });
+  if (!task.limit && !task.job) {
+    tasksCollection.deleteMany({
+      deploymentId: task.deploymentId,
+      task: {
+        $ne: "STOP",
+      },
+      ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
+    });
+  }
 
   const worker = new VaultWorker("../tasks/task/stop/worker.js", {
     workerData: {
@@ -48,11 +48,11 @@ export function spawnStopTask(
     },
   });
 
-  worker.on("message", ({ event, error, tx }: WorkerEventMessage) => {
+  worker.on("message", ({ event, error, tx, job }: WorkerEventMessage) => {
     switch (event) {
       case "CONFIRMED":
-        successCount += 1;
-        onStopConfirmed(tx, eventsCollection, task);
+        stoppedJobs.push(job);
+        onStopConfirmed(job, tx, eventsCollection, task);
         break;
       case "ERROR":
         onStopError(
@@ -68,9 +68,9 @@ export function spawnStopTask(
 
   worker.on("exit", async () => {
     if (!task.active_revision) {
-      await onStopExit(deploymentErrorStatus, deploymentsCollection, jobsCollection, task);
+      await onStopExit(stoppedJobs, jobsCollection, task);
     }
-    complete(successCount, deploymentErrorStatus ? "FAILED" : "COMPLETED");
+    complete(stoppedJobs.length, deploymentErrorStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

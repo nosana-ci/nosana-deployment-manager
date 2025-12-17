@@ -6,6 +6,7 @@ import {
 } from "../../../../types/index.js";
 
 export function onStopConfirmed(
+  job: string,
   tx: string,
   events: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument
@@ -14,7 +15,7 @@ export function onStopConfirmed(
     deploymentId,
     category: "Deployment",
     type: "JOB_STOPPED_CONFIRMED",
-    message: `Successfully stopped all jobs. TX ${tx}`,
+    message: `Successfully stopped job ${job}. TX ${tx}`,
     created_at: new Date(),
   });
 }

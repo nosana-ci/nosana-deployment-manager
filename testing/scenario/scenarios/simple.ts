@@ -8,7 +8,7 @@ import { createSimpleDeploymentBody } from "../utils/deploymentBody.js";
 
 import { JobState } from "../../../src/types/index.js";
 
-export default async function testSimpleScenario(deployer: NosanaClient, vault: NosanaClient) {
+export default async function (deployer: NosanaClient, vault: NosanaClient) {
   console.log("Running simple scenario test...");
   let deployment: Deployment;
   let firstJob: string;

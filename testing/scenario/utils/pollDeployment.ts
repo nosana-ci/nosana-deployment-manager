@@ -9,7 +9,7 @@ export async function pollDeployment(
   deployer: NosanaClient,
   deployment: Deployment,
   checkStatement: (deployment: Deployment) => boolean,
-  interval = 1000, maxAttempts = 10
+  interval = 1000, maxAttempts = 100
 ): Promise<Deployment> {
   let attempts = 0;
   while (attempts < maxAttempts) {

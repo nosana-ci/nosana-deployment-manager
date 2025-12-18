@@ -28,10 +28,9 @@ export async function startJobAccountsListeners(db: Db) {
     await jobsCollection.updateOne(
       {
         job: address.toString(),
-        time_start: Number(timeStart),
         state: { $nin: [JobState.COMPLETED, JobState.STOPPED] } // required to ensure states don't regress
       },
-      { $set: { state: convertJobState(state) } },
+      { $set: { state: convertJobState(state), time_start: Number(timeStart) } },
       { upsert: false }
     );
   }

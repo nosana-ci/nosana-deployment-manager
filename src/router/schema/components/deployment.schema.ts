@@ -30,7 +30,7 @@ export const DeploymentSchema = Type.Intersect([
     status: DeploymentStatusSchema,
     revisions: Type.Array(RevisionSchema),
     replicas: Type.Number({ minimum: 1 }),
-    timeout: Type.Number({ minimum: 60 }),
+    timeout: Type.Number({ minimum: 1 }),
     jobs: Type.Array(JobsSchema),
     events: Type.Array(EventsSchema),
     endpoints: Type.Array(EndpointSchema),
@@ -55,6 +55,7 @@ export const DeploymentSchema = Type.Intersect([
       }),
     }),
     Type.Object({
+      timeout: Type.Number({ minimum: 60 }),
       strategy: Type.Literal(DeploymentStrategy.INFINITE),
       rotation_time: Type.Number()
     }),

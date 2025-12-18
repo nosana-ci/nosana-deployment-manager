@@ -16,7 +16,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     name: Type.String(),
     market: Type.String(),
     replicas: Type.Number({ minimum: 1 }),
-    timeout: Type.Number({ minimum: 60, description: "Timeout in minutes, must be at least 60 minutes." }),
+    timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     vault: Type.Optional(PublicKeySchema),
     confidential: Type.Optional(Type.Boolean()),
     job_definition: JobDefinitionSchema
@@ -34,6 +34,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
       schedule: DeploymentScheduleSchema,
     }),
     Type.Object({
+      timeout: Type.Number({ minimum: 60, description: "Timeout in minutes, must be at least 60 minute." }),
       strategy: Type.Literal(DeploymentStrategy.INFINITE),
       rotation_time: Type.Optional(Type.Number({
         description: "Rotation time in seconds. Must be at least 10 minutes less than timeout to allow for proper rotation."

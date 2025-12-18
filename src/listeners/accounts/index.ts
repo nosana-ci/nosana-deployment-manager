@@ -23,11 +23,12 @@ export async function startJobAccountsListeners(db: Db) {
   for await (const { type, data } of stream) {
     if (type !== "job" || data.state === 0) continue;
 
-    const { address, state } = data;
+    const { address, state, timeStart } = data;
 
     await jobsCollection.updateOne(
       {
         job: address.toString(),
+        time_start: Number(timeStart),
         state: { $nin: [JobState.COMPLETED, JobState.STOPPED] } // required to ensure states don't regress
       },
       { $set: { state: convertJobState(state) } },

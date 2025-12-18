@@ -205,6 +205,7 @@ export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof Job
   REVISION: "revision",
   TX: "tx",
   STATE: "state",
+  TIME_START: "time_start",
   CREATED_AT: "created_at",
   UPDATED_AT: "updated_at",
 }
@@ -215,6 +216,7 @@ export type JobsDocument = {
   revision: number;
   tx: string;
   state: JobState;
+  time_start: number;
   created_at: Date;
   updated_at: Date;
 };

@@ -19,6 +19,7 @@ export function onListConfirmed(
     state: JobState.QUEUED,
     deployment: task.deploymentId,
     revision: task.deployment.active_revision,
+    time_start: 0,
     created_at: new Date(),
     updated_at: new Date(),
   });

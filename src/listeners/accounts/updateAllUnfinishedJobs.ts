@@ -26,7 +26,7 @@ export async function updateAllUnfinishedJobs(kit: NosanaClient, db: Db) {
     batch.push({
       updateOne: {
         filter: { job: jobAddress },
-        update: { $set: { state, updated_at: now } },
+        update: { $set: { state, time_start: Number(job.timeStart), updated_at: now } },
         upsert: false
       }
     });

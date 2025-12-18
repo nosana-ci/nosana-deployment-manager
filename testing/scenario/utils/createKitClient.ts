@@ -8,7 +8,7 @@ export const createTestClient = async (keyPath: string) => {
     fs.readFileSync(os.homedir() + keyPath, 'utf8')
   );
 
-  const client = createNosanaClient('mainnet', {
+  const client = createNosanaClient('devnet', {
     api: {
       backend_url: "http://localhost:3001",
     }

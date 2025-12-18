@@ -1,7 +1,7 @@
 import { Deployment, NosanaApi } from "@nosana/api";
 import { NosanaClient } from "@nosana/kit";
 
-async function sleep(ms: number = 1000) {
+export async function sleep(ms: number = 1000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 

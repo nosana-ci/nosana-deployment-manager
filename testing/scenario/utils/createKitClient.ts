@@ -9,6 +9,7 @@ export const createTestClient = async (keyPath: string) => {
   );
 
   const client = createNosanaClient('devnet', {
+    logLevel: 'none',
     api: {
       backend_url: "http://localhost:3001",
     }

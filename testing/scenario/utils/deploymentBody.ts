@@ -23,6 +23,6 @@ export const createSimpleDeploymentBody = (overrides?: Partial<CreateDeployment>
         },
       },
     ],
-    ...overrides
   },
+  ...overrides
 });

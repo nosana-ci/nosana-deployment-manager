@@ -6,7 +6,7 @@ import { createState } from '../utils/index.js';
 import { createDeployment, checkDeploymentsJobs, checkSufficientVaultBalance, waitForDeploymentStatus, startDeployment, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, checkJobsTimeout, stopJob } from '../common/index.js';
 import { deployer } from '../setup.js';
 
-describe.skip('Simple Extend Deployment Strategy', () => {
+describe('Simple Extend Deployment Strategy', () => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
 

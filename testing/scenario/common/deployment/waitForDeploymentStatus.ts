@@ -2,7 +2,7 @@ import { expect } from 'vitest';
 import { DeploymentStatus } from '@nosana/kit';
 import type { Deployment, NosanaApi } from '@nosana/api';
 
-import { deployer } from '../../setup.js';
+import { deployerClient } from '../../setup.js';
 import { State } from '../../utils/index.js';
 
 export function waitForDeploymentStatus(
@@ -13,7 +13,7 @@ export function waitForDeploymentStatus(
   return async () => {
     await expect.poll(
       async () => {
-        state.set(await (deployer.api as NosanaApi).deployments.get(state.get().id));
+        state.set(await (deployerClient.api as NosanaApi).deployments.get(state.get().id));
         return state.get().status;
       },
       { message: `Waiting for deployment to reach ${expectedStatus} status` }

@@ -7,7 +7,7 @@ type StoreVault = Promise<{
   vault: CreateSharedVaultSuccess
 }>;
 
-function createVaultDocument(vault: string, vault_key: string, owner: string, created_at: Date): VaultDocument {
+export function createVaultDocument(vault: string, vault_key: string, owner: string, created_at: Date): VaultDocument {
   return {
     vault,
     vault_key,

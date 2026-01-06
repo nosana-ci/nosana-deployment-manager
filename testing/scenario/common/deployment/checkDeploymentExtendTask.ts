@@ -2,7 +2,7 @@ import { expect } from 'vitest';
 import type { Deployment } from '@nosana/api';
 import { address } from '@nosana/kit';
 
-import { deployer } from '../../setup.js';
+import { deployerClient } from '../../setup.js';
 import { State } from '../../utils/createState.js';
 import { TaskDocument } from '../../../../src/types/index.js';
 

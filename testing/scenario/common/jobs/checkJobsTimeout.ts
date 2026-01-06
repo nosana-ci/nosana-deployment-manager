@@ -4,7 +4,7 @@ import type { Deployment } from '@nosana/api';
 import { address } from '@solana/addresses';
 
 import { State } from '../../utils';
-import { deployer } from '../../setup';
+import { deployerClient } from '../../setup';
 
 export function checkJobsTimeout(
   deployment: State<Deployment>,
@@ -13,7 +13,7 @@ export function checkJobsTimeout(
   return async () => {
     let { timeout } = deployment.get();
 
-    const onchain = await deployer.jobs.get(address(job()));
+    const onchain = await deployerClient.jobs.get(address(job()));
     expect(onchain?.timeout).toBe(timeout * 2);
   };
 }

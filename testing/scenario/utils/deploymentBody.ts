@@ -8,7 +8,6 @@ export const createSimpleDeploymentBody = (overrides?: Partial<CreateDeployment>
   timeout: 60,
   strategy: DeploymentStrategy.SIMPLE,
   confidential: false,
-  vault: "FvWihjrQ3K4fQMcKb7G4bW46EgiyMYNMYi9YZEpHSvhd",
   job_definition: {
     version: '0.1' as const,
     type: 'container' as const,

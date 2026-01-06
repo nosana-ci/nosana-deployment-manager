@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import os from "os";
 
 export default defineConfig({
   test: {
@@ -20,5 +21,9 @@ export default defineConfig({
       },
     },
     setupFiles: ['./testing/scenario/setup.ts'],
+    env: {
+      NETWORK: "devnet",
+      VAULT_KEY: "change_me"
+    },
   },
 });

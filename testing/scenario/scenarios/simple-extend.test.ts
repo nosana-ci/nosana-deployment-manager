@@ -4,7 +4,7 @@ import { address, DeploymentStatus, DeploymentStrategy, NosanaApi, JobState } fr
 
 import { createState } from '../utils/index.js';
 import { createDeployment, checkDeploymentsJobs, checkSufficientVaultBalance, waitForDeploymentStatus, startDeployment, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, checkJobsTimeout, stopJob } from '../common/index.js';
-import { deployer } from '../setup.js';
+import { deployerClient } from '../setup.js';
 
 describe('Simple Extend Deployment Strategy', () => {
   const deployment = createState<Deployment>();
@@ -31,7 +31,7 @@ describe('Simple Extend Deployment Strategy', () => {
 
   it('wait for extend task to be scheduled', checkDeploymentExtendTask(deployment, { job: firstJob },
     async (task) => {
-      const jobDetails = await deployer.jobs.get(address(firstJob.get()));
+      const jobDetails = await deployerClient.jobs.get(address(firstJob.get()));
       const expectedDueAt = new Date(Number(jobDetails!.timeStart) + Number(jobDetails!.timeout) - 60 * 1000);
       expect(task!.due_at).toBe(expectedDueAt.toISOString());
     }

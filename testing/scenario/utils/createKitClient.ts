@@ -1,11 +1,10 @@
 import fs from 'fs';
-import os from 'os';
 import { createNosanaClient } from '@nosana/kit';
 import { createKeyPairSignerFromPrivateKeyBytes } from '@solana/signers';
 
 export const createTestClient = async (keyPath: string) => {
   const key = JSON.parse(
-    fs.readFileSync(os.homedir() + keyPath, 'utf8')
+    fs.readFileSync(keyPath, 'utf8')
   );
 
   const client = createNosanaClient('devnet', {

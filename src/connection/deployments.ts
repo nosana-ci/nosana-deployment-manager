@@ -3,10 +3,10 @@ import { Db, MongoClient } from "mongodb";
 import { init_db } from "./docdb/index.js";
 import { getConfig } from "../config/index.js";
 
-const DB_NAME = "nosana_deployments";
+export const DB_NAME = "nosana_deployments";
 export const BULK_WRITE_BATCH_SIZE = 999; // DocumentDB supports max 1000 operations per bulkWrite
 
-function createConnectionString(
+export function createConnectionString(
   hostname: string,
   port: string | number,
   username: string | undefined,

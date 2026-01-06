@@ -5,7 +5,7 @@ A deployment manager service for managing Nosana job deployments with MongoDB pe
 ## Prerequisites
 
 - Docker and Docker Compose
-- Node.js 20+ (for local development)
+- Node.js 22+ (for local development)
 - npm
 
 ## Quick Start

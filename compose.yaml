@@ -36,7 +36,7 @@ services:
         - action: rebuild
           path: package.json
     environment:
-      - NETWORK=mainnet
+      - NETWORK=devnet
       - VAULT_KEY=change_me
       - TASKS_BATCH_SIZE=10
       - CONFIDENTIAL_BY_DEFAULT=true

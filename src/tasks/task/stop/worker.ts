@@ -16,8 +16,8 @@ try {
         if (res) {
           parentPort!.postMessage({
             event: "CONFIRMED",
-            job: res.jobAddress,
-            tx: res.transactionId
+            job: res.job,
+            tx: res.tx
           });
         }
       } else {

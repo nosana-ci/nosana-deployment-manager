@@ -27,9 +27,9 @@ try {
   }
 
   const transformApiResponse = (res: ApiListResponse) => ({
-    tx: res.reservationId,
-    job: res.jobAddress,
-    run: ""
+    tx: res.tx,
+    job: res.job,
+    run: res.run
   });
 
   await Promise.all(

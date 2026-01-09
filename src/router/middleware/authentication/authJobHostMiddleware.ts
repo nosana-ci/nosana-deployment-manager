@@ -39,7 +39,7 @@ export const authJobHostMiddleware: RouteHandler<{
         return;
       }
 
-      if (!['RUNNING', "STOPPED"].includes(job.state as string) && job.node !== '11111111111111111111111111111111') {
+      if (job.state === "QUEUED" && job.node !== '11111111111111111111111111111111') {
         res.status(403).send("Job must be running");
         return;
       }

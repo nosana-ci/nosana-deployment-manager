@@ -4,7 +4,7 @@ import { initKit } from "./kit/index.js";
 import { initStats } from "./stats/index.js";
 import { setConfig } from "./config/index.js";
 import { startDeploymentManagerApi } from "./router/index.js";
-import { DeploymentsConnection } from "./connection/deployments.js";
+import { createDeploymentsConnection } from "./connection/deployments.js";
 import { startDeploymentManagerListeners } from "./listeners/index.js";
 import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
 
@@ -15,8 +15,7 @@ const kit = initKit();
 const confidentialIpfsPin = await kit.ipfs.pin(createConfidentialJobDefinition());
 setConfig("confidential_ipfs_pin", confidentialIpfsPin);
 
-
-const dbClient = await DeploymentsConnection();
+const dbClient = await createDeploymentsConnection();
 
 if (!dbClient) {
   throw new Error("Failed to connect to the database");

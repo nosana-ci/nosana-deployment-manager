@@ -3,7 +3,7 @@ import { DeploymentStrategy } from "@nosana/kit";
 
 export const createSimpleDeploymentBody = (overrides?: Partial<CreateDeployment>) => ({
   name: 'Simple deployment test',
-  market: 'DfJJiNU3siRQUz2a67tqoY72fUzwR8MhBEMBGK85SwAr',
+  market: process.env.TEST_MARKET ?? 'DfJJiNU3siRQUz2a67tqoY72fUzwR8MhBEMBGK85SwAr',
   replicas: 1,
   timeout: 60,
   strategy: DeploymentStrategy.SIMPLE,

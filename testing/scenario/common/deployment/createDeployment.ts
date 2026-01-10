@@ -1,16 +1,15 @@
 import { expect } from 'vitest';
-import type { Deployment, NosanaApi } from '@nosana/api';
+import type { CreateDeployment, Deployment, NosanaApi } from '@nosana/api';
 
 import { deployerClient, vaultClient } from '../../setup.js';
 import { createSimpleDeploymentBody, State } from '../../utils/index.js';
 
 export function createDeployment(
   state: State<Deployment>,
-  overrides: Partial<Deployment> = {},
+  overrides: Partial<CreateDeployment> = {},
 ) {
   return async () => {
-    const deploymentBody = createSimpleDeploymentBody(overrides);
-    console.log(deploymentBody);
+    const deploymentBody = createSimpleDeploymentBody({ ...overrides, vault: vaultClient.wallet!.address.toString() });
     const deployment = await (deployerClient.api as NosanaApi).deployments.create(
       deploymentBody
     );

@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitest/config';
-import os from "os";
 
 export default defineConfig({
   test: {
@@ -11,9 +10,11 @@ export default defineConfig({
     hookTimeout: 300000,
     reporters: ['verbose'],
     bail: 1, // Stop after first test failure
+    fileParallelism: false, // Run test files sequentially, not in parallel
     sequence: {
-      concurrent: false, // Run tests sequentially, not in parallel
+      concurrent: false, // Run tests within files sequentially
     },
+    pool: 'forks', // Use forks pool for better isolation
     expect: {
       poll: {
         timeout: 60_000,
@@ -23,7 +24,11 @@ export default defineConfig({
     setupFiles: ['./testing/scenario/setup.ts'],
     env: {
       NETWORK: "devnet",
-      VAULT_KEY: "change_me"
+      VAULT_KEY: "change_me",
+      TEST_DEPLOYER_KEY_PATH: "~/.nosana/nosana_key.json",
+      TEST_VAULT_KEY_PATH: "~/.nosana/nosana_key.json",
+      TEST_MARKET: "DfJJiNU3siRQUz2a67tqoY72fUzwR8MhBEMBGK85SwAr",
+      DOCDB_HOST: "localhost",
     },
   },
 });

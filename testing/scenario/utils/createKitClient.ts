@@ -1,11 +1,21 @@
 import fs from 'fs';
-import { createNosanaClient } from '@nosana/kit';
+import os from 'os';
+import { createNosanaClient, NosanaClient } from '@nosana/kit';
 import { createKeyPairSignerFromPrivateKeyBytes } from '@solana/signers';
 
-export const createTestClient = async (keyPath: string) => {
-  const key = JSON.parse(
-    fs.readFileSync(keyPath, 'utf8')
+import { encryptWithKey } from '../../../src/vault/encrypt.js';
+
+export const createKitClient = async (keyPath: string): Promise<{
+  client: NosanaClient,
+  encryptedPrivateKey: string
+}> => {
+  const privateKeyRaw = JSON.parse(
+    fs.readFileSync(keyPath.startsWith("~") ? os.homedir() + keyPath.slice(1) : keyPath, 'utf8')
   );
+
+  if (!privateKeyRaw) {
+    throw new Error("Key file not found.");
+  }
 
   const client = createNosanaClient('devnet', {
     logLevel: 'none',
@@ -13,8 +23,18 @@ export const createTestClient = async (keyPath: string) => {
       backend_url: "http://localhost:3001",
     }
   });
+
+  const privateKey = new Uint8Array(privateKeyRaw).slice(0, 32)
   client.wallet = await createKeyPairSignerFromPrivateKeyBytes(
-    new Uint8Array(key).slice(0, 32)
+    privateKey
   );
-  return client;
+
+  const encryptedPrivateKey = encryptWithKey(
+    privateKey.toString()
+  );
+
+  return {
+    client,
+    encryptedPrivateKey
+  };
 };

@@ -4,10 +4,11 @@ import type { CreateSharedVaultSuccess } from "../../../../schema/post/index.sch
 
 type StoreVault = Promise<{
   acknowledged: boolean;
+  upserted: boolean;
   vault: CreateSharedVaultSuccess
 }>;
 
-export function createVaultDocument(vault: string, vault_key: string, owner: string, created_at: Date): VaultDocument {
+function createVaultDocument(vault: string, vault_key: string, owner: string, created_at: Date): VaultDocument {
   return {
     vault,
     vault_key,
@@ -29,6 +30,7 @@ export async function storeVaultDocument(vaults: VaultCollection, vault: string,
 
   return {
     acknowledged,
+    upserted: result.upsertedCount > 0,
     vault: {
       vault: vaultObj.vault,
       owner: vaultObj.owner,

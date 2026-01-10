@@ -1,41 +1,22 @@
-import {describe, it, expect, afterAll} from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { Deployment } from "@nosana/api";
 import { DeploymentStatus, DeploymentStrategy } from "@nosana/kit";
 
 import { createState } from '../utils/index.js';
 import { JobState } from "../../../src/types/index.js";
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, stopJob, waitForDeploymentStatus, waitForSeconds } from '../common/index.js';
-import {vaultAddress} from "../setup.js";
 
 describe('Simple Deployment Strategy', () => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
-
-  afterAll(async () => {
-    const vault = deployment.get().vault;
-    await vault.withdraw()
-  });
 
   it('creates deployment with SIMPLE strategy', async () => {
     await createDeployment(
       deployment,
       {
         strategy: DeploymentStrategy.SIMPLE,
-        // @ts-ignore
-        vault: vaultAddress,
       },
     )();
-  });
-
-  it('tops up vault', async () => {
-    const vault = deployment.get().vault;
-    const nosValue = 0.5;
-    const solValue = 0.015;
-    await vault.topup({ SOL: solValue, NOS: nosValue })
-    const balance = await vault.getBalance();
-
-    expect(balance.NOS).toBeGreaterThanOrEqual(nosValue);
-    expect(balance.SOL).toBeGreaterThanOrEqual(solValue);
   });
 
   it('check vault has sufficient funds', checkSufficientVaultBalance(deployment));

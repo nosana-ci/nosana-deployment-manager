@@ -2,9 +2,9 @@ import bs58 from "bs58"
 
 import { encryptWithKey } from "./index.js";
 
-export async function generateKeyPair() {
-  const {publicKey, privateKey} = await crypto.subtle.generateKey(
-    {name: "Ed25519"},
+async function generateKeyPair() {
+  const { publicKey, privateKey } = await crypto.subtle.generateKey(
+    { name: "Ed25519" },
     true,
     ["sign", "verify"]
   );
@@ -13,11 +13,11 @@ export async function generateKeyPair() {
     crypto.subtle.exportKey("raw", publicKey),
     crypto.subtle.exportKey("pkcs8", privateKey)
   ]);
-  return {publicKey, extractedPublicKey, extractedPrivateKey};
+  return { publicKey, extractedPublicKey, extractedPrivateKey };
 }
 
 export async function generateVault(): Promise<[string, string]> {
-  const {extractedPublicKey, extractedPrivateKey} = await generateKeyPair();
+  const { extractedPublicKey, extractedPrivateKey } = await generateKeyPair();
 
   const bs58PublicKey = bs58.encode(new Uint8Array(extractedPublicKey));
   const encryptedPrivateKey = encryptWithKey(

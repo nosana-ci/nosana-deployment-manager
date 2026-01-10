@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Deployment } from "@nosana/api";
-import { address, DeploymentStatus, DeploymentStrategy, NosanaApi, JobState } from "@nosana/kit";
+import { address, DeploymentStatus, DeploymentStrategy, JobState } from "@nosana/kit";
 
 import { createState } from '../utils/index.js';
 import { createDeployment, checkDeploymentsJobs, checkSufficientVaultBalance, waitForDeploymentStatus, startDeployment, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, checkJobsTimeout, stopJob } from '../common/index.js';

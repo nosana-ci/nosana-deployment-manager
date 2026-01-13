@@ -22,13 +22,13 @@ services:
     depends_on:
       deployments_db:
         condition: service_healthy
+    entrypoint: ["/sbin/tini", "--", "node", "app"]
     ports:
       - "8081:8081"
     environment:
       - ME_CONFIG_MONGODB_SERVER=deployments_db
       - ME_CONFIG_MONGODB_PORT=27017
-      - ME_CONFIG_BASICAUTH_USERNAME=admin
-      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+      - ME_CONFIG_BASICAUTH=false
     networks:
       - deployments_network
   deployment_manager:

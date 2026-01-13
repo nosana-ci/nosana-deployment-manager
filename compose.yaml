@@ -17,6 +17,20 @@ services:
       start_period: 0s
       start_interval: 1s
       retries: 30
+  mongo_express:
+    image: mongo-express:latest
+    depends_on:
+      deployments_db:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=deployments_db
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=pass
+    networks:
+      - deployments_network
   deployment_manager:
     depends_on:
       - deployments_db

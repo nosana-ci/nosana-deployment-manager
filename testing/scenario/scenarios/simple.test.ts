@@ -4,7 +4,7 @@ import { DeploymentStatus, DeploymentStrategy } from "@nosana/kit";
 
 import { createState } from '../utils/index.js';
 import { JobState } from "../../../src/types/index.js";
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, stopJob, waitForDeploymentStatus, waitForSeconds } from '../common/index.js';
+import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, stopJob, waitForDeploymentStatus, waitForSeconds } from '../common/index.js';
 
 describe('Simple Deployment Strategy', () => {
   const deployment = createState<Deployment>();
@@ -20,6 +20,8 @@ describe('Simple Deployment Strategy', () => {
   });
 
   it('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
+
+  it('join market queue', joinMarketQueue(() => deployment.get().market));
 
   it('start deployment', startDeployment(deployment));
 
@@ -40,6 +42,8 @@ describe('Simple Deployment Strategy', () => {
   it('check all jobs are stopped', checkAllJobsStopped(deployment));
 
   it('restart deployment', startDeployment(deployment));
+
+  it('join market queue again', joinMarketQueue(() => deployment.get().market));
 
   it('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 

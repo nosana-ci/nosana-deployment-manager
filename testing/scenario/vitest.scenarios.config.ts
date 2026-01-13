@@ -36,7 +36,7 @@ export default () => {
         VAULT_KEY: "change_me",
         TEST_DEPLOYER_KEY_PATH: "~/.nosana/nosana_key.json",
         TEST_VAULT_KEY_PATH: "~/.nosana/nosana_key.json",
-        TEST_MARKET: "DfJJiNU3siRQUz2a67tqoY72fUzwR8MhBEMBGK85SwAr",
+        TEST_MARKET: "J4HMc9haEdWUcXEpRrR31w6nrqR8oApEVSD7SYcE8Yr9",
         DOCDB_HOST: "localhost",
       },
     },

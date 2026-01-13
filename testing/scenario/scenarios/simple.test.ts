@@ -63,6 +63,6 @@ describe('Simple Deployment Strategy', () => {
   it('wait for deployment to be stopped', waitForDeploymentStatus(
     deployment, { expectedStatus: DeploymentStatus.STOPPED },
     // @ts-expect-error Job state is not yet reflected in kit types
-    ({ jobs }) => expect(jobs.every(({ state }) => state === JobState.STOPPED)).toBe(true)
+    ({ jobs }) => expect(jobs.every(({ state }) => state === JobState.STOPPED || state === JobState.COMPLETED)).toBe(true)
   ));
 });

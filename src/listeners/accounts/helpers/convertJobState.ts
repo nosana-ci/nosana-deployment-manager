@@ -1,4 +1,4 @@
-import { JobState } from "../../types/index.js";
+import { JobState } from "../../../types/index.js";
 
 export function convertJobState(state: number): JobState {
   switch (state) {

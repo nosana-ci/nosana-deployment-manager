@@ -201,6 +201,7 @@ export type JobState = (typeof JobState)[keyof typeof JobState];
 
 export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof JobsDocument> = {
   JOB: "job",
+  MARKET: "market",
   DEPLOYMENT: "deployment",
   REVISION: "revision",
   TX: "tx",
@@ -212,6 +213,7 @@ export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof Job
 
 export type JobsDocument = {
   job: string;
+  market: string;
   deployment: string;
   revision: number;
   tx: string;

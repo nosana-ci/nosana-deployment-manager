@@ -2,7 +2,7 @@
 import type { Db } from "mongodb";
 import type { NosanaClient } from "@nosana/kit";
 
-import { convertJobState } from "./convertJobState.js";
+import { convertJobState } from "./helpers/convertJobState.js";
 import { BULK_WRITE_BATCH_SIZE } from "../../connection/index.js";
 import { NosanaCollections } from "../../definitions/collection.js";
 

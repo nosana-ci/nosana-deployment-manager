@@ -16,6 +16,7 @@ export function onListConfirmed(
   jobs.insertOne({
     job,
     tx,
+    market: task.deployment.market,
     state: JobState.QUEUED,
     deployment: task.deploymentId,
     revision: task.deployment.active_revision,

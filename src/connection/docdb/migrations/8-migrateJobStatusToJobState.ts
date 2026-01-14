@@ -2,7 +2,7 @@ import type { Db } from "mongodb";
 
 import { NosanaCollections } from "../../../definitions/collection.js";
 import { getKit } from "../../../kit/index.js";
-import { convertJobState } from "../../../listeners/accounts/convertJobState.js";
+import { convertJobState } from "../../../listeners/accounts/helpers/convertJobState.js";
 
 import { JobState, type JobsDocument } from "../../../types/index.js";
 

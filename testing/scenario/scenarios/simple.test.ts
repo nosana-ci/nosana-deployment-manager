@@ -4,7 +4,7 @@ import { DeploymentStatus, DeploymentStrategy } from "@nosana/kit";
 
 import { createState } from '../utils/index.js';
 import { JobState } from "../../../src/types/index.js";
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, stopJob, waitForDeploymentStatus, waitForSeconds } from '../common/index.js';
+import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, finishJob, waitForDeploymentStatus, waitForSeconds } from '../common/index.js';
 
 describe('Simple Deployment Strategy', () => {
   const deployment = createState<Deployment>();
@@ -47,7 +47,7 @@ describe('Simple Deployment Strategy', () => {
 
   it('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  it('wait for first job to be posted', checkDeploymentsJobs(
+  it('wait for second job to be posted', checkDeploymentsJobs(
     deployment,
     { expectedJobsCount: 2 },
     ({ jobs }) => {
@@ -58,7 +58,7 @@ describe('Simple Deployment Strategy', () => {
 
   it('wait 10 seconds to allow job to run', waitForSeconds(10));
 
-  it('stop new job prematurely', stopJob(() => deployment.get().jobs.find(({ job }) => job !== firstJob.get())!.job));
+  it('finish second job prematurely', finishJob(() => deployment.get().jobs.find(({ job }) => job !== firstJob.get())!.job));
 
   it('wait for deployment to be stopped', waitForDeploymentStatus(
     deployment, { expectedStatus: DeploymentStatus.STOPPED },

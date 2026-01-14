@@ -10,20 +10,24 @@ import type { VaultDocument } from '../../src/types/index.js';
 
 export let deployerClient: NosanaClient;
 export let vaultClient: NosanaClient;
+export let nodeClient: NosanaClient;
+
 export const min_balance = { SOL: 0.01, NOS: 0.1 };
 
 let vaultUpserted = false;
 
 beforeAll(async () => {
-  if (!process.env.TEST_DEPLOYER_KEY_PATH || !process.env.TEST_VAULT_KEY_PATH) {
-    throw new Error("TEST_DEPLOYER_KEY_PATH or TEST_VAULT_KEY_PATH environment variable not set.");
+  if (!process.env.TEST_DEPLOYER_KEY_PATH || !process.env.TEST_VAULT_KEY_PATH || !process.env.TEST_NODE_KEY_PATH) {
+    throw new Error("TEST_DEPLOYER_KEY_PATH, TEST_VAULT_KEY_PATH or TEST_NODE_KEY_PATH environment variable not set.");
   }
 
   const { client: deployer } = await createKitClient(process.env.TEST_DEPLOYER_KEY_PATH);
   const { client: vault, encryptedPrivateKey } = await createKitClient(process.env.TEST_VAULT_KEY_PATH);
+  const { client: node } = await createKitClient(process.env.TEST_NODE_KEY_PATH);
 
   deployerClient = deployer;
   vaultClient = vault;
+  nodeClient = node;
 
   const db = await createDeploymentsConnection();
   const { upserted } = await storeVaultDocument(

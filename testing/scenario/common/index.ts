@@ -13,6 +13,9 @@ export * from "./jobs/joinMarketQueue.js";
 export * from "./jobs/stopJob.js";
 export * from "./jobs/waitForJobState.js";
 
+// Node actions
+export * from "./node/finishJob.js"
+
 // Vault actions
 export * from "./vault/checkSufficientVaultBalance.js";
 

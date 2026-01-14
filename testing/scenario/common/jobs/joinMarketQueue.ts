@@ -4,10 +4,12 @@ import { address } from '@nosana/kit';
 import { deployerClient } from '../../setup.js';
 
 export function joinMarketQueue(
-  getMarketAddress: () => string
+  getMarketAddress: () => string,
+  options: { verifyQueued?: boolean } = {}
 ) {
   return async () => {
     const marketAddress = address(getMarketAddress());
+    const { verifyQueued = true } = options;
 
     // Try to join the queue
     const instruction = await deployerClient.jobs.work({
@@ -29,12 +31,14 @@ export function joinMarketQueue(
       }
     }
 
-    // Verify the market account is accessible (node should be in queue now)
-    const marketAfter = await deployerClient.jobs.market(marketAddress);
-    // Verify our node address is in the queue
-    const nodeAddress = deployerClient.wallet!.address.toString();
-    const queueAddresses = marketAfter.queue.map((addr) => addr.toString());
-    expect(queueAddresses).toContain(nodeAddress);
+    if (verifyQueued) {
+      // Verify the market account is accessible (node should be in queue now)
+      const marketAfter = await deployerClient.jobs.market(marketAddress);
+      // Verify our node address is in the queue
+      const nodeAddress = deployerClient.wallet!.address.toString();
+      const queueAddresses = marketAfter.queue.map((addr) => addr.toString());
+      expect(queueAddresses).toContain(nodeAddress);
+    }
   };
 }
 

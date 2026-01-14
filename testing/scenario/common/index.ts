@@ -2,6 +2,7 @@ export * from "./deployment/createDeployment.js";
 export * from "./deployment/checkDeploymentJobs.js";
 export * from "./deployment/checkAllJobsStopped.js";
 export * from "./deployment/checkDeploymentExtendTask.js"
+export * from "./deployment/checkNoDeploymentExtendTask.js";
 export * from "./deployment/startDeployment.js";
 export * from "./deployment/stopDeployment.js";
 export * from "./deployment/waitForTaskComplete.js";

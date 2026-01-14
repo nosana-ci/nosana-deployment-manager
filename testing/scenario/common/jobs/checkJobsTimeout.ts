@@ -3,17 +3,17 @@ import { expect } from 'vitest';
 import type { Deployment } from '@nosana/api';
 import { address } from '@solana/addresses';
 
-import { State } from '../../utils';
-import { deployerClient } from '../../setup';
+import { State } from '../../utils/index.js';
+import { deployerClient } from '../../setup.js';
 
 export function checkJobsTimeout(
   deployment: State<Deployment>,
   job: () => string
 ) {
   return async () => {
-    let { timeout } = deployment.get();
-
+    const { timeout } = deployment.get();
     const onchain = await deployerClient.jobs.get(address(job()));
-    expect(onchain?.timeout).toBe(timeout * 2);
+    const timeoutInSeconds = timeout * 60;
+    expect(onchain?.timeout).toBe(timeoutInSeconds * 2);
   };
 }

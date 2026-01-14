@@ -10,7 +10,7 @@ export function waitForTaskComplete(
   return async () => {
     const tasks = await deployment.get().getTasks();
     expect(tasks).toHaveLength(1);
-    expect.poll(
+    await expect.poll(
       async () => {
         const newTasks = await deployment.get().getTasks();
         return newTasks.length === 0 || newTasks[0].due_at !== tasks[0].due_at;

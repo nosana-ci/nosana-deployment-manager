@@ -39,7 +39,7 @@ export async function onMarketUpdate(
         }
       }
 
-      await jobsCollection.updateOne(
+      await jobsCollection.updateMany(
         { job: { $in: Array.from(queuedJobsFromDB) } },
         { $set: { state: JobState.STOPPED } }
       );

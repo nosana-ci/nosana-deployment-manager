@@ -6,7 +6,7 @@ import { type JobsDocument, JobState } from "../../../types/index.js";
 export async function findQueuedJobsByMarket(
   db: Db,
   market: string
-): Promise<Map<string, JobsDocument>> {
+): Promise<Set<string>> {
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
 
   // Find all queued jobs for these deployments
@@ -17,11 +17,11 @@ export async function findQueuedJobsByMarket(
     })
     .toArray();
 
-  const jobsMap = new Map<string, JobsDocument>();
+  const jobsSet = new Set<string>();
 
   for (const job of queuedJobs) {
-    jobsMap.set(job.job, job);
+    jobsSet.add(job.job);
   }
 
-  return jobsMap;
+  return jobsSet;
 }

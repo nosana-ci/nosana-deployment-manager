@@ -14,7 +14,8 @@ export * from "./jobs/stopJob.js";
 export * from "./jobs/waitForJobState.js";
 
 // Node actions
-export * from "./node/finishJob.js"
+export * from "./node/finishJob.js";
+export * from "./node/verifyJobAssignedToNode.js";
 
 // Vault actions
 export * from "./vault/checkSufficientVaultBalance.js";

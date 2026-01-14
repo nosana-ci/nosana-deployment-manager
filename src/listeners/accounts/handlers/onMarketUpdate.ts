@@ -9,8 +9,6 @@ import { type JobsDocument, JobState } from "../../../types/index.js";
 
 const isJobQueuedAndNotEmpty = (market: Market) => market.queueType === MarketQueueType.JOB_QUEUE || !market.queue.length;
 
-
-
 export async function onMarketUpdate(
   db: Db,
   marketAccount: Market
@@ -25,7 +23,6 @@ export async function onMarketUpdate(
 
   // Check if all our queued jobs in this market are actually still queued on-chain
   // A delist instruction can remove the job from the on-chain queue
-
   if (isJobQueuedAndNotEmpty(marketAccount)) {
     for (const address of marketAccount.queue) {
       if (queuedJobsFromDB.has(address.toString())) {
@@ -36,14 +33,14 @@ export async function onMarketUpdate(
 
   if (queuedJobsFromDB.size > 0) {
     try {
-      for (const [jobAddress] of queuedJobsFromDB) {
+      for (const jobAddress of queuedJobsFromDB) {
         if (await checkJobExists(kit, jobAddress)) {
           queuedJobsFromDB.delete(jobAddress);
         }
       }
 
       await jobsCollection.updateOne(
-        { job: queuedJobsFromDB.keys() },
+        { job: { $in: Array.from(queuedJobsFromDB) } },
         { $set: { state: JobState.STOPPED } }
       );
 

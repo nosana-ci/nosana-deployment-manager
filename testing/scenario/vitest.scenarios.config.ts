@@ -33,12 +33,10 @@ export default () => {
       setupFiles: ['./testing/scenario/setup.ts'],
       env: {
         NETWORK: "devnet",
-        VAULT_KEY: "change_me",
         TEST_DEPLOYER_KEY_PATH: "~/.nosana/nosana_key.json",
         TEST_VAULT_KEY_PATH: "~/.nosana/nosana_key.json",
         TEST_NODE_KEY_PATH: "~/.nosana/nosana_key.json",
         TEST_MARKET: "J4HMc9haEdWUcXEpRrR31w6nrqR8oApEVSD7SYcE8Yr9",
-        DOCDB_HOST: "localhost",
       },
     },
   });

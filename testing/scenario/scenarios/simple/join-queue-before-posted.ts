@@ -5,6 +5,7 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 import { createState } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, waitForDeploymentStatus, waitForSeconds } from '../../common/index.js';
+import { testRunId } from "../../setup.js";
 
 export function joinQueueBeforePostedScenario() {
   describe('Join Queue Before Job Posted', () => {
@@ -14,6 +15,7 @@ export function joinQueueBeforePostedScenario() {
       await createDeployment(
         deployment,
         {
+          name: `${testRunId} :: Scenario testing: simple > join queue before posted`,
           strategy: DeploymentStrategy.SIMPLE,
         },
       )();

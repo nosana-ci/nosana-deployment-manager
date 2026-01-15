@@ -4,7 +4,7 @@ import { address, DeploymentStatus, DeploymentStrategy, JobState } from '@nosana
 
 import { createState } from '../../utils/index.js';
 import { createDeployment, checkDeploymentsJobs, checkSufficientVaultBalance, waitForDeploymentStatus, startDeployment, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, checkJobsTimeout, finishJob, joinMarketQueue, verifyJobAssignedToNode, checkAllJobsStopped } from '../../common/index.js';
-import { deployerClient } from '../../setup.js';
+import {deployerClient, testRunId} from '../../setup.js';
 
 export function basicFlowScenario() {
   describe('Basic Flow', () => {
@@ -13,7 +13,11 @@ export function basicFlowScenario() {
 
     it('creates deployment with SIMPLE-EXTEND strategy', createDeployment(
       deployment,
-      { strategy: DeploymentStrategy["SIMPLE-EXTEND"], timeout: 1.5 },
+      {
+        name: `${testRunId} :: Scenario testing: simple-extend > basic flow`,
+        strategy: DeploymentStrategy["SIMPLE-EXTEND"],
+        timeout: 1.5
+      },
     ));
 
     it('check vault has sufficient funds', checkSufficientVaultBalance(deployment));

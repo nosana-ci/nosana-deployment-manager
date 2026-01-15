@@ -4,6 +4,7 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
+import {testRunId} from "../../setup";
 
 export function basicFlowScenario() {
   describe('Basic Flow', () => {
@@ -13,6 +14,7 @@ export function basicFlowScenario() {
       await createDeployment(
         deployment,
         {
+          name: `${testRunId} :: Scenario testing: simple > basic flow`,
           strategy: DeploymentStrategy.SIMPLE,
         },
       )();

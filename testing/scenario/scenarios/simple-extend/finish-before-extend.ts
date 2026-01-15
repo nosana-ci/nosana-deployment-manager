@@ -4,6 +4,7 @@ import { DeploymentStatus, DeploymentStrategy, JobState } from '@nosana/kit';
 
 import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentExtendTask, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, finishJob, joinMarketQueue, startDeployment, verifyJobAssignedToNode, waitForDeploymentStatus, waitForJobState } from '../../common/index.js';
+import {testRunId} from "../../setup";
 
 export function finishBeforeExtendScenario() {
   describe('Finish Before Extend', () => {
@@ -12,7 +13,10 @@ export function finishBeforeExtendScenario() {
 
     it('creates deployment with SIMPLE-EXTEND strategy', createDeployment(
       deployment,
-      { strategy: DeploymentStrategy["SIMPLE-EXTEND"] },
+      {
+        name: `${testRunId} :: Scenario testing: simple-extend > finish before extend`,
+        strategy: DeploymentStrategy["SIMPLE-EXTEND"]
+      },
     ));
 
     it('check vault has sufficient funds', checkSufficientVaultBalance(deployment));

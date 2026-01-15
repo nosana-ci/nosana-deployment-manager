@@ -5,6 +5,7 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 import { createState } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
+import {testRunId} from "../../setup";
 
 export function multipleReplicasScenario() {
   describe('Multiple Replicas', () => {
@@ -14,6 +15,7 @@ export function multipleReplicasScenario() {
       await createDeployment(
         deployment,
         {
+          name: `${testRunId} :: Scenario testing: simple > multiple replicas`,
           strategy: DeploymentStrategy.SIMPLE,
           replicas: 3,
         },

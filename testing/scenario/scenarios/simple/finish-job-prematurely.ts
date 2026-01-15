@@ -5,6 +5,7 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 import { createState } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, finishJob, verifyJobAssignedToNode, waitForDeploymentStatus } from '../../common/index.js';
+import {testRunId} from "../../setup";
 
 export function finishJobPrematurelyScenario() {
   describe('Finish Job Prematurely', () => {
@@ -15,6 +16,7 @@ export function finishJobPrematurelyScenario() {
       await createDeployment(
         deployment,
         {
+          name: `${testRunId} :: Scenario testing: simple > finish job prematurely`,
           strategy: DeploymentStrategy.SIMPLE,
         },
       )();

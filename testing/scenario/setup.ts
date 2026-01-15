@@ -11,6 +11,7 @@ export let vault : Vault;
 export const min_balance = { SOL: 0.01, NOS: 0.1 };
 export const topup_balance = { SOL: 0.02, NOS: 0.5 };
 export const createdDeployments: Deployment[] = [];
+export const testRunId = new Date().toISOString();
 
 let providedVaultAddress = process.env.TEST_VAULT_ADDRESS;
 

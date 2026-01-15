@@ -4,6 +4,7 @@ import { DeploymentStatus, DeploymentStrategy, JobState } from '@nosana/kit';
 
 import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkDeploymentExtendTask, checkNoDeploymentExtendTask, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, verifyJobAssignedToNode, waitForDeploymentStatus, waitForJobState, waitForSeconds } from '../../common/index.js';
+import {testRunId} from "../../setup";
 
 export function queueThenJoinScenario() {
   describe('Queue Then Join', () => {
@@ -12,7 +13,10 @@ export function queueThenJoinScenario() {
 
     it('creates deployment with SIMPLE-EXTEND strategy', createDeployment(
       deployment,
-      { strategy: DeploymentStrategy["SIMPLE-EXTEND"] },
+      {
+        name: `${testRunId} :: Scenario testing: simple-extend > queue then join`,
+        strategy: DeploymentStrategy["SIMPLE-EXTEND"]
+      },
     ));
 
     it('check vault has sufficient funds', checkSufficientVaultBalance(deployment));

@@ -4,6 +4,7 @@ import { DeploymentStatus, DeploymentStrategy, JobState } from '@nosana/kit';
 
 import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkNoDeploymentExtendTask, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus, waitForJobState, waitForSeconds } from '../../common/index.js';
+import {testRunId} from "../../setup";
 
 export function queuedWithoutHostScenario() {
   describe('Queued Without Host', () => {
@@ -12,7 +13,10 @@ export function queuedWithoutHostScenario() {
 
     it('creates deployment with SIMPLE-EXTEND strategy', createDeployment(
       deployment,
-      { strategy: DeploymentStrategy["SIMPLE-EXTEND"] },
+      {
+        name: `${testRunId} :: Scenario testing: simple-extend > queued without host`,
+        strategy: DeploymentStrategy["SIMPLE-EXTEND"]
+      },
     ));
 
     it('check vault has sufficient funds', checkSufficientVaultBalance(deployment));

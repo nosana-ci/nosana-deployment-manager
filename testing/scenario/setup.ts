@@ -13,12 +13,15 @@ export const topup_balance = { SOL: 0.02, NOS: 0.5 };
 let providedVaultAddress = process.env.TEST_VAULT_ADDRESS;
 
 beforeAll(async () => {
-  if (!process.env.TEST_DEPLOYER_KEY_PATH || !process.env.TEST_NODE_KEY_PATH) {
-    throw new Error("TEST_DEPLOYER_KEY_PATH or TEST_NODE_KEY_PATH environment variable not set.");
+  const backendUrl = process.env.BACKEND_URL;
+  const testDeployerKeyPath = process.env.TEST_DEPLOYER_KEY_PATH;
+  const testNodeKeyPath = process.env.TEST_NODE_KEY_PATH;
+  if (!backendUrl || !testDeployerKeyPath || !testNodeKeyPath) {
+    throw new Error("BACKEND_URL, TEST_DEPLOYER_KEY_PATH or TEST_NODE_KEY_PATH environment variable not set.");
   }
 
-  const { client: deployer } = await createKitClient(process.env.TEST_DEPLOYER_KEY_PATH);
-  const { client: node } = await createKitClient(process.env.TEST_NODE_KEY_PATH);
+  const { client: deployer } = await createKitClient(backendUrl, testDeployerKeyPath);
+  const { client: node } = await createKitClient(backendUrl, testNodeKeyPath);
 
   deployerClient = deployer;
   nodeClient = node;

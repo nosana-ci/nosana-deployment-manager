@@ -5,7 +5,7 @@ import { createKeyPairSignerFromPrivateKeyBytes } from '@solana/signers';
 
 import { encryptWithKey } from '../../../src/vault/encrypt.js';
 
-export const createKitClient = async (keyPath: string): Promise<{
+export const createKitClient = async (backendUrl: string, keyPath: string): Promise<{
   client: NosanaClient,
   encryptedPrivateKey: string
 }> => {
@@ -20,7 +20,7 @@ export const createKitClient = async (keyPath: string): Promise<{
   const client = createNosanaClient('devnet', {
     logLevel: 'none',
     api: {
-      backend_url: "http://localhost:3001",
+      backend_url: backendUrl,
     }
   });
 

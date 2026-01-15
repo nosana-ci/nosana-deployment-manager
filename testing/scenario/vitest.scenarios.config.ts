@@ -33,6 +33,7 @@ export default () => {
       setupFiles: ['./testing/scenario/setup.ts'],
       env: {
         NETWORK: "devnet",
+        BACKEND_URL: "http://localhost:3001",
         TEST_DEPLOYER_KEY_PATH: "~/.nosana/nosana_key.json",
         TEST_VAULT_KEY_PATH: "~/.nosana/nosana_key.json",
         TEST_NODE_KEY_PATH: "~/.nosana/nosana_key.json",

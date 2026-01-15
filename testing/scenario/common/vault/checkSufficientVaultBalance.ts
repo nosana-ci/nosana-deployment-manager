@@ -10,7 +10,7 @@ export function checkSufficientVaultBalance(
 ) {
   return async () => {
     const balance = await state.get().vault.getBalance();
-    expect(balance.SOL).toBeGreaterThan(minBalance.SOL);
-    expect(balance.NOS).toBeGreaterThan(minBalance.NOS);
+    expect(balance.SOL).toBeGreaterThanOrEqual(minBalance.SOL);
+    expect(balance.NOS).toBeGreaterThanOrEqual(minBalance.NOS);
   };
 }

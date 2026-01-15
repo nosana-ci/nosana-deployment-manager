@@ -32,12 +32,12 @@ export default () => {
       },
       setupFiles: ['./testing/scenario/setup.ts'],
       env: {
-        NETWORK: "devnet",
-        BACKEND_URL: "http://localhost:3001",
-        TEST_DEPLOYER_KEY_PATH: "~/.nosana/nosana_key.json",
-        TEST_VAULT_KEY_PATH: "~/.nosana/nosana_key.json",
-        TEST_NODE_KEY_PATH: "~/.nosana/nosana_key.json",
-        TEST_MARKET: "J4HMc9haEdWUcXEpRrR31w6nrqR8oApEVSD7SYcE8Yr9",
+        NETWORK: process.env.NETWORK ?? "devnet",
+        BACKEND_URL: process.env.BACKEND_URL ?? "http://localhost:3001",
+        TEST_DEPLOYER_KEY_PATH: process.env.TEST_DEPLOYER_KEY_PATH ?? "~/.nosana/nosana_key.json",
+        TEST_VAULT_KEY_PATH: process.env.TEST_VAULT_KEY_PATH ?? "~/.nosana/nosana_key.json",
+        TEST_NODE_KEY_PATH: process.env.TEST_NODE_KEY_PATH ?? "~/.nosana/nosana_key.json",
+        TEST_MARKET: process.env.TEST_MARKET ?? "J4HMc9haEdWUcXEpRrR31w6nrqR8oApEVSD7SYcE8Yr9",
       },
     },
   });

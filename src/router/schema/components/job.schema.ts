@@ -7,6 +7,7 @@ export const JobsSchema = Type.Object({
   tx: Type.String(),
   job: PublicKeySchema,
   deployment: PublicKeySchema,
+  market: Type.String(),
   revision: Type.Number({ minimum: 1 }),
   state: Type.Union([Type.Literal(JobState.QUEUED), Type.Literal(JobState.RUNNING), Type.Literal(JobState.COMPLETED), Type.Literal(JobState.STOPPED)]),
   time_start: Type.Number({ minimum: 0 }),

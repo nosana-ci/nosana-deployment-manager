@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import type { CreateDeployment, Deployment, NosanaApi } from '@nosana/api';
 
-import { deployerClient, vaultClient } from '../../setup.js';
+import {deployerClient, vault} from '../../setup.js';
 import { createSimpleDeploymentBody, State } from '../../utils/index.js';
 
 export function createDeployment(
@@ -9,13 +9,14 @@ export function createDeployment(
   overrides: Partial<CreateDeployment> = {},
 ) {
   return async () => {
-    const deploymentBody = createSimpleDeploymentBody({ ...overrides, vault: vaultClient.wallet!.address.toString() });
+    const vaultAddress = vault.address.toString();
+    const deploymentBody = createSimpleDeploymentBody({ ...overrides, vault: vaultAddress });
     const deployment = await (deployerClient.api as NosanaApi).deployments.create(
       deploymentBody
     );
 
     expect(deployment.strategy).toBe(deploymentBody.strategy);
-    expect(deployment.vault.address.toString()).toBe(vaultClient.wallet!.address.toString());
+    expect(deployment.vault.address.toString()).toBe(vaultAddress);
 
     state.set(deployment);
   };

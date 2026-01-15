@@ -11,6 +11,7 @@ import { TaskDocument, TaskFinishedReason, TaskType } from "../types/index.js";
 import { addTaskStat, removeTaskStat } from "../stats/index.js";
 
 export function startTaskCollectionListener(db: Db) {
+  console.log("DEBUG :: Starting task collection listener...");
   const tasks = new Map<ObjectId, Worker>();
   const collection = db.collection<TaskDocument>("tasks");
   const { tasks_batch_size } = getConfig();
@@ -28,6 +29,7 @@ export function startTaskCollectionListener(db: Db) {
   };
 
   const spawnNewTask = (taskId: ObjectId, worker: Worker) => {
+    console.log("DEBUG :: Spawning new task:", taskId);
     tasks.set(taskId, worker);
 
     setTimeout(() => {
@@ -40,6 +42,7 @@ export function startTaskCollectionListener(db: Db) {
   };
 
   const fetchNewTasks = async () => {
+    console.log("DEBUG :: Fetching tasks...");
     if (tasks.size >= tasks_batch_size) {
       return;
     }
@@ -51,6 +54,7 @@ export function startTaskCollectionListener(db: Db) {
     );
 
     newTasks.forEach((task) => {
+      console.log("DEBUG :: handling new task:", task._id, task.task);
       addTaskStat(task._id, task.task);
       switch (task.task) {
         case TaskType.LIST:

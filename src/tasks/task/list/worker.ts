@@ -6,12 +6,17 @@ import { prepareWorker, workerErrorFormatter } from "../../../worker/Worker.js";
 import type { WorkerData } from "../../../types/index.js";
 
 try {
+  parentPort!.postMessage("DEBUG :: List Worker started");
+
   const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
   const { active_revision, confidential, market, replicas, timeout, strategy } = task.deployment;
 
   let ipfs_definition_hash: string = workerData.confidential_ipfs_pin;
 
   if (!confidential) {
+    parentPort!.postMessage("DEBUG :: job is not confidential, fetching from active revision")
+    console.log();
+
     const activeRevision = task.revisions.find(({ revision }) => revision === active_revision);
 
     if (!activeRevision) {
@@ -41,6 +46,7 @@ try {
     Array.from({ length }, async () => {
       try {
         if (useNosanaApiKey) {
+          parentPort!.postMessage("DEBUG :: using nosana api key to list job");
           const listArgs = { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market };
           const res = await kit.api!.jobs.list(listArgs);
           parentPort!.postMessage({
@@ -48,6 +54,7 @@ try {
             ...transformApiResponse(res),
           });
         } else {
+          parentPort!.postMessage("DEBUG :: using wallet to list job");
           const instruction = await kit.jobs.post({
             ipfsHash: ipfs_definition_hash,
             timeout: timeout * 60,

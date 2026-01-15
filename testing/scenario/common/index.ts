@@ -11,7 +11,6 @@ export * from "./deployment/waitForDeploymentStatus.js";
 // Job actions
 export * from "./jobs/checkJobsTimeout.js";
 export * from "./jobs/joinMarketQueue.js";
-export * from "./jobs/stopJob.js";
 export * from "./jobs/waitForJobState.js";
 
 // Node actions

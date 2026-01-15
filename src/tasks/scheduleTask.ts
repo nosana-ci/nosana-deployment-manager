@@ -27,6 +27,7 @@ export async function scheduleTask(
     job,
   }: ScheduleTaskOptions = {}
 ) {
+  console.log("DEBUG :: scheduling task: ", deploymentId, deploymentStatus, task);
   const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
   const deployments: DeploymentCollection = db.collection<DeploymentDocument>("deployments");
 

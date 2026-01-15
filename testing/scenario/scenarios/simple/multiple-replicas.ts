@@ -7,7 +7,7 @@ import { JobState } from '../../../../src/types/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 
 export function multipleReplicasScenario() {
-  describe('Simple Deployment Strategy - Multiple Replicas', () => {
+  describe('Multiple Replicas', () => {
     const deployment = createState<Deployment>();
 
     it('creates deployment with SIMPLE strategy and multiple replicas', async () => {

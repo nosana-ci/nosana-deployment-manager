@@ -6,7 +6,7 @@ export default () => {
   const testNames = process.argv.slice(4)
 
   const include = testNames.length > 0
-    ? testNames.map(name => `testing/scenario/scenarios/${name}.test.ts`)
+    ? testNames.map(name => `testing/scenario/scenarios/${name}/index.test.ts`)
     : [defaultInclude];
 
   return defineConfig({

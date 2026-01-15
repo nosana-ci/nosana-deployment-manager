@@ -6,7 +6,7 @@ import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentExtendTask, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, finishJob, joinMarketQueue, startDeployment, verifyJobAssignedToNode, waitForDeploymentStatus, waitForJobState } from '../../common/index.js';
 
 export function finishBeforeExtendScenario() {
-  describe('Simple Extend Deployment Strategy - Finish Before Extend', () => {
+  describe('Finish Before Extend', () => {
     const deployment = createState<Deployment>();
     const firstJob = createState<string>();
 

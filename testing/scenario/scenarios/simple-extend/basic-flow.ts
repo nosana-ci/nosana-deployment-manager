@@ -7,7 +7,7 @@ import { createDeployment, checkDeploymentsJobs, checkSufficientVaultBalance, wa
 import { deployerClient } from '../../setup.js';
 
 export function basicFlowScenario() {
-  describe('Simple Extend Deployment Strategy', () => {
+  describe('Basic Flow', () => {
     const deployment = createState<Deployment>();
     const firstJob = createState<string>();
 

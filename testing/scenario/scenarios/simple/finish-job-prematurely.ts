@@ -7,7 +7,7 @@ import { JobState } from '../../../../src/types/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, finishJob, verifyJobAssignedToNode, waitForDeploymentStatus } from '../../common/index.js';
 
 export function finishJobPrematurelyScenario() {
-  describe('Simple Deployment Strategy - Finish Job Prematurely', () => {
+  describe('Finish Job Prematurely', () => {
     const deployment = createState<Deployment>();
     const firstJob = createState<string>();
 

@@ -7,7 +7,7 @@ import { JobState } from '../../../../src/types/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, waitForDeploymentStatus, waitForSeconds } from '../../common/index.js';
 
 export function joinQueueBeforePostedScenario() {
-  describe('Simple Deployment Strategy - Join Queue Before Job Posted', () => {
+  describe('Join Queue Before Job Posted', () => {
     const deployment = createState<Deployment>();
 
     it('creates deployment with SIMPLE strategy', async () => {

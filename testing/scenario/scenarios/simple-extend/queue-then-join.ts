@@ -6,7 +6,7 @@ import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkDeploymentExtendTask, checkNoDeploymentExtendTask, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, verifyJobAssignedToNode, waitForDeploymentStatus, waitForJobState, waitForSeconds } from '../../common/index.js';
 
 export function queueThenJoinScenario() {
-  describe('Simple Extend Deployment Strategy - Queue Then Join', () => {
+  describe('Queue Then Join', () => {
     const deployment = createState<Deployment>();
     const firstJob = createState<string>();
 

@@ -1,1 +1,0 @@
-import './simple/index.js';

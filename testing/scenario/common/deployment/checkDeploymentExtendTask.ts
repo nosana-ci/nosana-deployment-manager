@@ -1,37 +1,39 @@
 import { expect } from 'vitest';
 import type { Deployment } from '@nosana/api';
-import { address } from '@nosana/kit';
 
 import { State } from '../../utils/createState.js';
-import { TaskDocument } from '../../../../src/types/index.js';
-import { createDeploymentsConnection } from '../../../../src/connection/deployments.js';
-import { NosanaCollections } from '../../../../src/definitions/collection.js';
+import { TaskType } from '../../../../src/types/index.js';
 
+// Temporary type until kit swagger is updated
+type TempTasks = {
+  task: TaskType,
+  deploymentId: string,
+  job: string | null,
+  limit: number | null,
+  active_revision: number | null,
+  due_at: string,
+  created_at: string,
+  tx: string
+}
 
 export function checkDeploymentExtendTask(
   state: State<Deployment>,
   { job }: { job: State<string> },
-  callback?: (task: TaskDocument) => void
+  callback?: (task: TempTasks) => void
 ) {
   return async () => {
     const deployment = state.get();
-    let task: TaskDocument | undefined = undefined;
-    let lastTasks: TaskDocument[] = [];
-    const expectedJob = address(job.get()).toString();
-    const db = await createDeploymentsConnection();
-    const tasksCollection = db.collection<TaskDocument>(NosanaCollections.TASKS);
+    let task: TempTasks | undefined = undefined;
+    let lastTasks: TempTasks[] = [];
+    const expectedJob = job.get();
+
     try {
       await expect.poll(
         async () => {
-          const tasks = await tasksCollection
-            .find({
-              deploymentId: deployment.id,
-              task: "EXTEND",
-            })
-            .toArray();
+          const tasks = await deployment.getTasks() as TempTasks[];
           lastTasks = tasks;
           task = tasks.find((t) => {
-            const taskJob = address(t.job as string).toString();
+            const taskJob = t.job;
             return taskJob === expectedJob;
           });
           return task;
@@ -42,7 +44,7 @@ export function checkDeploymentExtendTask(
       const extendTasks = lastTasks
         .filter((t) => t.task === "EXTEND")
         .map((t) => ({
-          job: t.job?.toString?.() ?? t.job,
+          job: t.job,
           due_at: t.due_at,
         }));
       throw new Error(

@@ -6,7 +6,7 @@ import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkNoDeploymentExtendTask, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus, waitForJobState, waitForSeconds } from '../../common/index.js';
 
 export function queuedWithoutHostScenario() {
-  describe('Simple Extend Deployment Strategy - Queued Without Host', () => {
+  describe('Queued Without Host', () => {
     const deployment = createState<Deployment>();
     const firstJob = createState<string>();
 

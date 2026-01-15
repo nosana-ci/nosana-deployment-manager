@@ -6,7 +6,7 @@ import { createState } from '../../utils/index.js';
 import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 
 export function basicFlowScenario() {
-  describe('Simple Deployment Strategy - Basic Flow', () => {
+  describe('Basic Flow', () => {
     const deployment = createState<Deployment>();
 
     it('creates deployment with SIMPLE strategy', async () => {

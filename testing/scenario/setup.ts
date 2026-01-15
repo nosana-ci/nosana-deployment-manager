@@ -3,12 +3,14 @@ import {NosanaClient, DeploymentStatus, Vault, DeploymentsApi} from '@nosana/kit
 
 import { createKitClient } from './utils/createKitClient.js';
 import {validateThatVaultIsUsable} from "./utils/validateThatVaultIsUsable";
+import {Deployment} from "@nosana/api";
 
 export let deployerClient: NosanaClient;
 export let nodeClient: NosanaClient;
 export let vault : Vault;
 export const min_balance = { SOL: 0.01, NOS: 0.1 };
 export const topup_balance = { SOL: 0.02, NOS: 0.5 };
+export const createdDeployments: Deployment[] = [];
 
 let providedVaultAddress = process.env.TEST_VAULT_ADDRESS;
 
@@ -40,14 +42,19 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if(!providedVaultAddress) {
-    console.log(`Withdrawing funds from test vault ${vault.address}`);
+    console.log("Withdrawing funds from test vault:", vault.address);
     await vault.withdraw();
   }
 
-  console.log("Attempting to clean up all deployments and jobs.");
-  const deployments = await deployerClient.api.deployments.list()
-  for (const { status, stop } of deployments) {
-    if (![DeploymentStatus.STARTING, DeploymentStatus.RUNNING].includes(status)) continue;
-    await stop();
+  console.log("Stopping all created deployments");
+  for (const deployment of createdDeployments) {
+    if ([DeploymentStatus.STOPPED, DeploymentStatus.STOPPING, DeploymentStatus.STARTING].includes(deployment.status)) {
+      console.log("Not stopping deployment:", deployment.id, deployment.status);
+      // TODO: how to stop jobs that are in STARTING?
+      //       for those stop() returns "deployment is in incorrect state"
+    } else {
+      console.log("Stopping deployment:", deployment.id, deployment.status);
+      await deployment.stop()
+    }
   }
 });

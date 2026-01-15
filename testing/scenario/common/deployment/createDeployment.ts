@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import type { CreateDeployment, Deployment, NosanaApi } from '@nosana/api';
 
-import {deployerClient, vault} from '../../setup.js';
+import {createdDeployments, deployerClient, vault} from '../../setup.js';
 import { createSimpleDeploymentBody, State } from '../../utils/index.js';
 
 export function createDeployment(
@@ -17,6 +17,8 @@ export function createDeployment(
 
     expect(deployment.strategy).toBe(deploymentBody.strategy);
     expect(deployment.vault.address.toString()).toBe(vaultAddress);
+
+    createdDeployments.push(deployment);
 
     state.set(deployment);
   };

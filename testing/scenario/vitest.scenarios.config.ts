@@ -18,7 +18,7 @@ export default () => {
       testTimeout: 1200000,
       hookTimeout: 300000,
       reporters: ['verbose'],
-      bail: 1, // Stop after first test failure
+      bail: 0, // Continue to run tests even if some fail
       fileParallelism: false, // Run test files sequentially, not in parallel
       sequence: {
         concurrent: false, // Run tests within files sequentially

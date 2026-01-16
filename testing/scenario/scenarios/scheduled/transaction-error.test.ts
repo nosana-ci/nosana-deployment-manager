@@ -3,14 +3,18 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import {
-  checkAllJobsStopped, checkDeploymentJobs,
+  checkAllJobsStopped,
+  checkDeploymentJobs,
   checkSufficientVaultBalance,
   createDeployment,
-  startDeployment, stopDeployment,
+  startDeployment,
+  stopDeployment,
+  topupVault,
   waitForDeploymentStatus,
-  waitForSeconds
+  waitForSeconds,
+  withdrawFundsFromVault
 } from '../../common/index.js';
-import {providedVaultAddress, testRunId, vault} from "../../setup.js";
+import { providedVaultAddress, testRunId } from "../../setup.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 
@@ -43,7 +47,7 @@ if(!providedVaultAddress || providedVaultAddress === "undefined") {
       ({jobs}) => firstJob.set(jobs[0].job)
     ));
 
-    step('withdraw funds from vault to create a transaction error', async () => await vault.withdraw());
+    step('withdraw funds from vault to create a transaction error', withdrawFundsFromVault());
 
     step('wait for 1 minute to allow schedule to repeat', waitForSeconds(ONE_MINUTE_IN_SECONDS));
 
@@ -53,6 +57,8 @@ if(!providedVaultAddress || providedVaultAddress === "undefined") {
     ));
 
     step('wait for deployment to be in error', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.ERROR}));
+
+    step("topup vault", topupVault())
 
     step('stop deployment', stopDeployment(deployment));
 

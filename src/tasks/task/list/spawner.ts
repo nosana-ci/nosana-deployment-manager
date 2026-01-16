@@ -38,7 +38,6 @@ export function spawnListTask(
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
 ): VaultWorker<WorkerData> {
-  console.log("DEBUG :: Spawning LIST task for deployment:", task.deploymentId);
   const collections = {
     deployments: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),
@@ -63,7 +62,6 @@ export function spawnListTask(
   worker.on(
     "message",
     ({ event, error, job, tx }: WorkerEventMessage) => {
-      console.log("DEBUG :: List Worker Message:", event, error, job, tx);
       switch (event) {
         case "CONFIRMED":
           successCount += 1;

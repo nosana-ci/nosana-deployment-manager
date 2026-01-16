@@ -1,11 +1,13 @@
-import { Wallet } from "@coral-xyz/anchor";
-import { AuthorizationManager } from "@nosana/sdk";
-import { Keypair, PublicKey } from "@solana/web3.js";
+
+import { JobState } from "@nosana/kit";
+import { address } from "@solana/addresses";
 
 import type { RouteHandler } from "fastify";
-import type { HeadersSchema } from "../../schema/index.schema.js";
-import { getSdk } from "../../../sdk/index.js";
+
 import { ErrorMessages } from "../../../errors/index.js";
+import { convertAddressToUnit8Array, getKit } from "../../../kit/index.js";
+
+import type { HeadersSchema } from "../../schema/index.schema.js";
 
 export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/deployments/jobs/") && !(method === "GET" && url.endsWith("results"))
 
@@ -19,9 +21,6 @@ export const authJobHostMiddleware: RouteHandler<{
       return;
     }
 
-    const authorizationManager = new AuthorizationManager(
-      new Wallet(new Keypair())
-    );
 
     const authToken = req.headers.authorization;
 
@@ -30,26 +29,30 @@ export const authJobHostMiddleware: RouteHandler<{
       return;
     }
 
-    const sdk = getSdk();
+    const kit = getKit();
+
     try {
-      const job = await sdk.jobs.get(req.params.job);
+      const job = await kit.jobs.get(address(req.params.job));
 
       if (!job) {
         res.status(404).send("Job Not Found");
         return;
       }
 
-      if (job.state === "QUEUED" && job.node !== '11111111111111111111111111111111') {
+      if (job.state === JobState.QUEUED && job.node.toString() !== '11111111111111111111111111111111') {
         res.status(403).send("Job must be running");
         return;
       }
 
       if (
-        !authorizationManager.validateHeader(req.headers, {
-          publicKey: new PublicKey(job.node),
-          expected_message: req.params.job,
-          expiry: 300,
-        })
+        !kit.authorization.validateHeaders(
+          req.headers,
+          convertAddressToUnit8Array(job.node),
+          {
+            expected_message: req.params.job,
+            expiry: 300
+          }
+        )
       ) {
         res.status(401).send("Unauthorized");
         return;

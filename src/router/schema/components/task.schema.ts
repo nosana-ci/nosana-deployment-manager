@@ -12,6 +12,9 @@ export const TaskSchema = Type.Object({
   task: TaskTypeSchema,
   deploymentId: PublicKeySchema,
   tx: Type.Optional(Type.String()),
+  job: Type.Optional(Type.String()),
+  limit: Type.Optional(Type.Number()),
+  active_revision: Type.Optional(Type.Number()),
   due_at: Type.String({ format: "date-time" }),
   created_at: Type.String({ format: "date-time" }),
 });

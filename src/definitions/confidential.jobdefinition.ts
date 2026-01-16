@@ -1,4 +1,4 @@
-import { JobDefinition } from "@nosana/sdk";
+import { JobDefinition } from "@nosana/kit";
 
 import { getConfig } from "../config/index.js";
 
@@ -7,9 +7,6 @@ export const createConfidentialJobDefinition = (): JobDefinition => {
   return {
     "version": "0.1",
     "type": "container",
-    "meta": {
-      "trigger": "cli"
-    },
     "logistics": {
       "send": {
         "type": "api",

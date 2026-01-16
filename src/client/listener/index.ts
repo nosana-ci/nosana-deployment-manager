@@ -45,7 +45,7 @@ export function createCollectionListener<T extends Document>(
     for await (const event of stream) {
       switch (event.operationType) {
         case "insert":
-          insertCallbacks.forEach((callback) => callback(event.fullDocument));
+          insertCallbacks.forEach((callback) => callback(event.fullDocument, db));
           break;
         case "update":
           updateCallbacks.forEach(({ options, callback }) => {
@@ -61,7 +61,7 @@ export function createCollectionListener<T extends Document>(
             }
 
             if (event.fullDocument) {
-              callback(event.fullDocument);
+              callback(event.fullDocument, db);
             }
           });
       }

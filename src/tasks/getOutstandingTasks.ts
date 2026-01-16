@@ -1,6 +1,6 @@
 import { Collection, ObjectId } from "mongodb";
 
-import { OutstandingTasksDocument, TaskDocument } from "../types/index.js";
+import { JobState, OutstandingTasksDocument, TaskDocument } from "../types/index.js";
 
 export async function getOutstandingTasks(
   collection: Collection<TaskDocument>,
@@ -55,6 +55,6 @@ export async function getOutstandingTasks(
   // Filter jobs in memory after the aggregation
   return results.map(doc => ({
     ...doc,
-    jobs: doc.jobs.filter(job => job.status === "PENDING"),
+    jobs: doc.jobs.filter(job => job.state === JobState.QUEUED || job.state === JobState.RUNNING),
   }));
 }

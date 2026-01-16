@@ -1,11 +1,11 @@
-import { FlowState, JobDefinition } from "@nosana/sdk";
-import { Collection, Document } from "mongodb";
+import type { Collection, Document } from "mongodb";
+import type { NosanaNetwork, FlowState, JobDefinition } from "@nosana/kit";
 
-import { JobResultsSchema } from "../router/schema/index.schema.js";
+import type { JobResultsSchema } from "../router/schema/index.schema.js";
 
 export type DeploymentsConfig = {
   base_url: string;
-  network: "mainnet" | "devnet";
+  network: NosanaNetwork;
   nos_address: string;
   rpc_network: string;
   frps_address: string;
@@ -22,6 +22,7 @@ export type DeploymentsConfig = {
     password: string | undefined;
     use_tls: boolean;
   };
+  default_minutes_before_timeout: number;
 };
 
 export const DeploymentStatus = {
@@ -52,11 +53,37 @@ export type DeploymentDocument =
   | ({
     strategy: "SCHEDULED";
     schedule: string;
+    rotation_time?: never;
+  } & DeploymentDocumentBase)
+  | ({
+    strategy: "INFINITE";
+    rotation_time: number;
+    schedule?: never;
   } & DeploymentDocumentBase)
   | ({
     strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
     schedule?: never;
+    rotation_time?: never;
   } & DeploymentDocumentBase);
+
+export const DeploymentDocumentFields: Record<Uppercase<keyof DeploymentDocument>, keyof DeploymentDocument> = {
+  ID: "id",
+  VAULT: "vault",
+  MARKET: "market",
+  OWNER: "owner",
+  NAME: "name",
+  STATUS: "status",
+  REPLICAS: "replicas",
+  TIMEOUT: "timeout",
+  ENDPOINTS: "endpoints",
+  ACTIVE_REVISION: "active_revision",
+  CONFIDENTIAL: "confidential",
+  CREATED_AT: "created_at",
+  UPDATED_AT: "updated_at",
+  STRATEGY: "strategy",
+  SCHEDULE: "schedule",
+  ROTATION_TIME: "rotation_time",
+}
 
 export type DeploymentCollection = Collection<DeploymentDocument>;
 
@@ -104,11 +131,7 @@ export type VaultDocument = {
   vault: string;
   vault_key: string;
   owner: string;
-  sol: number;
-  nos: number;
-  nos_ata: string;
   created_at: Date;
-  updated_at: Date;
 };
 
 export type VaultCollection = Collection<VaultDocument>;
@@ -160,18 +183,44 @@ export type TaskDocument = {
   deploymentId: string;
   tx: string | undefined | null;
   active_revision?: number;
+  limit?: number;
+  job?: string;
   created_at: Date;
 };
 
 export type TasksCollection = Collection<TaskDocument>;
 
+export const JobState = {
+  QUEUED: "QUEUED",
+  RUNNING: "RUNNING",
+  COMPLETED: "COMPLETED",
+  STOPPED: "STOPPED",
+} as const;
+
+export type JobState = (typeof JobState)[keyof typeof JobState];
+
+export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof JobsDocument> = {
+  JOB: "job",
+  MARKET: "market",
+  DEPLOYMENT: "deployment",
+  REVISION: "revision",
+  TX: "tx",
+  STATE: "state",
+  TIME_START: "time_start",
+  CREATED_AT: "created_at",
+  UPDATED_AT: "updated_at",
+}
+
 export type JobsDocument = {
   job: string;
+  market: string;
   deployment: string;
   revision: number;
   tx: string;
-  status: "PENDING" | "CONFIRMED" | "COMPLETED";
+  state: JobState;
+  time_start: number;
   created_at: Date;
+  updated_at: Date;
 };
 
 export type JobsCollection = Collection<JobsDocument>;

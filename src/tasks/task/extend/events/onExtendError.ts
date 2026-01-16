@@ -17,7 +17,7 @@ export function onExtendError(
   events.insertOne({
     deploymentId,
     category: "Deployment",
-    type: "JOB_EXTEND_FAILED",
+    type: "JOB_EXTEND_ERROR",
     message: error,
     created_at: new Date(),
   });

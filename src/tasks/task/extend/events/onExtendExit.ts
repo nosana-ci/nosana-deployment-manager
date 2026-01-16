@@ -1,41 +1,21 @@
-import { Db } from "mongodb";
-
-import { scheduleTask } from "../../../scheduleTask.js";
-
-import {
+import type {
   DeploymentStatus,
-  TaskType,
   DeploymentCollection,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
 
 export async function onExtendExit(
-  deploymentStatus: DeploymentStatus | undefined,
+  newDeploymentStatus: DeploymentStatus | undefined,
   deployments: DeploymentCollection,
-  { deploymentId, deployment: { timeout, status } }: OutstandingTasksDocument,
-  db: Db
+  { deploymentId }: OutstandingTasksDocument,
 ) {
-  if (deploymentStatus) {
-    deployments.updateOne(
-      {
-        id: {
-          $eq: deploymentId,
-        },
-      },
-      {
-        $set: {
-          status: deploymentStatus,
-        },
+  if (newDeploymentStatus) {
+    deployments.updateOne({
+      id: deploymentId
+    }, {
+      $set: {
+        status: newDeploymentStatus
       }
-    );
-    return;
+    })
   }
-
-  scheduleTask(
-    db,
-    TaskType.EXTEND,
-    deploymentId,
-    status,
-    new Date(new Date().getTime() + timeout * 1000)
-  );
 }

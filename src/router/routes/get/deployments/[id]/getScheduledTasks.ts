@@ -24,7 +24,9 @@ export const deploymentGetScheduledTasksHandler: RouteHandler<{
       .toArray();
 
     res.status(200);
-    return taskDocuments;
+    return taskDocuments.map((task) => (
+      { job: undefined, limit: undefined, active_revision: undefined, ...task }
+    ));
   } catch (error) {
     req.log.error(error, "Failed to get scheduled tasks for deployment");
     res.status(500).send({

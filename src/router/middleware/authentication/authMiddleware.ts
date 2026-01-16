@@ -1,11 +1,9 @@
-import { Wallet } from "@coral-xyz/anchor";
 import type { RouteHandler } from "fastify";
-import { AuthorizationManager } from "@nosana/sdk";
-import { Keypair, PublicKey } from "@solana/web3.js";
 
 import { isJobHostRoute } from "./authJobHostMiddleware.js";
 
 import type { HeadersSchema } from "../../schema/index.schema.js";
+import { convertAddressToUnit8Array, getKit } from "../../../kit/index.js";
 
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;
@@ -23,13 +21,10 @@ export const authMiddleware: RouteHandler<{
   }
 
   if (!authToken.startsWith("nos_")) {
-    const authorizationManager = new AuthorizationManager(
-      new Wallet(new Keypair())
-    );
+    const kit = getKit();
 
     if (
-      !authorizationManager.validateHeader(req.headers, {
-        publicKey: new PublicKey(userId as string),
+      !kit.authorization.validateHeaders(req.headers, convertAddressToUnit8Array(userId), {
         expiry: 300,
       })
     ) {

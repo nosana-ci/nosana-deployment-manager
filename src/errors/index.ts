@@ -26,16 +26,18 @@ export const ErrorMessages = {
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
-    INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
     FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",
     FAILED_TO_CREATE_NEW_REVISION: "Failed to create a new deployment revision.",
+    INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
+    INVALID_ROTATION_TIME: "Rotation time must be at least 10 minutes less than timeout.",
+    INVALID_TIMEOUT: "Timeout for infinite deployments must be at least 1 hour."
   },
   job: {
     NOT_FOUND: "Job not found.",
     JOB_RESULTS_NOT_FOUND: "Job results not found",
     JOB_NOT_COMPLETED: "This job has not yet completed",
     JOB_ALREADY_COMPLETED: "Job has already been completed.",
-    FAILED_TO_SAVE_RESLTS: "Failed to save the jobs results.",
+    FAILED_TO_SAVE_RESULTS: "Failed to save the jobs results.",
     FAILED_TO_FIND_JOB_DEFINITION: "Failed to find the jobs definition.",
     FAILED_TO_FIND_DEPLOYMENT: "Failed to find the deployments job definition.",
   },
@@ -46,6 +48,7 @@ export const ErrorMessages = {
     FAILED_TO_ARCHIVE: "Failed to archive vault.",
     FAILED_TO_FIND_KEY: "Could not find vault.",
     FAILED_TO_UPDATE_BALANCE: "Could not update vaults balance.",
+    WITHDRAW_NO_FUNDS: "Vault has no funds to withdraw.",
     WITHDRAW_NOSANA_API_KEY_VAULT: "Cannot withdraw from a vault containing a Nosana API key.",
   },
 };

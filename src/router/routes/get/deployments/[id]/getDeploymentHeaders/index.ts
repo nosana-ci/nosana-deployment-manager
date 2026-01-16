@@ -1,13 +1,10 @@
-import path from "path";
-import { fileURLToPath } from "url";
-import { SHARE_ENV, Worker } from "worker_threads";
 import type { RouteHandler } from "fastify";
 
 import { getConfig } from "../../../../../../config/index.js";
-import type { HeadersSchema } from "../../../../../schema/index.schema.js";
+import { VaultWorker } from "../../../../../../worker/Worker.js";
 import { GetDeploymentHeaderSuccess, GetDeploymentHeaderError } from "../../../../../schema/get/deployments/[id]/getDeploymentHeader.schema.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import type { HeadersSchema } from "../../../../../schema/index.schema.js";
 
 export const deploymentGetHeaderHandler: RouteHandler<{
   Params: { deployment: string };
@@ -38,16 +35,13 @@ export const deploymentGetHeaderHandler: RouteHandler<{
 
     try {
       const header: string = await new Promise((resolve, reject) => {
-        const worker = new Worker(path.resolve(__dirname, "./worker.js"), {
+        const worker = new VaultWorker("../router/routes/get/deployments/[id]/getDeploymentHeaders/worker.js", {
           workerData: {
             includeTime: includeTime === "true",
             config: getConfig(),
             vault: vaultDocument.vault_key,
-          },
-          env: SHARE_ENV,
+          }
         });
-
-
 
         worker.on("message", ({ event, header: generatedHeader, error, }) => {
           switch (event) {

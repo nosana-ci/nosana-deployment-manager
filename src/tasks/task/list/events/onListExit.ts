@@ -1,42 +1,32 @@
-import { Db } from "mongodb";
-
-import { OnListEventParams } from "../spawner.js";
 import { getNextTaskTime } from "../../../utils/index.js";
-import { scheduleTask } from "../../../scheduleTask.js";
 
 import {
   DeploymentStrategy,
   TaskType,
 } from "../../../../types/index.js";
+import type { OnListEventParams } from "../spawner.js";
 
 export async function onListExit(
   {
-    error,
-    collections: { tasks },
+    collections: { deployments, tasks },
     task: {
       deploymentId,
-      deployment: { timeout, strategy, schedule, status },
+      deployment: { strategy, schedule },
       due_at,
     },
+    newDeploymentStatus,
   }: OnListEventParams,
-  db: Db
 ) {
-  if (!error) {
-    if (strategy === DeploymentStrategy["SIMPLE-EXTEND"]) {
-      scheduleTask(
-        db,
-        TaskType.EXTEND,
-        deploymentId,
-        status,
-        new Date(
-          new Date().getTime() +
-          (timeout - Math.min(Math.max(timeout - timeout * 0.9, 60), 300)) *
-          1000
-        )
+  if (newDeploymentStatus) {
+    try {
+      await deployments.updateOne(
+        { id: deploymentId },
+        { $set: { status: newDeploymentStatus } }
       );
+    } catch (error) {
+      console.error("Failed to update deployment status:", error);
     }
   }
-
   if (strategy === DeploymentStrategy.SCHEDULED && schedule) {
     const nextTaskTime = getNextTaskTime(schedule, due_at);
     await tasks.insertOne({

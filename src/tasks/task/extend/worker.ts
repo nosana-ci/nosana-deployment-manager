@@ -1,41 +1,46 @@
+import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
 
-import { prepareWorker, workerErrorFormatter } from "../Worker.js";
+import { prepareWorker, workerErrorFormatter } from "../../../worker/Worker.js";
+
+import type { WorkerData } from "../../../types/index.js";
 
 const {
-  client,
+  kit,
   useNosanaApiKey,
-  task: { deployment: { timeout }, jobs }
-} = await prepareWorker(workerData);
+  task: { deployment: { timeout }, job }
+} = await prepareWorker<WorkerData>(workerData);
 
 try {
-  await Promise.all(jobs.map(async ({ job }) => {
-    try {
-      if (useNosanaApiKey) {
-        const res = await client.api.jobs.extend({ jobAddress: job, seconds: timeout });
-        if (res) {
-          parentPort?.postMessage({
-            event: "CONFIRMED",
-            tx: res.tx,
-            job: res.job,
-          });
-        }
-      } else {
-        const res = await client.jobs.extend(job, timeout);
-        if (res) {
-          parentPort?.postMessage({
-            event: "CONFIRMED",
-            ...res
-          });
-        }
+  if (!job) {
+    throw new Error("No job specified for extension.");
+  }
+
+  try {
+    if (useNosanaApiKey) {
+      const res = await kit.api!.jobs.extend({ address: job, seconds: timeout * 60 });
+      if (res) {
+        parentPort?.postMessage({
+          event: "CONFIRMED",
+          tx: res.tx,
+          job: res.job,
+        });
       }
-    } catch (error) {
+    } else {
+      const instruction = await kit.jobs.extend({ job: address(job), timeout: timeout * 60 });
+      const tx = await kit.solana.buildSignAndSend(instruction);
       parentPort?.postMessage({
-        event: "ERROR",
-        error: workerErrorFormatter(error)
+        event: "CONFIRMED",
+        job,
+        tx
       });
     }
-  }));
+  } catch (error) {
+    parentPort?.postMessage({
+      event: "ERROR",
+      error: workerErrorFormatter(error)
+    });
+  }
 } catch (error) {
   parentPort?.postMessage({
     event: "ERROR",

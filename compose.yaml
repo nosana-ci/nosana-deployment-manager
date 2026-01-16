@@ -3,7 +3,6 @@ services:
     image: mongo:7.0
     volumes:
       - deploymentsdbdata:/data/db
-      - deploymentsdbconfig:/data/configdb
     networks:
       - deployments_network
     ports:
@@ -18,6 +17,20 @@ services:
       start_period: 0s
       start_interval: 1s
       retries: 30
+  mongo_express:
+    image: mongo-express:latest
+    depends_on:
+      deployments_db:
+        condition: service_healthy
+    entrypoint: ["/sbin/tini", "--", "node", "app"]
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=deployments_db
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH=false
+    networks:
+      - deployments_network
   deployment_manager:
     depends_on:
       - deployments_db
@@ -37,7 +50,7 @@ services:
         - action: rebuild
           path: package.json
     environment:
-      - NETWORK=mainnet
+      - NETWORK=devnet
       - VAULT_KEY=change_me
       - TASKS_BATCH_SIZE=10
       - CONFIDENTIAL_BY_DEFAULT=true
@@ -53,13 +66,9 @@ services:
       - "3001:3000"
     networks:
       - deployments_network
-    volumes:
-      - deploymentsVault:/.nosana/vault
 
 volumes:
   deploymentsdbdata:
-  deploymentsVault:
-  deploymentsdbconfig:
 
 networks:
   deployments_network:

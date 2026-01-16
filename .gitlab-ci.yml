@@ -16,7 +16,7 @@ variables:
   AUTO_BUMP_SCG_PREFIX: image_tag [^}]*= { dev = \"
 
 npm install:
-  image: node:20.11.1
+  image: node:22
   stage: build
   script:
     - npm ci
@@ -27,7 +27,7 @@ npm install:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 npm format:
-  image: node:20.11.1
+  image: node:22
   stage: test
   dependencies:
     - npm install
@@ -38,12 +38,20 @@ npm format:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 npm test:
-  image: node:20.11.1
+  image: node:22
   stage: test
   dependencies:
     - npm install
   script:
-    - npm test
+    - npm run ci:test
+  coverage: '/All files[^|]*\|[^|]*\|[^|]*\|[^|]*\|[^\d]*([\d\.]+)/'
+  artifacts:
+    when: always
+    paths:
+      - test-report.xml
+    reports:
+      junit: test-report.xml
+
   rules:
     - if: $CI_MERGE_REQUEST_ID
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

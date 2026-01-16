@@ -2,7 +2,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Db, Collection } from "mongodb";
 
-import { Worker } from "../Worker.js";
+import { VaultWorker } from "../../../worker/Worker.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
 
 import {
@@ -13,18 +13,19 @@ import {
   OutstandingTasksDocument,
   TaskDocument,
   TaskFinishedReason,
+  WorkerData,
   WorkerEventMessage,
 } from "../../../types/index.js";
 import { getConfig } from "../../../config/index.js";
 
 export interface OnListEventParams {
   code?: number;
-  error: DeploymentStatus;
   task: OutstandingTasksDocument;
+  newDeploymentStatus?: DeploymentStatus | undefined;
   setDeploymentErrorStatus: (type: DeploymentStatus) => void;
   collections: {
     events: Collection<EventDocument>;
-    documents: Collection<DeploymentDocument>;
+    deployments: Collection<DeploymentDocument>;
     jobs: Collection<JobsDocument>;
     tasks: Collection<TaskDocument>;
   };
@@ -36,19 +37,21 @@ export function spawnListTask(
   db: Db,
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
-): Worker {
+): VaultWorker<WorkerData> {
   const collections = {
-    documents: db.collection<DeploymentDocument>("deployments"),
+    deployments: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),
     jobs: db.collection<JobsDocument>("jobs"),
     tasks: db.collection<TaskDocument>("tasks"),
   };
 
   let successCount = 0;
-  let deploymentStatus: DeploymentStatus;
-  const setDeploymentErrorStatus = (status: DeploymentStatus) => (deploymentStatus = status);
+  let newDeploymentStatus: DeploymentStatus | undefined = undefined;
+  const setDeploymentErrorStatus = async (status: DeploymentStatus) => {
+    newDeploymentStatus = status
+  };
 
-  const worker = new Worker("./list/worker.js", {
+  const worker = new VaultWorker("../tasks/task/list/worker.js", {
     workerData: {
       task,
       vault: task.deployment.vault.vault_key,
@@ -65,7 +68,6 @@ export function spawnListTask(
           onListConfirmed(tx, job, {
             task,
             collections,
-            error: deploymentStatus,
             setDeploymentErrorStatus,
           });
           break;
@@ -73,7 +75,6 @@ export function spawnListTask(
           onListError(tx, error, {
             task,
             collections,
-            error: deploymentStatus,
             setDeploymentErrorStatus,
           });
           break;
@@ -87,12 +88,11 @@ export function spawnListTask(
         code,
         task,
         collections,
-        error: deploymentStatus,
+        newDeploymentStatus,
         setDeploymentErrorStatus,
       },
-      db
     );
-    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
+    complete(successCount, newDeploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

@@ -1,4 +1,4 @@
-import { jobSchemas } from "@nosana/sdk";
+import { jobSchemas } from "@nosana/kit";
 import type { Static, TSchema } from "@sinclair/typebox";
 
 import { flattenSchema, SchemaObject } from "./utils/flattenSchema.js";

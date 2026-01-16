@@ -1,3 +1,4 @@
+import { JobState } from "../../../../types/index.js";
 import { OnListEventParams } from "../spawner.js";
 
 export function onListConfirmed(
@@ -15,9 +16,12 @@ export function onListConfirmed(
   jobs.insertOne({
     job,
     tx,
-    status: "PENDING",
+    market: task.deployment.market,
+    state: JobState.QUEUED,
     deployment: task.deploymentId,
     revision: task.deployment.active_revision,
+    time_start: 0,
     created_at: new Date(),
+    updated_at: new Date(),
   });
 }

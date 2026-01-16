@@ -7,7 +7,7 @@ import {
 } from "./events/index.js";
 import { getConfig } from "../../../config/index.js";
 
-import { Worker } from "../Worker.js";
+import { VaultWorker } from "../../../worker/Worker.js";
 
 import {
   DeploymentDocument,
@@ -17,21 +17,22 @@ import {
   OutstandingTasksDocument,
   VaultDocument,
   TaskFinishedReason,
+  WorkerData,
 } from "../../../types/index.js";
 
 export function spawnExtendTask(
   db: Db,
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
-): Worker {
+): VaultWorker<WorkerData> {
   const config = getConfig();
   const events = db.collection<EventDocument>("events");
   const deployments = db.collection<DeploymentDocument>("documents");
 
   let successCount = 0;
-  let deploymentStatus: DeploymentStatus | undefined = undefined;
+  let newDeploymentStatus: DeploymentStatus | undefined = undefined;
 
-  const worker = new Worker("./extend/worker.js", {
+  const worker = new VaultWorker("../tasks/task/extend/worker.js", {
     workerData: {
       task,
       config,
@@ -39,16 +40,16 @@ export function spawnExtendTask(
     },
   });
 
-  worker.on("message", ({ event, error, tx }: WorkerEventMessage) => {
+  worker.on("message", ({ event, error, tx, job }: WorkerEventMessage) => {
     switch (event) {
       case "CONFIRMED":
         successCount += 1;
-        onExtendConfirmed(tx, events, task);
+        onExtendConfirmed(job, tx, events, task, db);
         break;
       case "ERROR":
         onExtendError(
           error,
-          (status: DeploymentStatus) => (deploymentStatus = status),
+          (status: DeploymentStatus) => (newDeploymentStatus = status),
           events,
           task
         );
@@ -57,9 +58,8 @@ export function spawnExtendTask(
   });
 
   worker.on("exit", async () => {
-    await onExtendExit(deploymentStatus, deployments, task, db);
-
-    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
+    await onExtendExit(newDeploymentStatus, deployments, task);
+    complete(successCount, newDeploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

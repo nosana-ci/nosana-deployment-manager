@@ -4,99 +4,25 @@ import {
   createCollectionListener,
   CollectionListener,
 } from "../../client/listener/index.js";
-import { getNextTaskTime } from "../../tasks/utils/index.js";
-import { scheduleTask } from "../../tasks/scheduleTask.js";
+import { strategyListeners } from "../../strategies/index.js";
+import { NosanaCollections } from "../../definitions/collection.js";
 
-import {
-  DeploymentDocument,
-  DeploymentStatus,
-  DeploymentStrategy,
-  TaskType,
-} from "../../types/index.js";
-import { updateScheduledTasks } from "../../tasks/updateScheduledTasks.js";
+import type { DeploymentDocument } from "../../types/index.js";
 
-export function startDeploymentListener(db: Db) {
+export function startDeploymentCollectionListener(db: Db) {
   const listener: CollectionListener<DeploymentDocument> =
-    createCollectionListener("deployments", db);
+    createCollectionListener(NosanaCollections.DEPLOYMENTS, db);
 
-  if (!listener) {
-    throw new Error("Listener setup is required before starting the service.");
-  }
-
-  listener.addListener(
-    "update",
-    ({ id, strategy, schedule, status }) => {
-      scheduleTask(
-        db,
-        TaskType.LIST,
-        id,
-        status,
-        strategy === DeploymentStrategy.SCHEDULED
-          ? getNextTaskTime(schedule)
-          : undefined
-      )
-    },
-    {
-      fields: ["status"],
-      filters: {
-        status: { $eq: DeploymentStatus.STARTING },
-      }
+  strategyListeners.deployments.forEach(([eventType, callback, options]) => {
+    if (eventType === "insert") {
+      listener.addListener(
+        eventType,
+        (doc, db) => callback(doc, db),
+      );
+    } else {
+      listener.addListener(eventType, callback, options);
     }
-  );
-
-  listener.addListener(
-    "update",
-    ({ id, status }) => {
-      scheduleTask(db, TaskType.STOP, id, status)
-    },
-    {
-      fields: ["status"],
-      filters: {
-        status: { $eq: DeploymentStatus.STOPPING },
-      }
-    }
-  );
-
-  listener.addListener(
-    "update",
-    ({ id, schedule }) => {
-      updateScheduledTasks(db, id, getNextTaskTime(schedule!));
-    },
-    {
-      fields: ["schedule"],
-      filters: {
-        status: { $ne: DeploymentStatus.DRAFT },
-      }
-    }
-  );
-
-  listener.addListener(
-    "update",
-    ({ id, status }) => {
-      scheduleTask(db, TaskType.LIST, id, status)
-    }, {
-    fields: ["replicas"],
-    filters: {
-      strategy: { $or: [DeploymentStrategy.SIMPLE, DeploymentStrategy["SIMPLE-EXTEND"]] }
-    }
-  }
-  )
-
-  listener.addListener(
-    "update",
-    ({ id, active_revision, schedule, strategy, status }) => {
-      scheduleTask(db, TaskType.STOP, id, status, new Date(), active_revision);
-      scheduleTask(db, TaskType.LIST, id, status, strategy === DeploymentStrategy.SCHEDULED
-        ? getNextTaskTime(schedule)
-        : undefined, active_revision);
-    },
-    {
-      fields: ["active_revision"],
-      filters: {
-        status: { $ne: DeploymentStatus.DRAFT },
-      }
-    }
-  );
+  });
 
   listener.start();
 }

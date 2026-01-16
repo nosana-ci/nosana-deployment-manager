@@ -1,5 +1,5 @@
 import type { RouteHandler } from "fastify";
-import { JobDefinition } from "@nosana/sdk";
+import { JobDefinition } from "@nosana/kit";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
 
@@ -18,12 +18,12 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
   Reply: DeploymentCreateRevisionSuccess | DeploymentCreateRevisionError;
 }> = async (req, res) => {
   const { db } = res.locals;
-  const jobDefintion = req.body;
+  const jobDefinition = req.body;
   const deployment = res.locals.deployment!;
   const userId = req.headers["x-user-id"];
 
   try {
-    const { revision, endpoints } = await createNewDeploymentRevision(deployment.active_revision, deployment.id, deployment.vault, jobDefintion);
+    const { revision, endpoints } = await createNewDeploymentRevision(deployment.active_revision, deployment.id, deployment.vault, jobDefinition);
 
     const { acknowledged: revAck } = await db.revisions.insertOne(revision);
     if (!revAck) {

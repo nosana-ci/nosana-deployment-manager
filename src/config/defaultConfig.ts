@@ -27,6 +27,9 @@ const commonConfig: Omit<
     password: process.env.DOCDB_PASSWORD,
     use_tls: fs.existsSync(path.join(__dirname, "../../../global-bundle.pem")),
   },
+  default_minutes_before_timeout: process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT
+    ? parseInt(process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT)
+    : 20,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {
@@ -45,7 +48,7 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     network: "devnet",
     nos_address:
       process.env.NOS_ADDRESS ?? "devr1BGQndEW5k5zfvG5FsLyZv1Ap73vNgAHcQ9sUVP",
-    rpc_network: process.env.SOLANA_NETWORK ?? "devnet",
+    rpc_network: process.env.SOLANA_NETWORK ?? "https://api.devnet.solana.com",
     frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
     dashboard_backend_url: process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.dev.nos.ci",
     ...commonConfig,

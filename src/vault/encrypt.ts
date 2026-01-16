@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
-import { algorithm, salt } from "./index.js";
 import { getConfig } from "../config/index.js";
+import { algorithm, salt, separator } from "./index.js";
 
 export function encryptWithKey(value: string): string {
   const password = getConfig().vault_key;
@@ -16,5 +16,5 @@ export function encryptWithKey(value: string): string {
 
   const authTag = cipher.getAuthTag();
 
-  return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
+  return iv.toString('hex') + separator + authTag.toString('hex') + separator + encrypted;
 }

@@ -9,13 +9,23 @@ import {
   TaskType,
 } from "../types/index.js";
 
+type ScheduleTaskOptions = Partial<{
+  active_revision?: number;
+  limit?: number;
+  job?: string;
+}>
+
 export async function scheduleTask(
   db: Db,
   task: TaskType,
   deploymentId: string,
   deploymentStatus: DeploymentStatus,
   due_at = new Date(),
-  active_revision?: number,
+  {
+    active_revision,
+    limit,
+    job,
+  }: ScheduleTaskOptions = {}
 ) {
   const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
   const deployments: DeploymentCollection = db.collection<DeploymentDocument>("deployments");
@@ -26,6 +36,8 @@ export async function scheduleTask(
     deploymentId,
     tx: undefined,
     active_revision,
+    limit,
+    job,
     created_at: new Date(),
   });
 

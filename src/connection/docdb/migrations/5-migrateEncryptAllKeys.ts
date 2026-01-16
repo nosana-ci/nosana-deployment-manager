@@ -1,27 +1,17 @@
 import { Db } from "mongodb";
-import { PublicKey } from "@solana/web3.js";
+import { isAddress } from "@solana/addresses";
 
 import { encryptWithKey } from "../../../vault/encrypt.js";
 
-import type { VaultCollection } from "../../../types/index.js";
-
-function isPublicKey(key: string): boolean {
-  try {
-    new PublicKey(key);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
+import type { VaultDocument } from "../../../types/index.js";
 
 export default async function migrateDeploymentsToEndpoints(db: Db) {
-  const vaults = await (db.collection("vaults") as VaultCollection).find().toArray();
+  const vaults = await db.collection<VaultDocument>("vaults").find().toArray();
 
   for (const { vault, vault_key } of vaults) {
-    if (!isPublicKey(vault)) continue;
+    if (!isAddress(vault)) continue;
 
-    const { acknowledged } = await (db.collection("vaults") as VaultCollection).updateOne({
+    const { acknowledged } = await db.collection<VaultDocument>("vaults").updateOne({
       vault: {
         $eq: vault
       }

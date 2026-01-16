@@ -1,21 +1,17 @@
-import solana from "@solana/web3.js";
-import {
-  createHash,
-  getExposeIdHash,
-  JobDefinition,
-  OperationArgsMap,
-} from "@nosana/sdk";
+import { generateKeyPairSigner } from "@solana/signers";
+import { createHash, getExposeIdHash } from "@nosana/kit";
+import type { JobDefinition, OperationArgsMap } from "@nosana/kit";
 
-import { getSdk } from "../../../../../sdk/index.js";
+import { getKit } from "../../../../../kit/index.js";
 import { getConfig } from "../../../../../config/index.js";
 import { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
 
 import {
-  type DeploymentDocument,
   DeploymentStatus,
   DeploymentStrategy,
   type Endpoint,
   type RevisionDocument,
+  type DeploymentDocument,
 } from "../../../../../types/index.js";
 
 export function createDeploymentRevisionEndpoints(
@@ -64,7 +60,7 @@ export async function createNewDeploymentRevision(
   vault: string,
   jobDefinition: JobDefinition
 ): Promise<{ revision: RevisionDocument, endpoints: Endpoint[] }> {
-  const client = getSdk();
+  const kit = getKit();
 
   const endpoints: Endpoint[] = createDeploymentRevisionEndpoints(
     deployment,
@@ -81,9 +77,7 @@ export async function createNewDeploymentRevision(
     },
   }
 
-  const newIpfsHash = await client.ipfs.pin(finalJobDefinition);
-
-
+  const newIpfsHash = await kit.ipfs.pin(finalJobDefinition);
 
   return {
     revision: {
@@ -106,13 +100,16 @@ export async function createDeployment(
     schedule,
     confidential,
     timeout,
+    rotation_time
   }: DeploymentCreateBody,
   vault: string,
   owner: string,
   created_at: Date
 ): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
+  const { address } = await generateKeyPairSigner();
+
   const baseFields = {
-    id: solana.Keypair.generate().publicKey.toString(),
+    id: address.toString(),
     vault,
     name,
     market: market.trim(),
@@ -134,11 +131,26 @@ export async function createDeployment(
   );
 
   if (strategy === DeploymentStrategy.SCHEDULED) {
+    if (!schedule) {
+      throw new Error("Schedule must be provided for scheduled deployments.");
+    }
     return {
       deployment: {
         ...baseFields,
         strategy,
         schedule,
+        endpoints
+      }, revision
+    };
+  }
+
+  if (strategy === DeploymentStrategy.INFINITE) {
+    return {
+      deployment: {
+        ...baseFields,
+        strategy,
+        timeout,
+        rotation_time: rotation_time ?? getConfig().default_minutes_before_timeout,
         endpoints
       }, revision
     };

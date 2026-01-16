@@ -2,44 +2,47 @@ import { Db } from "mongodb";
 
 import { getConfig } from "../../../config/index.js";
 
-import { Worker } from "../Worker.js";
+import { VaultWorker } from "../../../worker/Worker.js";
 import { onStopConfirmed, onStopError, onStopExit } from "./events/index.js";
 
 import {
-  DeploymentDocument,
   DeploymentStatus,
   EventDocument,
   WorkerEventMessage,
   OutstandingTasksDocument,
   TaskDocument,
   VaultDocument,
-  JobsCollection,
   TaskFinishedReason,
+  WorkerData,
+  DeploymentDocument,
+  JobsDocument,
 } from "../../../types/index.js";
 
 export function spawnStopTask(
   db: Db,
   task: OutstandingTasksDocument,
   complete: (successCount: number, reason: TaskFinishedReason) => void
-): Worker {
+): VaultWorker<WorkerData> {
   const config = getConfig();
+  const jobsCollection = db.collection<JobsDocument>("jobs");
   const deploymentsCollection = db.collection<DeploymentDocument>("deployments");
-  const jobsCollection = db.collection<JobsCollection>("jobs");
   const eventsCollection = db.collection<EventDocument>("events");
   const tasksCollection = db.collection<TaskDocument>("tasks");
 
-  let successCount = 0;
-  let deploymentErrorStatus: DeploymentStatus;
+  let stoppedJobs: string[] = [];
+  let newDeploymentStatus: DeploymentStatus | undefined = undefined;
 
-  tasksCollection.deleteMany({
-    deploymentId: task.deploymentId,
-    task: {
-      $ne: "STOP",
-    },
-    ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
-  });
+  if (!task.limit && !task.job) {
+    tasksCollection.deleteMany({
+      deploymentId: task.deploymentId,
+      task: {
+        $ne: "STOP",
+      },
+      ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
+    });
+  }
 
-  const worker = new Worker("./stop/worker.js", {
+  const worker = new VaultWorker("../tasks/task/stop/worker.js", {
     workerData: {
       task,
       config,
@@ -47,11 +50,11 @@ export function spawnStopTask(
     },
   });
 
-  worker.on("message", ({ event, error, tx }: WorkerEventMessage) => {
+  worker.on("message", ({ event, error, tx, job }: WorkerEventMessage) => {
     switch (event) {
       case "CONFIRMED":
-        successCount += 1;
-        onStopConfirmed(tx, eventsCollection, task);
+        stoppedJobs.push(job);
+        onStopConfirmed(job, tx, eventsCollection, task);
         break;
       case "ERROR":
         onStopError(
@@ -59,17 +62,15 @@ export function spawnStopTask(
           error,
           eventsCollection,
           task,
-          (status: DeploymentStatus) => (deploymentErrorStatus = status)
+          (status: DeploymentStatus) => (newDeploymentStatus = status)
         );
         break;
     }
   });
 
   worker.on("exit", async () => {
-    if (!task.active_revision) {
-      await onStopExit(deploymentErrorStatus, deploymentsCollection, jobsCollection, task);
-    }
-    complete(successCount, deploymentErrorStatus ? "FAILED" : "COMPLETED");
+    await onStopExit(stoppedJobs, jobsCollection, task, deploymentsCollection, newDeploymentStatus);
+    complete(stoppedJobs.length, newDeploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

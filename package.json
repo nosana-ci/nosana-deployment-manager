@@ -14,7 +14,9 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:scenarios": "vitest run --config testing/scenario/vitest.scenarios.config.ts",
+    "ci:test": "vitest run --coverage --reporter=junit --outputFile=./test-report.xml"
   },
   "author": "",
   "license": "ISC",
@@ -37,13 +39,13 @@
     "@fastify/middie": "^9.0.3",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
-    "@nosana/sdk": "0.4.74",
+    "@nosana/kit": "2.0.53",
     "@sinclair/typebox": "^0.34.38",
-    "@solana/web3.js": "^1.98.2",
+    "@solana/addresses": "^5.0.0",
+    "@solana/signers": "^5.0.0",
     "cron-parser": "^5.3.0",
     "fastify": "^5.4.0",
     "mongodb": "^4.17.2",
-    "openapi-fetch": "^0.14.0",
     "typia": "^9.5.0"
   }
 }

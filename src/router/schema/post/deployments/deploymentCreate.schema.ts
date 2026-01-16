@@ -16,7 +16,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     name: Type.String(),
     market: Type.String(),
     replicas: Type.Number({ minimum: 1 }),
-    timeout: Type.Number({ minimum: 60 }),
+    timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     vault: Type.Optional(PublicKeySchema),
     confidential: Type.Optional(Type.Boolean()),
     job_definition: JobDefinitionSchema
@@ -25,19 +25,27 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     Type.Object({
       strategy: Type.Union(
         Object.values(DeploymentStrategy)
-          .filter((strategy) => strategy !== "SCHEDULED")
+          .filter((strategy) => !([DeploymentStrategy.SCHEDULED, DeploymentStrategy.INFINITE] as DeploymentStrategy[]).includes(strategy))
           .map((strategy) => Type.Literal(strategy))
       ),
     }),
     Type.Object({
-      strategy: Type.Literal("SCHEDULED"),
+      strategy: Type.Literal(DeploymentStrategy.SCHEDULED),
       schedule: DeploymentScheduleSchema,
     }),
+    Type.Object({
+      timeout: Type.Number({ minimum: 60, description: "Timeout in minutes, must be at least 60 minute." }),
+      strategy: Type.Literal(DeploymentStrategy.INFINITE),
+      rotation_time: Type.Optional(Type.Number({
+        description: "Rotation time in seconds. Must be at least 10 minutes less than timeout to allow for proper rotation."
+      })),
+    })
   ]),
 ]);
 
 export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   schedule?: string; // Optional for non-scheduled strategies
+  rotation_time?: number; // Optional for non-infinite strategies
 };
 
 export type DeploymentCreateSuccess = DeploymentSchema;

@@ -45,7 +45,7 @@ beforeAll(async () => {
 }, 30000); // 30 second timeout for setup
 
 afterAll(async () => {
-  if (!providedVaultAddress) {
+  if (!providedVaultAddress || providedVaultAddress === "undefined") {
     console.log("Withdrawing funds from test vault:", vault.address);
     try {
       await vault.withdraw();

@@ -14,7 +14,7 @@ import {providedVaultAddress, testRunId, vault} from "../../setup.js";
 
 const ONE_MINUTE_IN_SECONDS = 60;
 
-if(!providedVaultAddress) {
+if(!providedVaultAddress || providedVaultAddress === "undefined") {
   // This test requires control over the vault to create a transaction error
   createFlow('Schedule repeats', (step) => {
     const deployment = createState<Deployment>();

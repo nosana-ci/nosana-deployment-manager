@@ -1,12 +1,13 @@
 import { defineConfig } from 'vitest/config';
 
-const defaultInclude = 'testing/scenario/scenarios/**/*.test.ts'
+const defaultInclude = 'testing/scenario/scenarios/*.test.ts'
 
 export default () => {
-  const testNames = process.argv.slice(4)
+  const scenario = process.argv[4]
+  const flow = process.argv[5];
 
-  const include = testNames.length > 0
-    ? testNames.map(name => `testing/scenario/scenarios/${name}/index.test.ts`)
+  const include = scenario.length > 0
+    ? [flow ? `testing/scenario/scenarios/${scenario}/${flow}.test.ts` : `testing/scenario/scenarios/${scenario}.test.ts`]
     : [defaultInclude];
 
   return defineConfig({

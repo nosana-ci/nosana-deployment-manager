@@ -8,7 +8,7 @@ export default () => {
 
   console.log(`Running scenario tests${scenario ? ` for scenario: ${scenario}` : ''}${flow ? ` and flow: ${flow}` : ''}`);
 
-  const include = scenario.length > 0
+  const include = scenario && scenario.length > 0
     ? [flow ? `testing/scenario/scenarios/${scenario}/${flow}.test.ts` : `testing/scenario/scenarios/${scenario}.test.ts`]
     : [defaultInclude];
 

@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:scenarios": "vitest --config testing/scenario/vitest.scenarios.config.ts",
+    "test:scenarios": "vitest run --config testing/scenario/vitest.scenarios.config.ts",
     "ci:test": "vitest run --coverage --reporter=junit --outputFile=./test-report.xml"
   },
   "author": "",

@@ -3,8 +3,10 @@ import { defineConfig } from 'vitest/config';
 const defaultInclude = 'testing/scenario/scenarios/*.test.ts'
 
 export default () => {
-  const scenario = process.argv[4]
-  const flow = process.argv[5];
+  const scenario = process.argv[5]
+  const flow = process.argv[6];
+
+  console.log(`Running scenario tests${scenario ? ` for scenario: ${scenario}` : ''}${flow ? ` and flow: ${flow}` : ''}`);
 
   const include = scenario.length > 0
     ? [flow ? `testing/scenario/scenarios/${scenario}/${flow}.test.ts` : `testing/scenario/scenarios/${scenario}.test.ts`]

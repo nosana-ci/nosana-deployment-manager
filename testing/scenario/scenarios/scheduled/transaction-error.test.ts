@@ -20,7 +20,7 @@ const ONE_MINUTE_IN_SECONDS = 60;
 
 if(!providedVaultAddress || providedVaultAddress === "undefined") {
   // This test requires control over the vault to create a transaction error
-  createFlow('Schedule repeats', (step) => {
+  createFlow('Transaction Error', (step) => {
     const deployment = createState<Deployment>();
     const firstJob = createState<string>();
 
@@ -28,7 +28,7 @@ if(!providedVaultAddress || providedVaultAddress === "undefined") {
       await createDeployment(
         deployment,
         {
-          name: `${testRunId} :: Scenario testing: scheduled > basic flow`,
+          name: `${testRunId} :: Scenario testing: scheduled > transaction error`,
           strategy: DeploymentStrategy.SCHEDULED,
           schedule: '*/1 * * * *', // every minute
         },

@@ -21,6 +21,7 @@ export * from "./node/verifyJobAssignedToNode.js";
 
 // Vault actions
 export * from "./vault/checkSufficientVaultBalance.js";
+export * from "./vault/topupVault.js";
 export * from "./vault/withdrawFundsFromVault.js";
 
 export function waitForSeconds(seconds: number) {

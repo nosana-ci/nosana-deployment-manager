@@ -52,7 +52,10 @@ export async function prepareWorker<T extends VaultWorkerData = VaultWorkerData>
 
   const clientConfig: Partial<PartialClientConfig> = useNosanaApiKey ? { api: { apiKey: key } } : { solana: { rpcEndpoint: config.rpc_network } }
   if (config.dashboard_backend_url) {
-    clientConfig.api = { backend_url: config.dashboard_backend_url };
+    clientConfig.api = {
+      ...clientConfig.api,
+      backend_url: config.dashboard_backend_url,
+    };
   }
   const kit = createNosanaClient(
     config.network,

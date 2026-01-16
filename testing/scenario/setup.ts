@@ -33,11 +33,10 @@ beforeAll(async () => {
     vault = await validateThatVaultIsUsable(deployerClient, providedVaultAddress);
   } else {
     vault = await (deployerClient.api.deployments as DeploymentsApi).vaults.create();
-  }
-
-  const balance = await vault.getBalance();
-  if (balance.SOL < topup_balance.SOL || balance.NOS < topup_balance.NOS) {
-    await vault.topup(topup_balance);
+    const balance = await vault.getBalance();
+    if (balance.SOL < topup_balance.SOL || balance.NOS < topup_balance.NOS) {
+      await vault.topup(topup_balance);
+    }
   }
 }, 30000); // 30 second timeout for setup
 

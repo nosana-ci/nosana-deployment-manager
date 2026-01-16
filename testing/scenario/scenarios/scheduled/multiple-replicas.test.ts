@@ -1,9 +1,17 @@
-import { Deployment } from '@nosana/api';
-import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
+import {Deployment} from '@nosana/api';
+import {DeploymentStatus, DeploymentStrategy} from '@nosana/kit';
 
-import { createState, createFlow } from '../../utils/index.js';
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
-import { testRunId } from "../../setup.js";
+import {createState, createFlow} from '../../utils/index.js';
+import {
+  checkAllJobsStopped,
+  checkDeploymentJobs,
+  checkSufficientVaultBalance,
+  createDeployment,
+  startDeployment,
+  stopDeployment,
+  waitForDeploymentStatus
+} from '../../common/index.js';
+import {testRunId} from "../../setup.js";
 
 createFlow('Multiple Replicas', (step) => {
   const deployment = createState<Deployment>();
@@ -24,16 +32,16 @@ createFlow('Multiple Replicas', (step) => {
 
   step('start deployment', startDeployment(deployment));
 
-  step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
+  step('wait for deployment to be running', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.RUNNING}));
 
-  step('wait for jobs to be posted (one per replica)', checkDeploymentsJobs(
+  step('wait for jobs to be posted (one per replica)', checkDeploymentJobs(
     deployment,
-    { expectedJobsCount: 2 }
+    {expectedJobsCount: 2}
   ));
 
   step('stop deployment', stopDeployment(deployment));
 
-  step('wait for deployment to be stopped', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.STOPPED }));
+  step('wait for deployment to be stopped', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.STOPPED}));
 
   step('check if all jobs are stopped', checkAllJobsStopped(deployment));
 });

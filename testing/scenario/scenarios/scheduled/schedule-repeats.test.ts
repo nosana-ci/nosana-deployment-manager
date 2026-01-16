@@ -4,7 +4,7 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 import { createState, createFlow } from '../../utils/index.js';
 import {
   checkAllJobsStopped,
-  checkDeploymentsJobs,
+  checkDeploymentJobs,
   checkSufficientVaultBalance,
   createDeployment,
   startDeployment,
@@ -36,7 +36,7 @@ createFlow('Schedule repeats', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for first job to be posted', checkDeploymentsJobs(
+  step('wait for first job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => firstJob.set(jobs[0].job)
@@ -44,7 +44,7 @@ createFlow('Schedule repeats', (step) => {
 
   step('wait for 1 minute to allow schedule to repeat', waitForSeconds(ONE_MINUTE_IN_SECONDS));
 
-  step('wait for second job to be posted', checkDeploymentsJobs(
+  step('wait for second job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 2 }
   ));

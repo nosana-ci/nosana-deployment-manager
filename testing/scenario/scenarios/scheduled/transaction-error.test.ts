@@ -3,12 +3,10 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import {
-  checkAllJobsStopped,
-  checkDeploymentsJobs,
+  checkAllJobsStopped, checkDeploymentJobs,
   checkSufficientVaultBalance,
   createDeployment,
-  startDeployment,
-  stopDeployment,
+  startDeployment, stopDeployment,
   waitForDeploymentStatus,
   waitForSeconds
 } from '../../common/index.js';
@@ -39,7 +37,7 @@ if(!providedVaultAddress) {
 
     step('wait for deployment to be running', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.RUNNING}));
 
-    step('wait for first job to be posted', checkDeploymentsJobs(
+    step('wait for first job to be posted', checkDeploymentJobs(
       deployment,
       {expectedJobsCount: 1},
       ({jobs}) => firstJob.set(jobs[0].job)
@@ -49,7 +47,7 @@ if(!providedVaultAddress) {
 
     step('wait for 1 minute to allow schedule to repeat', waitForSeconds(ONE_MINUTE_IN_SECONDS));
 
-    step('no more jobs should have been posted', checkDeploymentsJobs(
+    step('no more jobs should have been posted', checkDeploymentJobs(
       deployment,
       {expectedJobsCount: 1}
     ));
@@ -58,7 +56,7 @@ if(!providedVaultAddress) {
 
     step('stop deployment', stopDeployment(deployment));
 
-    step('wait for deployment to be stopped', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.STOPPED}));
+    step('wait for deployment to be stopped', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.STOPPED }));
 
     step('check if all jobs are stopped', checkAllJobsStopped(deployment));
   });

@@ -23,7 +23,7 @@ createFlow('Schedule repeats', (step) => {
     await createDeployment(
       deployment,
       {
-        name: `${testRunId} :: Scenario testing: scheduled > basic flow`,
+        name: `${testRunId} :: Scenario testing: scheduled > schedule repeats`,
         strategy: DeploymentStrategy.SCHEDULED,
         schedule: '*/1 * * * *', // every minute
       },

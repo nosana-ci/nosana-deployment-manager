@@ -10,17 +10,12 @@ export async function onExtendExit(
   { deploymentId }: OutstandingTasksDocument,
 ) {
   if (newDeploymentStatus) {
-    deployments.updateOne(
-      {
-        id: {
-          $eq: deploymentId,
-        },
-      },
-      {
-        $set: {
-          status: newDeploymentStatus,
-        },
+    deployments.updateOne({
+      id: deploymentId
+    }, {
+      $set: {
+        status: newDeploymentStatus
       }
-    );
+    })
   }
 }

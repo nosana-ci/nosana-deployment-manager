@@ -1,16 +1,14 @@
-import { address, Deployment, DeploymentStatus, DeploymentStrategy, JobState } from "@nosana/kit";
+import { Deployment, DeploymentStatus, DeploymentStrategy, JobState } from "@nosana/kit";
 
 import { createFlow, createState } from "../../utils/index.js";
-import { createDeployment, startDeployment, waitForDeploymentStatus, checkDeploymentJobs, withdrawFundsFromVault, joinMarketQueue, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, waitForDeploymentEvent, waitForDeploymentHasNoTasks } from "../../common/index.js";
-import { deployerClient } from "../../setup.js";
-import { expect } from "vitest";
+import { createDeployment, startDeployment, waitForDeploymentStatus, checkDeploymentJobs, withdrawFundsFromVault, joinMarketQueue, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, waitForDeploymentEvent, waitForDeploymentHasNoTasks } from "../../common/index.js";;
 
 createFlow('Extend Error', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
 
   step("create deployment with SIMPLE-EXTEND strategy", createDeployment(deployment, {
-    name: `Error Scenarios > Stop Error`,
+    name: `Error Scenarios > Extend Error`,
     strategy: DeploymentStrategy["SIMPLE-EXTEND"],
     timeout: 1.5
   }))

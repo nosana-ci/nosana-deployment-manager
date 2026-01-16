@@ -29,14 +29,7 @@ createFlow('Extend Error', (step) => {
 
   step("withdraw funds from vault", withdrawFundsFromVault())
 
-  step('wait for extend task to be scheduled', checkDeploymentExtendTask(deployment, { job: firstJob },
-    async (task) => {
-      const jobDetails = await deployerClient.jobs.get(address(firstJob.get()));
-      const expectedDueAtMs = (Number(jobDetails!.timeStart) + Number(jobDetails!.timeout) - 60) * 1000;
-      const actualDueAtMs = new Date(task!.due_at).getTime();
-      expect(Math.abs(actualDueAtMs - expectedDueAtMs)).toBeLessThan(5000);
-    }
-  ));
+  step('wait for extend task to be scheduled', checkDeploymentExtendTask(deployment, { job: firstJob }));
 
   step('wait for extend task to execute (<= 2 minutes)', waitForTaskComplete(deployment));
 

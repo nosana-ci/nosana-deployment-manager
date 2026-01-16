@@ -1,22 +1,34 @@
-import { Collection } from "mongodb";
-
 import { JobState } from "../../../../types/index.js";
-import type { JobsCollection, OutstandingTasksDocument } from "../../../../types/index.js";
+import type { DeploymentCollection, DeploymentStatus, JobsCollection, OutstandingTasksDocument } from "../../../../types/index.js";
 
 export function onStopExit(
   stoppedJobs: string[],
-  jobsCollection: Collection<JobsCollection>,
-  { active_revision }: OutstandingTasksDocument
+  jobsCollection: JobsCollection,
+  { active_revision, deploymentId }: OutstandingTasksDocument,
+  deployments: DeploymentCollection,
+  newDeploymentStatus: DeploymentStatus | undefined
 ) {
-  jobsCollection.updateMany(
-    {
-      job: { $in: stoppedJobs },
-      revision: { $ne: active_revision },
-    },
-    {
-      $set: {
-        state: JobState.STOPPED,
+  if (!active_revision) {
+    jobsCollection.updateMany(
+      {
+        job: { $in: stoppedJobs },
+        revision: { $ne: active_revision },
       },
-    }
-  );
+      {
+        $set: {
+          state: JobState.STOPPED,
+        },
+      }
+    );
+  }
+
+  if (newDeploymentStatus) {
+    deployments.updateOne({
+      id: deploymentId
+    }, {
+      $set: {
+        status: newDeploymentStatus
+      }
+    })
+  }
 }

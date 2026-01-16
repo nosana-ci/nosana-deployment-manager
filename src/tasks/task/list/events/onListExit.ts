@@ -8,14 +8,25 @@ import type { OnListEventParams } from "../spawner.js";
 
 export async function onListExit(
   {
-    collections: { tasks },
+    collections: { deployments, tasks },
     task: {
       deploymentId,
       deployment: { strategy, schedule },
       due_at,
     },
+    newDeploymentStatus,
   }: OnListEventParams,
 ) {
+  if (newDeploymentStatus) {
+    try {
+      await deployments.updateOne(
+        { id: deploymentId },
+        { $set: { status: newDeploymentStatus } }
+      );
+    } catch (error) {
+      console.error("Failed to update deployment status:", error);
+    }
+  }
   if (strategy === DeploymentStrategy.SCHEDULED && schedule) {
     const nextTaskTime = getNextTaskTime(schedule, due_at);
     await tasks.insertOne({

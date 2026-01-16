@@ -4,22 +4,19 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, finishJob, verifyJobAssignedToNode, waitForDeploymentStatus } from '../../common/index.js';
-import { testRunId } from "../../setup.js";
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, finishJob, verifyJobAssignedToNode, waitForDeploymentStatus } from '../../common/index.js';
 
 createFlow('Finish Job Prematurely', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
 
-  step('creates deployment with SIMPLE strategy', async () => {
-    await createDeployment(
-      deployment,
-      {
-        name: `${testRunId} :: Scenario testing: simple > finish job prematurely`,
-        strategy: DeploymentStrategy.SIMPLE,
-      },
-    )();
-  });
+  step('creates deployment with SIMPLE strategy', createDeployment(
+    deployment,
+    {
+      name: "Scenario testing: simple > finish job prematurely",
+      strategy: DeploymentStrategy.SIMPLE,
+    },
+  ));
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
@@ -29,7 +26,7 @@ createFlow('Finish Job Prematurely', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for first job to be posted', checkDeploymentsJobs(
+  step('wait for first job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => firstJob.set(jobs[0].job)

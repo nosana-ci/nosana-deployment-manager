@@ -30,7 +30,7 @@ export function spawnExtendTask(
   const deployments = db.collection<DeploymentDocument>("documents");
 
   let successCount = 0;
-  let deploymentStatus: DeploymentStatus | undefined = undefined;
+  let newDeploymentStatus: DeploymentStatus | undefined = undefined;
 
   const worker = new VaultWorker("../tasks/task/extend/worker.js", {
     workerData: {
@@ -49,7 +49,7 @@ export function spawnExtendTask(
       case "ERROR":
         onExtendError(
           error,
-          (status: DeploymentStatus) => (deploymentStatus = status),
+          (status: DeploymentStatus) => (newDeploymentStatus = status),
           events,
           task
         );
@@ -58,9 +58,8 @@ export function spawnExtendTask(
   });
 
   worker.on("exit", async () => {
-    await onExtendExit(deploymentStatus, deployments, task);
-
-    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
+    await onExtendExit(newDeploymentStatus, deployments, task);
+    complete(successCount, newDeploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

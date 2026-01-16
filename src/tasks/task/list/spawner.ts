@@ -21,10 +21,11 @@ import { getConfig } from "../../../config/index.js";
 export interface OnListEventParams {
   code?: number;
   task: OutstandingTasksDocument;
+  newDeploymentStatus?: DeploymentStatus | undefined;
   setDeploymentErrorStatus: (type: DeploymentStatus) => void;
   collections: {
     events: Collection<EventDocument>;
-    documents: Collection<DeploymentDocument>;
+    deployments: Collection<DeploymentDocument>;
     jobs: Collection<JobsDocument>;
     tasks: Collection<TaskDocument>;
   };
@@ -39,15 +40,17 @@ export function spawnListTask(
 ): VaultWorker<WorkerData> {
   console.log("DEBUG :: Spawning LIST task for deployment:", task.deploymentId);
   const collections = {
-    documents: db.collection<DeploymentDocument>("deployments"),
+    deployments: db.collection<DeploymentDocument>("deployments"),
     events: db.collection<EventDocument>("events"),
     jobs: db.collection<JobsDocument>("jobs"),
     tasks: db.collection<TaskDocument>("tasks"),
   };
 
   let successCount = 0;
-  let deploymentStatus: DeploymentStatus;
-  const setDeploymentErrorStatus = (status: DeploymentStatus) => (deploymentStatus = status);
+  let newDeploymentStatus: DeploymentStatus | undefined = undefined;
+  const setDeploymentErrorStatus = async (status: DeploymentStatus) => {
+    newDeploymentStatus = status
+  };
 
   const worker = new VaultWorker("../tasks/task/list/worker.js", {
     workerData: {
@@ -87,10 +90,11 @@ export function spawnListTask(
         code,
         task,
         collections,
+        newDeploymentStatus,
         setDeploymentErrorStatus,
       },
     );
-    complete(successCount, deploymentStatus ? "FAILED" : "COMPLETED");
+    complete(successCount, newDeploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

@@ -35,10 +35,10 @@ export default () => {
       env: {
         NETWORK: process.env.NETWORK ?? "devnet",
         BACKEND_URL: process.env.BACKEND_URL ?? "http://localhost:3001",
+        TEST_VAULT_ADDRESS: process.env.TEST_VAULT_ADDRESS,
         TEST_DEPLOYER_KEY_PATH: process.env.TEST_DEPLOYER_KEY_PATH ?? "~/.nosana/nosana_key.json",
-        TEST_VAULT_KEY_PATH: process.env.TEST_VAULT_KEY_PATH ?? "~/.nosana/nosana_key.json",
         TEST_NODE_KEY_PATH: process.env.TEST_NODE_KEY_PATH ?? "~/.nosana/nosana_key.json",
-        TEST_MARKET: process.env.TEST_MARKET ?? "J4HMc9haEdWUcXEpRrR31w6nrqR8oApEVSD7SYcE8Yr9",
+        TEST_MARKET: process.env.TEST_MARKET ?? "9MGKqixvtLJgL46Bp38ZrD3MxTMRt57VL3rQtQY64zj4",
       },
     },
   });

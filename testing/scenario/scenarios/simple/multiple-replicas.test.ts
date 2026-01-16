@@ -4,22 +4,19 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
-import { testRunId } from "../../setup.js";
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 
 createFlow('Multiple Replicas', (step) => {
   const deployment = createState<Deployment>();
 
-  step('creates deployment with SIMPLE strategy and multiple replicas', async () => {
-    await createDeployment(
-      deployment,
-      {
-        name: `${testRunId} :: Scenario testing: simple > multiple replicas`,
-        strategy: DeploymentStrategy.SIMPLE,
-        replicas: 3,
-      },
-    )();
-  });
+  step('creates deployment with SIMPLE strategy and multiple replicas', createDeployment(
+    deployment,
+    {
+      name: "Scenario testing: simple > multiple replicas",
+      strategy: DeploymentStrategy.SIMPLE,
+      replicas: 3,
+    },
+  ));
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
@@ -27,7 +24,7 @@ createFlow('Multiple Replicas', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for jobs to be posted (one per replica)', checkDeploymentsJobs(
+  step('wait for jobs to be posted (one per replica)', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 3 },
     ({ jobs }) => {

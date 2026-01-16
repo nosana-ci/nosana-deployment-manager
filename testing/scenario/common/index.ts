@@ -1,5 +1,7 @@
 export * from "./deployment/createDeployment.js";
 export * from "./deployment/checkDeploymentJobs.js";
+export * from "./deployment/waitForDeploymentEvent.js";
+export * from "./deployment/waitForDeploymentHasNoTasks.js";
 export * from "./deployment/checkAllJobsStopped.js";
 export * from "./deployment/checkDeploymentExtendTask.js"
 export * from "./deployment/checkNoDeploymentExtendTask.js";
@@ -19,6 +21,7 @@ export * from "./node/verifyJobAssignedToNode.js";
 
 // Vault actions
 export * from "./vault/checkSufficientVaultBalance.js";
+export * from "./vault/withdrawFundsFromVault.js";
 
 export function waitForSeconds(seconds: number) {
   return async () => {

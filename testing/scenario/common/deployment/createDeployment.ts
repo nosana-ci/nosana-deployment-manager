@@ -1,12 +1,12 @@
 import { expect } from 'vitest';
-import type { CreateDeployment, Deployment, NosanaApi } from '@nosana/api';
+import type { DeploymentCreateBody, Deployment, NosanaApi } from '@nosana/api';
 
-import {createdDeployments, deployerClient, vault} from '../../setup.js';
+import { createdDeployments, deployerClient, vault } from '../../setup.js';
 import { createSimpleDeploymentBody, State } from '../../utils/index.js';
 
 export function createDeployment(
   state: State<Deployment>,
-  overrides: Partial<CreateDeployment> = {},
+  overrides: Partial<DeploymentCreateBody> = {},
 ) {
   return async () => {
     const vaultAddress = vault.address.toString();

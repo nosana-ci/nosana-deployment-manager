@@ -1,4 +1,4 @@
-import {DeploymentsApi, NosanaClient} from '@nosana/kit';
+import { DeploymentsApi, NosanaClient } from '@nosana/kit';
 
 export const validateThatVaultIsUsable = async (deployerClient: NosanaClient, vaultAddress: string) => {
   const vaults = await (deployerClient.api.deployments as DeploymentsApi).vaults.list();

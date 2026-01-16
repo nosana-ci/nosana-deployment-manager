@@ -1,22 +1,20 @@
+import { expect } from 'vitest';
 import { Deployment } from '@nosana/api';
 import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
-import { testRunId } from "../../setup.js";
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 
 createFlow('Basic Flow', (step) => {
   const deployment = createState<Deployment>();
 
-  step('creates deployment with SIMPLE strategy', async () => {
-    await createDeployment(
-      deployment,
-      {
-        name: `${testRunId} :: Scenario testing: simple > basic flow`,
-        strategy: DeploymentStrategy.SIMPLE,
-      },
-    )();
-  });
+  step('creates deployment with SIMPLE strategy', createDeployment(
+    deployment,
+    {
+      name: "Scenario testing: simple > basic flow",
+      strategy: DeploymentStrategy.SIMPLE,
+    },
+  ));
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
@@ -24,7 +22,7 @@ createFlow('Basic Flow', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for first job to be posted', checkDeploymentsJobs(
+  step('wait for first job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 }
   ));

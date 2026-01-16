@@ -4,21 +4,18 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, waitForDeploymentStatus, waitForSeconds } from '../../common/index.js';
-import { testRunId } from "../../setup.js";
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, waitForDeploymentStatus, waitForSeconds } from '../../common/index.js';
 
 createFlow('Join Queue Before Job Posted', (step) => {
   const deployment = createState<Deployment>();
 
-  step('creates deployment with SIMPLE strategy', async () => {
-    await createDeployment(
-      deployment,
-      {
-        name: `${testRunId} :: Scenario testing: simple > join queue before posted`,
-        strategy: DeploymentStrategy.SIMPLE,
-      },
-    )();
-  });
+  step('creates deployment with SIMPLE strategy', createDeployment(
+    deployment,
+    {
+      name: "Scenario testing: simple > join queue before posted",
+      strategy: DeploymentStrategy.SIMPLE,
+    },
+  ));
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
@@ -28,7 +25,7 @@ createFlow('Join Queue Before Job Posted', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for second job to be posted', checkDeploymentsJobs(
+  step('wait for second job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => {

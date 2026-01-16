@@ -12,9 +12,10 @@ import {
   OutstandingTasksDocument,
   TaskDocument,
   VaultDocument,
-  JobsCollection,
   TaskFinishedReason,
   WorkerData,
+  DeploymentDocument,
+  JobsDocument,
 } from "../../../types/index.js";
 
 export function spawnStopTask(
@@ -23,12 +24,13 @@ export function spawnStopTask(
   complete: (successCount: number, reason: TaskFinishedReason) => void
 ): VaultWorker<WorkerData> {
   const config = getConfig();
-  const jobsCollection = db.collection<JobsCollection>("jobs");
+  const jobsCollection = db.collection<JobsDocument>("jobs");
+  const deploymentsCollection = db.collection<DeploymentDocument>("deployments");
   const eventsCollection = db.collection<EventDocument>("events");
   const tasksCollection = db.collection<TaskDocument>("tasks");
 
   let stoppedJobs: string[] = [];
-  let deploymentErrorStatus: DeploymentStatus;
+  let newDeploymentStatus: DeploymentStatus | undefined = undefined;
 
   if (!task.limit && !task.job) {
     tasksCollection.deleteMany({
@@ -60,17 +62,15 @@ export function spawnStopTask(
           error,
           eventsCollection,
           task,
-          (status: DeploymentStatus) => (deploymentErrorStatus = status)
+          (status: DeploymentStatus) => (newDeploymentStatus = status)
         );
         break;
     }
   });
 
   worker.on("exit", async () => {
-    if (!task.active_revision) {
-      await onStopExit(stoppedJobs, jobsCollection, task);
-    }
-    complete(stoppedJobs.length, deploymentErrorStatus ? "FAILED" : "COMPLETED");
+    await onStopExit(stoppedJobs, jobsCollection, task, deploymentsCollection, newDeploymentStatus);
+    complete(stoppedJobs.length, newDeploymentStatus ? "FAILED" : "COMPLETED");
   });
 
   return worker;

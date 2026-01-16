@@ -2,7 +2,7 @@ import { Deployment } from '@nosana/api';
 import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { checkAllJobsStopped, checkDeploymentsJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 import { testRunId } from "../../setup.js";
 
 createFlow('Basic Flow', (step) => {
@@ -13,7 +13,7 @@ createFlow('Basic Flow', (step) => {
       deployment,
       {
         name: `${testRunId} :: Scenario testing: scheduled > basic flow`,
-        strategy: DeploymentStrategy.SCHEDULED,
+        strategy: DeploymentStrategy.SIMPLE,
         schedule: '*/1 * * * *', // every minute
       },
     )();
@@ -25,7 +25,7 @@ createFlow('Basic Flow', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for first job to be posted', checkDeploymentsJobs(
+  step('wait for first job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 }
   ));

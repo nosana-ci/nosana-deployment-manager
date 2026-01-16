@@ -5,11 +5,11 @@ import type {
 } from "../../../../types/index.js";
 
 export async function onExtendExit(
-  deploymentStatus: DeploymentStatus | undefined,
+  newDeploymentStatus: DeploymentStatus | undefined,
   deployments: DeploymentCollection,
   { deploymentId }: OutstandingTasksDocument,
 ) {
-  if (deploymentStatus) {
+  if (newDeploymentStatus) {
     deployments.updateOne(
       {
         id: {
@@ -18,7 +18,7 @@ export async function onExtendExit(
       },
       {
         $set: {
-          status: deploymentStatus,
+          status: newDeploymentStatus,
         },
       }
     );

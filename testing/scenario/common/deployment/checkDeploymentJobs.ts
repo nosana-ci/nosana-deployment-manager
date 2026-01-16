@@ -5,7 +5,7 @@ import type { Deployment, NosanaApi } from '@nosana/api';
 import { deployerClient } from '../../setup.js';
 import { State } from '../../utils/index.js';
 
-export function checkDeploymentsJobs(
+export function checkDeploymentJobs(
   state: State<Deployment>,
   { expectedJobsCount } = {
     expectedJobsCount: 1

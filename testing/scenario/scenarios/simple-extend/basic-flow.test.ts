@@ -2,9 +2,9 @@ import { expect } from 'vitest';
 import { Deployment } from '@nosana/api';
 import { address, DeploymentStatus, DeploymentStrategy, JobState } from '@nosana/kit';
 
+import { deployerClient } from '../../setup.js';
 import { createState, createFlow } from '../../utils/index.js';
-import { createDeployment, checkDeploymentsJobs, checkSufficientVaultBalance, waitForDeploymentStatus, startDeployment, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, checkJobsTimeout, finishJob, joinMarketQueue, verifyJobAssignedToNode, checkAllJobsStopped } from '../../common/index.js';
-import { deployerClient, testRunId } from '../../setup.js';
+import { createDeployment, checkDeploymentJobs, checkSufficientVaultBalance, waitForDeploymentStatus, startDeployment, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, checkJobsTimeout, finishJob, joinMarketQueue, verifyJobAssignedToNode, checkAllJobsStopped } from '../../common/index.js';
 
 createFlow('Basic Flow', (step) => {
   const deployment = createState<Deployment>();
@@ -13,7 +13,7 @@ createFlow('Basic Flow', (step) => {
   step('creates deployment with SIMPLE-EXTEND strategy', createDeployment(
     deployment,
     {
-      name: `${testRunId} :: Scenario testing: simple-extend > basic flow`,
+      name: "Scenario testing: simple-extend > basic flow",
       strategy: DeploymentStrategy["SIMPLE-EXTEND"],
       timeout: 1.5
     },
@@ -27,7 +27,7 @@ createFlow('Basic Flow', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('wait for first job to be posted', checkDeploymentsJobs(
+  step('wait for first job to be posted', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => firstJob.set(jobs[0].job)

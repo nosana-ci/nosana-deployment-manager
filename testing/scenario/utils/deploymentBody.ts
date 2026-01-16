@@ -1,16 +1,19 @@
-import { CreateDeployment } from "@nosana/api";
+import { CreateDeployment, DeploymentCreateBody, JobDefinition } from "@nosana/api";
 import { DeploymentStrategy } from "@nosana/kit";
 
-export const createSimpleDeploymentBody = (overrides?: Partial<CreateDeployment>) => ({
-  name: 'Simple deployment test',
+import { testRunId } from "../setup.js";
+
+export const createSimpleDeploymentBody = (overrides?: Partial<DeploymentCreateBody>): CreateDeployment => ({
+  name: `${testRunId} :: ${overrides?.name ?? 'Simple Deployment'}`,
   market: process.env.TEST_MARKET ?? 'DfJJiNU3siRQUz2a67tqoY72fUzwR8MhBEMBGK85SwAr',
   replicas: 1,
   timeout: 60,
   strategy: DeploymentStrategy.SIMPLE,
   confidential: false,
+  // @ts-ignore
   job_definition: {
-    version: '0.1' as const,
-    type: 'container' as const,
+    version: "0.1",
+    type: 'container',
     ops: [
       {
         type: 'container/run' as const,
@@ -22,6 +25,6 @@ export const createSimpleDeploymentBody = (overrides?: Partial<CreateDeployment>
         },
       },
     ],
-  },
+  } as JobDefinition,
   ...overrides
 });

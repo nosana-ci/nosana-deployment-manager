@@ -27,7 +27,7 @@ export function spawnExtendTask(
 ): VaultWorker<WorkerData> {
   const config = getConfig();
   const events = db.collection<EventDocument>("events");
-  const deployments = db.collection<DeploymentDocument>("documents");
+  const deployments = db.collection<DeploymentDocument>("deployments");
 
   let successCount = 0;
   let newDeploymentStatus: DeploymentStatus | undefined = undefined;

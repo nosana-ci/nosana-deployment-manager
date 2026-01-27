@@ -1,7 +1,9 @@
 import typia from "typia";
 import { RouteHandler } from "fastify";
+import { DeploymentStrategy } from "@nosana/kit";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
+import { encryptWithKey } from "../../../../../vault/encrypt.js";
 import { doesHeaderContainerKey } from "../../../../helper/doesHeaderContainKey.js";
 import { createAndStoreSharedVault, storeVaultDocument } from "../../vaults/createSharedVault/createSharedVaultFactory.js";
 
@@ -15,7 +17,6 @@ import type {
   DeploymentCreateSuccess,
 } from "../../../../schema/post/index.schema.js";
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
-import { DeploymentStrategy } from "@nosana/kit";
 
 export const deploymentCreateHandler: RouteHandler<{
   Headers: HeadersSchema;
@@ -64,8 +65,9 @@ export const deploymentCreateHandler: RouteHandler<{
       }
     } else {
       vault = userId;
+      const vaultKey = encryptWithKey(req.headers.authorization);
 
-      const { acknowledged } = await storeVaultDocument(db.vaults, userId, req.headers.authorization, userId);
+      const { acknowledged } = await storeVaultDocument(db.vaults, vault, vaultKey, vault);
 
       if (!acknowledged) {
         res.status(500).send({ error: ErrorMessages.vaults.FAILED_TO_CREATE });

@@ -4,7 +4,7 @@ import { DeploymentStatus } from "@nosana/kit";
 import { NosanaCollections } from "../../../definitions/collection.js";
 import { DeploymentDocument, JobsDocument, JobState, TaskDocument } from "../../../types/index.js";
 
-export default async function migrateJobsToMarket(db: Db) {
+export default async function migrationDeploymentsToStopIfNoRunningJobs(db: Db) {
   const deploymentsCollection = db.collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS);
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
   const tasksCollection = db.collection<TaskDocument>(NosanaCollections.TASKS);
@@ -13,10 +13,10 @@ export default async function migrateJobsToMarket(db: Db) {
 
   for (const deployment of activeDeployments) {
     const [runningJobsCount, tasksCount] = await Promise.all([jobsCollection.countDocuments({
-      deploymentId: deployment._id,
+      deployment: deployment.id,
       state: { $in: [JobState.QUEUED, JobState.RUNNING] },
     }), await tasksCollection.countDocuments({
-      deployment_id: deployment._id,
+      deploymentId: deployment.id,
     })]);
 
     if (runningJobsCount === 0 && tasksCount === 0) {

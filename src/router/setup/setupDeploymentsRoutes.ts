@@ -6,10 +6,10 @@ import {
 } from "../middleware/index.js";
 
 import { routes } from "../routes/index.js";
+import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
 import { API_PREFIX } from "../../definitions/api.js";
-import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
 
 const {
   get: {

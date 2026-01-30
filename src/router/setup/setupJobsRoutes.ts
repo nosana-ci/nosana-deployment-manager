@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 
 import { routes } from "../routes/index.js";
 import { routeSchemas } from "../schema/index.schema.js";
+import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
 
 import { authJobHostMiddleware } from "../middleware/authentication/authJobHostMiddleware.js";
 import { API_PREFIX } from "../../definitions/api.js";
@@ -25,6 +26,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
     `${JOBS_API_PREFIX}/:job/job-definition`,
     {
       schema: JobDefinitionHandlerSchema,
+      serializerCompiler: skipSwaggerValidation,
     },
     jobDefinitionHandler
   );
@@ -33,7 +35,7 @@ export function setupJobsRoutes(server: FastifyInstance) {
   server.post(
     `${JOBS_API_PREFIX}/:job/results`,
     {
-      schema: JobResultPostHandlerSchema
+      schema: JobResultPostHandlerSchema,
     },
     jobResultsPostHandler
   )

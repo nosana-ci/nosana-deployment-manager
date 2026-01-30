@@ -9,6 +9,7 @@ import { routes } from "../routes/index.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
 import { API_PREFIX } from "../../definitions/api.js";
+import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
 
 const {
   get: {
@@ -92,6 +93,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     {
       schema: DeploymentJobByIdSchema,
       preHandler: [getDeploymentMiddleware],
+      serializerCompiler: skipSwaggerValidation,
     },
     deploymentJobByIdHandler
   );

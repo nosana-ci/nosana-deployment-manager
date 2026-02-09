@@ -1,4 +1,5 @@
 import { FastifyInstance } from "fastify";
+import { validateJobDefinition, JobDefinition } from "@nosana/kit";
 
 import {
   getDeploymentMiddleware,
@@ -52,6 +53,22 @@ const {
   },
 } = routeSchemas;
 
+const jobDefinitionValidatorCompiler = () => {
+  return (data: JobDefinition | { job_definition: JobDefinition }) => {
+    const jobDef =
+      "job_definition" in data ? data.job_definition : (data as JobDefinition);
+    const result = validateJobDefinition(jobDef);
+
+    if (!result.success) {
+      const message = result.errors
+        .map((e: { path: string; expected: string }) => `${e.path}: ${e.expected}`)
+        .join(", ");
+      return { error: new Error(message) };
+    }
+    return { value: data };
+  };
+};
+
 export function setupDeploymentsRoutes(server: FastifyInstance) {
   // GET
   server.get(
@@ -103,6 +120,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     `${API_PREFIX}/create`,
     {
       schema: DeploymentCreateSchema,
+      validatorCompiler: jobDefinitionValidatorCompiler,
     },
     deploymentCreateHandler
   );
@@ -112,6 +130,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     {
       schema: DeploymentCreateRevisionSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+      validatorCompiler: jobDefinitionValidatorCompiler,
     },
     deploymentCreateRevisionHandler
   );

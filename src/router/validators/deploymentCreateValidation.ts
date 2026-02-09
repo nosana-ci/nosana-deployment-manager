@@ -5,10 +5,11 @@ import {
   DeploymentCreateBody,
   DeploymentMetadataSchema,
 } from "../schema/post/deployments/deploymentCreate.schema.js";
+import { FastifySchema } from "fastify";
 
 export const deploymentCreateValidation: FastifySchemaCompiler<DeploymentCreateBody> =
   () => {
-    return (data: DeploymentCreateBody) => {
+    return (data) => {
       // 1. Validate top-level fields using the metadata-only schema
       // This automatically ignores the job_definition field
       const metadataErrors = [...Value.Errors(DeploymentMetadataSchema, data)];

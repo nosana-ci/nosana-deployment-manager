@@ -3,23 +3,19 @@ import { FastifySchemaCompiler } from "fastify/types/schema.js";
 import { Value } from "@sinclair/typebox/value";
 import {
   DeploymentCreateBody,
-  DeploymentCreateBodySchema,
+  DeploymentMetadataSchema,
 } from "../schema/post/deployments/deploymentCreate.schema.js";
 
 export const deploymentCreateValidation: FastifySchemaCompiler<DeploymentCreateBody> =
   () => {
     return (data: DeploymentCreateBody) => {
-      // 1. Validate top-level fields using the existing TypeBox schema
-      const errors = [...Value.Errors(DeploymentCreateBodySchema, data)];
+      // 1. Validate top-level fields using the metadata-only schema
+      // This automatically ignores the job_definition field
+      const metadataErrors = [...Value.Errors(DeploymentMetadataSchema, data)];
 
-      // Filter out errors that come from job_definition since we validate that separately
-      const filteredErrors = errors.filter(
-        (e) => !e.path.startsWith("/job_definition")
-      );
-
-      if (filteredErrors.length > 0) {
-        const message = filteredErrors
-          .map((e) => `${e.path}: ${e.message}`)
+      if (metadataErrors.length > 0) {
+        const message = metadataErrors
+          .map((e) => `${e.path.replace(/^\//, "")}: ${e.message}`)
           .join(", ");
         return { error: new Error(message) };
       }

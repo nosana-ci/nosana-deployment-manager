@@ -11,7 +11,6 @@ import {
   jobDefinitionValidation,
   deploymentCreateValidation,
 } from "../validators/index.js";
-import { FastifySchema } from "fastify";
 
 import { routeSchemas } from "../schema/index.schema.js";
 import { API_PREFIX } from "../../definitions/api.js";

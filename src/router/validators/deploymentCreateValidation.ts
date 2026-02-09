@@ -5,7 +5,6 @@ import {
   DeploymentCreateBody,
   DeploymentMetadataSchema,
 } from "../schema/post/deployments/deploymentCreate.schema.js";
-import { FastifySchema } from "fastify";
 
 export const deploymentCreateValidation: FastifySchemaCompiler<DeploymentCreateBody> =
   () => {

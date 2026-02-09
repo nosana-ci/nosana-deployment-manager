@@ -1,5 +1,4 @@
 import { FastifyInstance } from "fastify";
-import { validateJobDefinition, JobDefinition } from "@nosana/kit";
 
 import {
   getDeploymentMiddleware,
@@ -7,7 +6,10 @@ import {
 } from "../middleware/index.js";
 
 import { routes } from "../routes/index.js";
-import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
+import {
+  skipSwaggerValidation,
+  jobDefinitionValidation,
+} from "../validators/index.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
 import { API_PREFIX } from "../../definitions/api.js";
@@ -52,22 +54,6 @@ const {
     DeploymentUpdateTimeoutSchema,
   },
 } = routeSchemas;
-
-const jobDefinitionValidatorCompiler = () => {
-  return (data: JobDefinition | { job_definition: JobDefinition }) => {
-    const jobDef =
-      "job_definition" in data ? data.job_definition : (data as JobDefinition);
-    const result = validateJobDefinition(jobDef);
-
-    if (!result.success) {
-      const message = result.errors
-        .map((e: { path: string; expected: string }) => `${e.path}: ${e.expected}`)
-        .join(", ");
-      return { error: new Error(message) };
-    }
-    return { value: data };
-  };
-};
 
 export function setupDeploymentsRoutes(server: FastifyInstance) {
   // GET
@@ -120,7 +106,6 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     `${API_PREFIX}/create`,
     {
       schema: DeploymentCreateSchema,
-      validatorCompiler: jobDefinitionValidatorCompiler,
     },
     deploymentCreateHandler
   );
@@ -130,7 +115,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     {
       schema: DeploymentCreateRevisionSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
-      validatorCompiler: jobDefinitionValidatorCompiler,
+      validatorCompiler: jobDefinitionValidation,
     },
     deploymentCreateRevisionHandler
   );

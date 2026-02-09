@@ -9,6 +9,7 @@ import { routes } from "../routes/index.js";
 import {
   skipSwaggerValidation,
   jobDefinitionValidation,
+  deploymentCreateValidation,
 } from "../validators/index.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
@@ -106,6 +107,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     `${API_PREFIX}/create`,
     {
       schema: DeploymentCreateSchema,
+      validatorCompiler: deploymentCreateValidation,
     },
     deploymentCreateHandler
   );

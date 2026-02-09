@@ -26,6 +26,11 @@ export default async function addPerformanceIndexes(db: Db) {
   );
 
   await deploymentsCollection.createIndex(
+    { owner: 1, created_at: -1 },
+    { name: "idx_owner_createdAt" }
+  );
+
+  await deploymentsCollection.createIndex(
     { id: 1, owner: 1, created_at: -1 },
     { name: "idx_id_owner_createdAt" }
   );

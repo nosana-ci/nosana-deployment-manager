@@ -1,9 +1,10 @@
 import { validateJobDefinition, JobDefinition } from "@nosana/kit";
 import { FastifySchemaCompiler } from "fastify/types/schema.js";
+import { FastifySchema } from "fastify";
 
-export const jobDefinitionValidation: FastifySchemaCompiler<JobDefinition> = () => {
-  return (data) => {
-    const result = validateJobDefinition(data);
+export const jobDefinitionValidation: FastifySchemaCompiler<FastifySchema> = () => {
+  return (data: unknown) => {
+    const result = validateJobDefinition(data as JobDefinition);
 
     if (!result.success) {
       const message = result.errors

@@ -1,14 +1,15 @@
-import { validateJobDefinition } from "@nosana/kit";
+import { validateJobDefinition, JobDefinition } from "@nosana/kit";
 import { FastifySchemaCompiler } from "fastify/types/schema.js";
 import { Value } from "@sinclair/typebox/value";
 import {
-  DeploymentCreateBody,
   DeploymentMetadataSchema,
 } from "../schema/post/deployments/deploymentCreate.schema.js";
+import { FastifySchema } from "fastify";
 
-export const deploymentCreateValidation: FastifySchemaCompiler<DeploymentCreateBody> =
+export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
   () => {
-    return (data) => {
+    return (data: unknown) => {
+      const body = data as { job_definition: JobDefinition };
       // 1. Validate top-level fields using the metadata-only schema
       // This automatically ignores the job_definition field
       const metadataErrors = [...Value.Errors(DeploymentMetadataSchema, data)];
@@ -21,7 +22,7 @@ export const deploymentCreateValidation: FastifySchemaCompiler<DeploymentCreateB
       }
 
       // 2. Validate job_definition using the kit validator
-      const result = validateJobDefinition(data.job_definition);
+      const result = validateJobDefinition(body.job_definition);
 
       if (!result.success) {
         const message = result.errors

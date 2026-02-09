@@ -6,7 +6,11 @@ import {
 } from "../middleware/index.js";
 
 import { routes } from "../routes/index.js";
-import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
+import {
+  skipSwaggerValidation,
+  jobDefinitionValidation,
+  deploymentCreateValidation,
+} from "../validators/index.js";
 
 import { routeSchemas } from "../schema/index.schema.js";
 import { API_PREFIX } from "../../definitions/api.js";
@@ -103,6 +107,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     `${API_PREFIX}/create`,
     {
       schema: DeploymentCreateSchema,
+      validatorCompiler: deploymentCreateValidation,
     },
     deploymentCreateHandler
   );
@@ -112,6 +117,7 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     {
       schema: DeploymentCreateRevisionSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+      validatorCompiler: jobDefinitionValidation,
     },
     deploymentCreateRevisionHandler
   );

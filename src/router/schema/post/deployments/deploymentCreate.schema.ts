@@ -43,6 +43,10 @@ export const DeploymentCreateBodySchema = Type.Intersect([
   ]),
 ]);
 
+export const DeploymentMetadataSchema = Type.Omit(DeploymentCreateBodySchema, [
+  "job_definition",
+]);
+
 export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   schedule?: string; // Optional for non-scheduled strategies
   rotation_time?: number; // Optional for non-infinite strategies

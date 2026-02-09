@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 
 import { routes } from "../routes/index.js";
 import { routeSchemas } from "../schema/index.schema.js";
-import { skipSwaggerValidation } from "../helper/skipSwaggerValidation.js";
+import { skipSwaggerValidation } from "../validators/index.js";
 
 import { authJobHostMiddleware } from "../middleware/authentication/authJobHostMiddleware.js";
 import { API_PREFIX } from "../../definitions/api.js";

@@ -5,11 +5,7 @@ import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../
 
 import { DeploymentStrategy } from "../../../../types/index.js";
 import { JobDefinitionSchema } from "../../components/jobDefinition.schema.js";
-
-export const DeploymentScheduleSchema = Type.String({
-  description: "Cron expression for scheduled deployments",
-  pattern: "^\\s*(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\S+)\\s*$",
-})
+import { DeploymentScheduleSchema } from "../../components/deploymentSchedule.schema.js";
 
 export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({

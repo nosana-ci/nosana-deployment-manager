@@ -2,7 +2,11 @@ import { validateJobDefinition, JobDefinition } from "@nosana/kit";
 import { FastifySchemaCompiler } from "fastify/types/schema.js";
 import { FastifySchema } from "fastify";
 
-export const jobDefinitionValidation: FastifySchemaCompiler<FastifySchema> = () => {
+export const jobDefinitionValidation: FastifySchemaCompiler<FastifySchema> = ({
+  httpPart,
+}) => {
+  if (httpPart !== "body") return undefined as never;
+
   return (data: unknown) => {
     const result = validateJobDefinition(data as JobDefinition);
 

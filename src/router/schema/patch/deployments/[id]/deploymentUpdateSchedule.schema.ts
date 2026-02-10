@@ -2,7 +2,7 @@ import { FastifySchema } from "fastify";
 import { Static, Type } from "@sinclair/typebox";
 
 import { ErrorSchema } from "../../../index.schema.js";
-import { DeploymentScheduleSchema } from "../../../post/index.schema.js";
+import { DeploymentScheduleSchema } from "../../../components/deploymentSchedule.schema.js";
 
 const DeploymentUpdateScheduleSuccess = Type.Object({
   schedule: DeploymentScheduleSchema,

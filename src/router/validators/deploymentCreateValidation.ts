@@ -8,7 +8,9 @@ import {
 import { FastifySchema } from "fastify";
 
 export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
-  () => {
+  ({ httpPart }) => {
+    if (httpPart !== "body") return undefined as never;
+
     return (data: unknown) => {
       const body = data as DeploymentCreateBody;
       // 1. Validate top-level fields using the metadata-only schema

@@ -108,7 +108,6 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     {
       schema: DeploymentCreateSchema,
       validatorCompiler: deploymentCreateValidation,
-      serializerCompiler: skipSwaggerValidation,
     },
     deploymentCreateHandler
   );
@@ -119,7 +118,6 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       schema: DeploymentCreateRevisionSchema,
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
       validatorCompiler: jobDefinitionValidation,
-      serializerCompiler: skipSwaggerValidation,
     },
     deploymentCreateRevisionHandler
   );

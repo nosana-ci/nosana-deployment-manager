@@ -38,8 +38,13 @@ export function createDeploymentRevisionEndpoints(
 
       if (Array.isArray(expose)) {
         for (const service of expose) {
-          // @ts-expect-error - service can be string or number
+          // @ts-expect-error - service can be string or number or object with port
           const port = typeof service === "object" ? service.port : service;
+
+          // Skip if port is undefined or null
+          if (port === undefined || port === null) {
+            continue;
+          }
 
           endpoints.push({
             opId: op.id,

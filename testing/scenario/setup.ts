@@ -11,7 +11,7 @@ export let nodeClient: NosanaClient;
 export let vault: Vault;
 export const min_balance = { SOL: 0.01, NOS: 0.1 };
 export const topup_balance = { SOL: 0.02, NOS: 0.5 };
-export const createdDeployments: Deployment[] = [];
+export const createdDeployments: Map<string, Deployment> = new Map();
 export const testRunId = new Date().toISOString();
 export const providedVaultAddress = process.env.TEST_VAULT_ADDRESS;
 
@@ -59,15 +59,20 @@ afterAll(async () => {
   }
 
   console.log("Stopping all created deployments");
-  for (const deployment of createdDeployments) {
-    const { status } = await deployerClient.api.deployments.get(deployment.id);
-    if ([DeploymentStatus.STOPPED, DeploymentStatus.STOPPING, DeploymentStatus.STARTING].includes(status)) {
-      console.log("Not stopping deployment:", deployment.id, status);
-      // TODO: how to stop jobs that are in STARTING?
-      //       for those stop() returns "deployment is in incorrect state"
-    } else {
-      console.log("Stopping deployment:", deployment.id, status);
-      await deployment.stop()
+  for (const [id, deployment] of createdDeployments) {
+    try {
+      const { status } = await deployerClient.api.deployments.get(id);
+      if ([DeploymentStatus.STOPPED, DeploymentStatus.STOPPING, DeploymentStatus.STARTING].includes(status)) {
+        console.log("Not stopping deployment:", id, status);
+        // TODO: how to stop jobs that are in STARTING?
+        //       for those stop() returns "deployment is in incorrect state"
+      } else {
+        console.log("Stopping deployment:", id, status);
+        await deployment.stop();
+      }
+    } catch (error) {
+      console.error("Error checking deployment status:", id, (error as Error).message);
+      throw error;
     }
   }
 });

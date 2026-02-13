@@ -24,6 +24,7 @@ export const ErrorMessages = {
     FAILED_STARTING: "Failed to start deployment.",
     FAILED_TO_STOP: "Failed to stop deployment.",
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
+    FAILED_TO_DELETE: "Failed to delete deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
     FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",

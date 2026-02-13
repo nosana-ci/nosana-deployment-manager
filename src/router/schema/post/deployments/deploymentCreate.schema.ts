@@ -4,7 +4,6 @@ import { Type, Static } from "@sinclair/typebox";
 import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../index.schema.js";
 
 import { DeploymentStrategy } from "../../../../types/index.js";
-import { JobDefinitionSchema } from "../../components/jobDefinition.schema.js";
 import { DeploymentScheduleSchema } from "../../components/deploymentSchedule.schema.js";
 
 export const DeploymentCreateBodySchema = Type.Intersect([
@@ -15,7 +14,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     vault: Type.Optional(PublicKeySchema),
     confidential: Type.Optional(Type.Boolean()),
-    job_definition: JobDefinitionSchema
+    job_definition: Type.Ref("JobDefinition")
   }),
   Type.Union([
     Type.Object({

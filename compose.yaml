@@ -33,7 +33,8 @@ services:
       - deployments_network
   deployment_manager:
     depends_on:
-      - deployments_db
+      deployments_db:
+        condition: service_healthy
     build:
       context: .
       dockerfile: Dockerfile

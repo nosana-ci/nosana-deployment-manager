@@ -7,6 +7,7 @@ export * from "./deployment/checkDeploymentExtendTask.js"
 export * from "./deployment/checkNoDeploymentExtendTask.js";
 export * from "./deployment/startDeployment.js";
 export * from "./deployment/stopDeployment.js";
+export * from "./deployment/deleteDeployment.js";
 export * from "./deployment/waitForTaskComplete.js";
 export * from "./deployment/waitForDeploymentStatus.js";
 

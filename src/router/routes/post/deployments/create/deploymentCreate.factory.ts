@@ -38,7 +38,7 @@ export function createDeploymentRevisionEndpoints(
 
       if (Array.isArray(expose)) {
         for (const service of expose) {
-          // @ts-expect-error - service can be string or number or object with port
+          // @ts-expect-error - Runtime type narrowing, service.port exists when service is an object
           const port = typeof service === "object" ? service.port : service;
 
           // Skip if port is undefined or null

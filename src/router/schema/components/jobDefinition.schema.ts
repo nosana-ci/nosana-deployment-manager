@@ -4,9 +4,9 @@ import { TSchema } from "@sinclair/typebox";
 import { flattenSchema, SchemaObject } from "./utils/flattenSchema.js";
 
 // Make the schemas mutually exclusive
-// @ts-expect-error expected type
+// @ts-expect-error - Runtime schema manipulation, types are correct at runtime
 if (jobSchemas.components.schemas?.OperationkeyofOperationArgsMap?.properties?.args?.oneOf) {
-  // @ts-expect-error expected type
+  // @ts-expect-error - Runtime schema manipulation, types are correct at runtime
   const argsOneOf = jobSchemas.components.schemas.OperationkeyofOperationArgsMap.properties.args.oneOf;
 
   // First schema (container/run) - add constraint to forbid 'name'

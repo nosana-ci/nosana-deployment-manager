@@ -31,11 +31,13 @@ export * from "./components/vault.schema.js";
 import * as getSchemas from "./get/index.schema.js";
 import * as postSchemas from "./post/index.schema.js";
 import * as patchSchemas from "./patch/index.schema.js";
+import * as deleteSchemas from "./delete/index.schema.js";
 
 export const routeSchemas = {
   get: getSchemas,
   post: postSchemas,
   patch: patchSchemas,
+  delete: deleteSchemas,
 };
 
 export function addSchemas(server: FastifyInstance) {

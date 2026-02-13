@@ -25,7 +25,7 @@ export async function buildDeploymentJobResponse(
     jobResult: results ? results.results : null,
     timeStart: jobData.timeStart,
     timeEnd: jobData.timeEnd,
-    listedAt: jobData.listedAt,
+    listedAt: jobData.listedAt!,
   }
 
   if (jobData.state > 1 && jobResponse.jobResult === null && jobData.ipfsResult) {

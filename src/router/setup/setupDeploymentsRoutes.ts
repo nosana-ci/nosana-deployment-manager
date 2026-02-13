@@ -36,6 +36,9 @@ const {
     deploymentUpdateScheduleHandler,
     deploymentUpdateTimeoutHandler,
   },
+  delete: {
+    deploymentDeleteHandler,
+  },
 } = routes;
 
 const {
@@ -54,6 +57,7 @@ const {
     DeploymentUpdateScheduleSchema,
     DeploymentUpdateTimeoutSchema,
   },
+  delete: { DeploymentDeleteSchema },
 } = routeSchemas;
 
 export function setupDeploymentsRoutes(server: FastifyInstance) {
@@ -138,6 +142,16 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentStopHandler
+  );
+
+  // DELETE
+  server.delete(
+    `${API_PREFIX}/:deployment`,
+    {
+      schema: DeploymentDeleteSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    deploymentDeleteHandler
   );
 
   // PATCH

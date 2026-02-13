@@ -18,7 +18,7 @@ export function createDeployment(
     expect(deployment.strategy).toBe(deploymentBody.strategy);
     expect(deployment.vault.address.toString()).toBe(vaultAddress);
 
-    createdDeployments.push(deployment);
+    createdDeployments.set(deployment.id, deployment);
 
     state.set(deployment);
   };

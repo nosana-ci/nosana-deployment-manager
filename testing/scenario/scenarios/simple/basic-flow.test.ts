@@ -3,7 +3,7 @@ import { Deployment } from '@nosana/api';
 import { address, DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, deleteDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 import { deployerClient } from '../../setup.js';
 
 createFlow('Basic Flow', (step) => {
@@ -41,4 +41,6 @@ createFlow('Basic Flow', (step) => {
   step('wait for deployment to be stopped', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.STOPPED }));
 
   step('check if all jobs are stopped', checkAllJobsStopped(deployment));
+
+  step('delete deployment', deleteDeployment(deployment));
 });

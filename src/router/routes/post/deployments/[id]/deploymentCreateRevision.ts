@@ -55,12 +55,13 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
       return;
     }
 
+    const allRevisions = await db.revisions.find({ deployment: deployment.id }).toArray();
+
     res.status(200).send({
       active_revision: revision.revision,
       endpoints,
       revisions: [
-        ...deployment.revisions.map((r) => ({ ...r, created_at: r.created_at.toISOString() })),
-        { ...revision, created_at: revision.created_at.toISOString() },
+        ...allRevisions.map((r) => ({ ...r, created_at: r.created_at.toISOString() })),
       ],
       updated_at: updated_at.toISOString(),
     });

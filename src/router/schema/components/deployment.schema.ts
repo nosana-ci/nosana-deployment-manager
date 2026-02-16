@@ -1,12 +1,9 @@
 import { Static, Type } from "@sinclair/typebox";
 
-import { JobsSchema } from "./job.schema.js";
-import { EventsSchema } from "./event.schema.js";
 import { PublicKeySchema } from "./publicKey.schema.js";
 import { EndpointSchema } from "./endpoint.schema.js";
 
 import { DeploymentStatus, DeploymentStrategy } from "../../../types/index.js";
-import { RevisionSchema } from "./revision.schema.js";
 
 export const DeploymentStatusSchema = Type.Union(
   Object.values(DeploymentStatus).map((val) => Type.Literal(val))
@@ -28,14 +25,12 @@ export const DeploymentSchema = Type.Intersect([
     market: PublicKeySchema,
     owner: PublicKeySchema,
     status: DeploymentStatusSchema,
-    revisions: Type.Array(RevisionSchema),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 1 }),
-    jobs: Type.Array(JobsSchema),
-    events: Type.Array(EventsSchema),
     endpoints: Type.Array(EndpointSchema),
     confidential: Type.Boolean(),
     active_revision: Type.Number({ minimum: 1 }),
+    active_jobs: Type.Number({ minimum: 0 }),
     created_at: Type.String({ format: "date-time" }),
     updated_at: Type.String({ format: "date-time" }),
   }),

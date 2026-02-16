@@ -101,14 +101,7 @@ export const deploymentCreateHandler: RouteHandler<{
     res.status(200);
     return {
       ...deployment,
-      events: [],
-      jobs: [],
-      revisions: [
-        {
-          ...revision,
-          created_at: revision.created_at.toISOString()
-        },
-      ],
+      active_jobs: 0,
       created_at: created_at.toISOString(),
       updated_at: created_at.toISOString(),
     };

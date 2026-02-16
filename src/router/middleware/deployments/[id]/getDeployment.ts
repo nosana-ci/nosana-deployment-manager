@@ -2,6 +2,7 @@ import type { RouteHandler } from "fastify";
 
 import { ErrorMessages } from "../../../../errors/index.js";
 import { fetchDeployments } from "../../../helper/fetchDeployments.js";
+import { JobState } from "../../../../types/index.js";
 
 import type { HeadersSchema } from "../../../schema/index.schema.js";
 
@@ -21,7 +22,18 @@ export const getDeploymentMiddleware: RouteHandler<{
       return;
     }
 
-    res.locals.deployment = deployments[0];
+    const deployment = deployments[0];
+    
+    // Add active_jobs count
+    const activeJobsCount = await db.jobs.countDocuments({
+      deployment: deployment.id,
+      state: JobState.RUNNING
+    });
+
+    res.locals.deployment = {
+      ...deployment,
+      active_jobs: activeJobsCount
+    };
   } catch (error) {
     res.log.error(error);
     res

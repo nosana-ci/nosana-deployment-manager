@@ -14,9 +14,9 @@ export const deploymentJobByIdHandler: RouteHandler<{
   const kit = getKit();
   const { job: jobId } = req.params;
   const deployment = res.locals.deployment!
-  const { results: resultsCollection } = res.locals.db
+  const { results: resultsCollection, jobs: jobsCollection, revisions: revisionsCollection } = res.locals.db
 
-  const job = deployment.jobs.find((job) => job.job === jobId);
+  const job = await jobsCollection.findOne({ job: jobId, deployment: deployment.id });
 
   if (!job) {
     res.status(404).send({
@@ -25,7 +25,7 @@ export const deploymentJobByIdHandler: RouteHandler<{
     return;
   }
 
-  const revision = deployment.revisions.find((rev) => rev.revision === job.revision);
+  const revision = await revisionsCollection.findOne({ deployment: deployment.id, revision: job.revision });
 
   if (!revision) {
     res.status(500).send({

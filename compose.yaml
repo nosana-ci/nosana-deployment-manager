@@ -51,15 +51,16 @@ services:
         - action: rebuild
           path: package.json
     environment:
-      - NETWORK=devnet
-      - VAULT_KEY=change_me
-      - TASKS_BATCH_SIZE=10
-      - CONFIDENTIAL_BY_DEFAULT=true
-      - DEPLOYMENT_MANAGER_PORT=3000
-      - DOCDB_HOST=host.docker.internal
-      - DOCDB_PORT=27017
-      - DOCDB_USERNAME=
-      - DOCDB_PASSWORD=
+      - NETWORK=${NETWORK:-devnet}
+      - VAULT_KEY=${VAULT_KEY:-change_me}
+      - TASKS_BATCH_SIZE=${TASKS_BATCH_SIZE:-10}
+      - CONFIDENTIAL_BY_DEFAULT=${CONFIDENTIAL_BY_DEFAULT:-true}
+      - DEPLOYMENT_MANAGER_PORT=${DEPLOYMENT_MANAGER_PORT:-3000}
+      - SOLANA_NETWORK=${SOLANA_NETWORK}
+      - DOCDB_HOST=${DOCDB_HOST:-host.docker.internal}
+      - DOCDB_PORT=${DOCDB_PORT:-27017}
+      - DOCDB_USERNAME=${DOCDB_USERNAME}
+      - DOCDB_PASSWORD=${DOCDB_PASSWORD}
     image: deployment_manager:latest
     extra_hosts:
       - "host.docker.internal:host-gateway"

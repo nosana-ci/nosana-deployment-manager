@@ -20,7 +20,7 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
   const deployment = res.locals.deployment!;
   const userId = req.headers["x-user-id"];
 
-  const revision = deployment.revisions.find((r) => r.revision === active_revision);
+  const revision = await db.revisions.findOne({ deployment: deployment.id, revision: active_revision });
 
   if (!revision) {
     res.status(400).send({

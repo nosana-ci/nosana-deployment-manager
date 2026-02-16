@@ -1,6 +1,5 @@
-
 import { expect } from 'vitest';
-import type { Deployment, NosanaApi } from '@nosana/api';
+import type { Deployment, DeploymentJobs } from '@nosana/api';
 
 import { deployerClient } from '../../setup.js';
 import { State } from '../../utils/index.js';
@@ -10,18 +9,20 @@ export function checkDeploymentJobs(
   { expectedJobsCount } = {
     expectedJobsCount: 1
   },
-  callback?: (deployment: Deployment) => void
+  callback?: (deployment: { id: string; jobs: DeploymentJobs }) => void
 ) {
   return async () => {
+    let jobs: DeploymentJobs = [];
     await expect.poll(
       async () => {
-        state.set(await (deployerClient.api as NosanaApi).deployments.get(state.get().id));
-        return state.get().jobs.length;
+        const deployment = await deployerClient.api.deployments.get(state.get().id);
+        state.set(deployment as Deployment);
+        jobs = await deployment.getJobs();
+        return jobs.length;
       },
       { message: `Waiting for deployment to have ${expectedJobsCount} job(s)` }
     ).toBe(expectedJobsCount);
 
-    callback?.(state.get());
+    callback?.({ ...state.get(), jobs });
   };
 }
-

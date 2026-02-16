@@ -3,7 +3,7 @@ import { Static, Type } from "@sinclair/typebox";
 import { PublicKeySchema } from "./publicKey.schema.js";
 import { JobState } from "../../../types/index.js";
 
-export const JobsSchema = Type.Object({
+export const JobSchema = Type.Object({
   tx: Type.String(),
   job: PublicKeySchema,
   deployment: PublicKeySchema,
@@ -15,4 +15,4 @@ export const JobsSchema = Type.Object({
   updated_at: Type.String({ format: "date-time" }),
 });
 
-export type JobsSchema = Static<typeof JobsSchema>
+export type JobSchema = Static<typeof JobSchema>

@@ -1,6 +1,7 @@
 import type { RouteHandler } from "fastify";
 
 import { fetchDeployments } from "../../../helper/fetchDeployments.js";
+import { JobState } from "../../../../types/index.js";
 
 import type {
   DeploymentsHandlerSuccess,
@@ -21,30 +22,28 @@ export const deploymentsHandler: RouteHandler<{
       db.deployments
     );
 
-    deployments.forEach((deployment) => {
-      Reflect.deleteProperty(deployment, "_id");
-    });
+    // Add active_jobs count for each deployment
+    const deploymentsWithActiveJobs = await Promise.all(
+      deployments.map(async (deployment) => {
+        const activeJobsCount = await db.jobs.countDocuments({
+          deployment: deployment.id,
+          state: JobState.RUNNING
+        });
+        
+        Reflect.deleteProperty(deployment, "_id");
+        
+        return {
+          ...deployment,
+          active_jobs: activeJobsCount,
+          created_at: deployment.created_at.toISOString(),
+          updated_at: deployment.updated_at.toISOString(),
+        };
+      })
+    );
 
     res.status(200);
 
-    return deployments.map((deployment) => ({
-      ...deployment,
-      created_at: deployment.created_at.toISOString(),
-      updated_at: deployment.updated_at.toISOString(),
-      jobs: deployment.jobs.map((job) => ({
-        ...job,
-        created_at: job.created_at.toISOString(),
-        updated_at: job.updated_at.toISOString(),
-      })),
-      events: deployment.events.map((event) => ({
-        ...event,
-        created_at: event.created_at.toISOString(),
-      })),
-      revisions: deployment.revisions.map((revision) => ({
-        ...revision,
-        created_at: revision.created_at.toISOString(),
-      })),
-    }));
+    return deploymentsWithActiveJobs;
   } catch (error) {
     res.log.error("Error fetching deployments:", error);
     res.status(500).send({ error: "Internal Server Error" });

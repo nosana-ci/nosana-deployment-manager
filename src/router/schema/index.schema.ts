@@ -5,10 +5,10 @@ import {
   DeploymentStatusSchema,
   DeploymentStrategySchema,
 } from "./components/deployment.schema.js";
-import { JobsSchema } from "./components/job.schema.js";
+import { JobSchema } from "./components/job.schema.js";
 import { TaskSchema } from "./components/task.schema.js";
 import { ErrorSchema } from "./components/error.schema.js";
-import { EventsSchema } from "./components/event.schema.js";
+import { EventSchema } from "./components/event.schema.js";
 import { HeadersSchema, HostHeadersSchema } from "./components/headers.schema.js";
 import { EndpointSchema } from "./components/endpoint.schema.js";
 import { RevisionSchema } from "./components/revision.schema.js";
@@ -90,13 +90,13 @@ export function addSchemas(server: FastifyInstance) {
   });
 
   server.addSchema({
-    $id: "Events",
-    ...EventsSchema,
+    $id: "Event",
+    ...EventSchema,
   });
 
   server.addSchema({
-    $id: "Jobs",
-    ...JobsSchema,
+    $id: "Job",
+    ...JobSchema,
   });
 
   server.addSchema({

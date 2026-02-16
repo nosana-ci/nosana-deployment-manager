@@ -21,7 +21,10 @@ const {
     deploymentGetHeaderHandler,
     getDeploymentByIdHandler,
     deploymentsHandler,
-    deploymentJobByIdHandler
+    deploymentJobByIdHandler,
+    getDeploymentJobsHandler,
+    getDeploymentRevisionsHandler,
+    getDeploymentEventsHandler,
   },
   post: {
     deploymentCreateHandler,
@@ -47,7 +50,10 @@ const {
     DeploymentByIdSchema,
     GetDeploymentScheduledTasksSchema,
     GetDeploymentHeaderSchema,
-    DeploymentJobByIdSchema
+    DeploymentJobByIdSchema,
+    GetDeploymentJobsSchema,
+    GetDeploymentRevisionsSchema,
+    GetDeploymentEventsSchema,
   },
   post: { DeploymentCreateSchema, DeploymentCreateRevisionSchema, DeploymentStartSchema, DeploymentStopSchema },
   patch: {
@@ -104,6 +110,33 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       serializerCompiler: skipSwaggerValidation,
     },
     deploymentJobByIdHandler
+  );
+
+  server.get(
+    `${API_PREFIX}/:deployment/jobs`,
+    {
+      schema: GetDeploymentJobsSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    getDeploymentJobsHandler
+  );
+
+  server.get(
+    `${API_PREFIX}/:deployment/revisions`,
+    {
+      schema: GetDeploymentRevisionsSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    getDeploymentRevisionsHandler
+  );
+
+  server.get(
+    `${API_PREFIX}/:deployment/events`,
+    {
+      schema: GetDeploymentEventsSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    getDeploymentEventsHandler
   );
 
   // POST

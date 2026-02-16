@@ -164,9 +164,7 @@ export type Collections = {
 };
 
 export type DeploymentAggregation = DeploymentDocument & {
-  events: EventDocument[];
-  jobs: JobsDocument[];
-  revisions: RevisionDocument[];
+  active_jobs: number;
 };
 
 export const TaskType = {

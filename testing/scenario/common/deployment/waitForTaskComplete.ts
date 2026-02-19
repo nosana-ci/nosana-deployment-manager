@@ -8,12 +8,12 @@ export function waitForTaskComplete(
   deployment: State<Deployment>,
 ) {
   return async () => {
-    const tasks = await deployment.get().getTasks();
-    expect(tasks).toHaveLength(1);
+    const response = await deployment.get().getTasks();
+    expect(response.tasks).toHaveLength(1);
     await expect.poll(
       async () => {
-        const newTasks = await deployment.get().getTasks();
-        return newTasks.length === 0 || newTasks[0].due_at !== tasks[0].due_at;
+        const newResponse = await deployment.get().getTasks();
+        return newResponse.tasks.length === 0 || newResponse.tasks[0].due_at !== response.tasks[0].due_at;
       },
       {
         message: 'Waiting for extend task to complete',

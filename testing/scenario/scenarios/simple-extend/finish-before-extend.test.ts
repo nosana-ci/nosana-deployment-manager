@@ -43,7 +43,7 @@ createFlow('Finish Before Extend', (step) => {
     deployment, { expectedStatus: DeploymentStatus.STOPPED },
     async () => {
       const tasks = await deployment.get().getTasks();
-      expect(tasks.length).toBe(0);
+      expect(tasks.tasks.length).toBe(0);
     }
   ));
 

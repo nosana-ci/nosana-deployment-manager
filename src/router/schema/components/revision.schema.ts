@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Static, Type } from "@sinclair/typebox";
 
 import { PublicKeySchema } from "./publicKey.schema.js";
 
@@ -9,3 +9,5 @@ export const RevisionSchema = Type.Object({
   job_definition: Type.Ref("JobDefinition"),
   created_at: Type.String({ format: "date-time" }),
 });
+
+export type RevisionSchema = Static<typeof RevisionSchema>;

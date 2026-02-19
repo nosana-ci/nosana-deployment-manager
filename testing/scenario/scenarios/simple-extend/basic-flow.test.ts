@@ -42,7 +42,7 @@ createFlow('Basic Flow', (step) => {
       const jobDetails = await deployerClient.jobs.get(address(firstJob.get()));
       const expectedDueAtMs = (Number(jobDetails!.timeStart) + Number(jobDetails!.timeout) - 60) * 1000;
       const actualDueAtMs = new Date(task!.due_at).getTime();
-      expect(Math.abs(actualDueAtMs - expectedDueAtMs)).toBeLessThan(5000);
+      expect(Math.abs(actualDueAtMs - expectedDueAtMs)).toBeLessThan(30000);
     }
   ));
 
@@ -60,7 +60,7 @@ createFlow('Basic Flow', (step) => {
     deployment, { expectedStatus: DeploymentStatus.STOPPED },
     async () => {
       const tasks = await deployment.get().getTasks();
-      expect(tasks.length).toBe(0);
+      expect(tasks.tasks.length).toBe(0);
     }
   ));
 

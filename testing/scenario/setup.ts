@@ -5,10 +5,13 @@ import { createKitClient } from './utils/createKitClient.js';
 import { validateThatVaultIsUsable } from "./utils/validateThatVaultIsUsable";
 import { Deployment } from "@nosana/api";
 import { eatMarketQueue } from './utils/eatMarketQueue.js';
+import { QueryClient } from '@nosana/api/dist/client/index.js';
+import { createApiClient } from './utils/createApiClient.js';
 
 export let deployerClient: NosanaClient;
 export let nodeClient: NosanaClient;
 export let vault: Vault;
+export let apiClient: QueryClient;
 export const min_balance = { SOL: 0.01, NOS: 0.1 };
 export const topup_balance = { SOL: 0.02, NOS: 0.5 };
 export const createdDeployments: Map<string, Deployment> = new Map();
@@ -28,6 +31,7 @@ beforeAll(async () => {
 
   deployerClient = deployer;
   nodeClient = node;
+  apiClient = createApiClient(deployerClient);
 
   if (process.env.EAT === 'true') {
     await eatMarketQueue(process.env.TEST_MARKET!, nodeClient)

@@ -106,7 +106,7 @@ export const deploymentCreateHandler: RouteHandler<{
       updated_at: created_at.toISOString(),
     };
   } catch (error) {
-    res.log.error("Error creating deployment:", error);
+    res.log.error("Error creating deployment: %s", String(error));
     res.status(500).send({ error: ErrorMessages.generic.INTERNAL_SERVER_ERROR });
   }
 };

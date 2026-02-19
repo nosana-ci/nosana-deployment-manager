@@ -1,10 +1,15 @@
 import { FastifySchema } from "fastify";
 import { Type } from "@sinclair/typebox";
 
-import { TaskDocument } from "../../../../../types/index.js";
-import { ErrorSchema } from "../../../index.schema";
+import { ErrorSchema, TaskSchema } from "../../../index.schema.js";
+import {
+  withPagination,
+  withFilters,
+  type WithPagination,
+} from "../../../components/pagination.schema.js";
+import { TasksFilterSchema } from "../../../components/filters.schema.js";
 
-export type GetDeploymentScheduledTasksSuccess = Array<TaskDocument>;
+export type GetDeploymentScheduledTasksSuccess = WithPagination<TaskSchema, "tasks">;
 export type GetDeploymentScheduledTasksError = ErrorSchema;
 
 export const GetDeploymentScheduledTasksSchema: FastifySchema = {
@@ -22,17 +27,13 @@ export const GetDeploymentScheduledTasksSchema: FastifySchema = {
     },
     required: ["deployment"],
   },
+  querystring: withFilters(TasksFilterSchema),
   response: {
     200: {
-      description: "List of scheduled tasks for the deployment.",
+      description: "List of scheduled tasks for the deployment with pagination.",
       content: {
         "application/json": {
-          schema: {
-            type: "array",
-            items: {
-              $ref: "Task",
-            },
-          },
+           schema: withPagination("tasks", Type.Ref("Task")),
         },
       },
     },

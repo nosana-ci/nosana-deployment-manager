@@ -18,6 +18,7 @@ import { VaultSchema, VaultsSchema } from "./components/vault.schema.js";
 import { JobDefinitionSchema } from "./components/jobDefinition.schema.js";
 
 export * from "./components/deployment.schema.js";
+export * from "./components/pagination.schema.js";
 export * from "./components/error.schema.js";
 export * from "./components/event.schema.js";
 export * from "./components/headers.schema.js";
@@ -27,6 +28,7 @@ export * from "./components/jobDefinition.schema.js";
 export * from "./components/publicKey.schema.js";
 export * from "./components/task.schema.js";
 export * from "./components/vault.schema.js";
+export * from "./components/revision.schema.js";
 
 import * as getSchemas from "./get/index.schema.js";
 import * as postSchemas from "./post/index.schema.js";

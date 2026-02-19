@@ -21,7 +21,7 @@ export const vaultsHandler: RouteHandler<{
       vault, owner, created_at: created_at.toISOString()
     }));
   } catch (error) {
-    res.log.error("Error fetching vaults:", error);
+    res.log.error("Error fetching vaults: %s", String(error));
     res.status(500).send({ error: "Internal Server Error" });
   }
 };

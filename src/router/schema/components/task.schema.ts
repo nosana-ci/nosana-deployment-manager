@@ -1,4 +1,4 @@
-import { Type } from "@sinclair/typebox";
+import { Static, Type } from "@sinclair/typebox";
 
 import { PublicKeySchema } from "./publicKey.schema.js";
 
@@ -18,3 +18,5 @@ export const TaskSchema = Type.Object({
   due_at: Type.String({ format: "date-time" }),
   created_at: Type.String({ format: "date-time" }),
 });
+
+export type TaskSchema = Static<typeof TaskSchema>;

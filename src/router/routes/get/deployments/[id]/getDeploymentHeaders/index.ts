@@ -60,11 +60,11 @@ export const deploymentGetHeaderHandler: RouteHandler<{
       res.status(200)
       return { header };
     } catch (error) {
-      res.log.error("Error occurred while generating header:", error);
+      res.log.error("Error occurred while generating header: %s", String(error));
       res.status(500).send({ error: "Failed to generate header." });
     }
   } catch (error) {
-    req.log.error(error, "Failed to get scheduled tasks for deployment");
+    req.log.error("%s - Failed to get scheduled tasks for deployment", String(error));
     res.status(500).send({
       error: "Failed to get scheduled tasks",
     });

@@ -1,16 +1,15 @@
 import { expect } from 'vitest';
-import type { Deployment, DeploymentJobs } from '@nosana/api';
+import type { Deployment, DeploymentJobItem } from '@nosana/api';
 import { State } from '../../utils/index.js';
 import { JobState } from '../../../../src/types/index.js';
-
-type Job = DeploymentJobs[number];
 
 export function checkAllJobsStopped(
   state: State<Deployment>
 ) {
   return async () => {
     const deployment = state.get();
-    const jobs = await deployment.getJobs();
-    expect(jobs.every((job: Job) => job.state === JobState.STOPPED || job.state === JobState.COMPLETED)).toBe(true);
+    const response = await deployment.getJobs();
+    const jobs = response.jobs;
+    expect(jobs.every((job: DeploymentJobItem) => job.state === JobState.STOPPED || job.state === JobState.COMPLETED)).toBe(true);
   };
 }

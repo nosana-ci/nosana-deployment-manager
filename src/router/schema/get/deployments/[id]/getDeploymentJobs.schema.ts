@@ -1,9 +1,15 @@
 import { FastifySchema } from "fastify";
 import { Type } from "@sinclair/typebox";
 
-import { ErrorSchema } from "../../../index.schema.js";
+import { ErrorSchema, JobSchema } from "../../../index.schema.js";
+import {
+  withFilters,
+  withPagination,
+  type WithPagination,
+} from "../../../components/pagination.schema.js";
+import { JobsFilterSchema } from "../../../components/filters.schema.js";
 
-export type GetDeploymentJobsSuccess = Array<unknown>;
+export type GetDeploymentJobsSuccess = WithPagination<JobSchema, "jobs">;
 export type GetDeploymentJobsError = ErrorSchema;
 
 export const GetDeploymentJobsSchema: FastifySchema = {
@@ -21,17 +27,13 @@ export const GetDeploymentJobsSchema: FastifySchema = {
     },
     required: ["deployment"],
   },
+  querystring: withFilters(JobsFilterSchema),
   response: {
     200: {
-      description: "List of jobs for the deployment.",
+      description: "List of jobs for the deployment with pagination.",
       content: {
         "application/json": {
-          schema: {
-            type: "array",
-            items: {
-              $ref: "Job",
-            },
-          },
+           schema: withPagination("jobs", Type.Ref("Job")),
         },
       },
     },

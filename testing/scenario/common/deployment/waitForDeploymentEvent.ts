@@ -1,23 +1,21 @@
 import { expect } from "vitest";
 import { Deployment, NosanaApi } from "@nosana/kit";
-import type { DeploymentEvents } from "@nosana/api";
+import type { DeploymentEventItem } from "@nosana/api";
 
 import { State } from "../../utils/index.js";
 import { deployerClient } from "../../setup.js";
 
-type Event = DeploymentEvents[number];
-
 export function waitForDeploymentEvent(
   state: State<Deployment>,
-  filters: Partial<Event>) {
+  filters: Partial<DeploymentEventItem>) {
   return async () => {
     await expect.poll(
       async () => {
         const deployment = await (deployerClient.api as NosanaApi).deployments.get(state.get().id);
         state.set(deployment);
-        const events = await deployment.getEvents();
-        return events.some((event: Event) =>
-          Object.entries(filters).every(([key, value]) => event[key as keyof Event] === value)
+        const response = await deployment.getEvents();
+        return response.events.some((event: DeploymentEventItem) =>
+          Object.entries(filters).every(([key, value]) => event[key as keyof DeploymentEventItem] === value)
         );
       },
       {

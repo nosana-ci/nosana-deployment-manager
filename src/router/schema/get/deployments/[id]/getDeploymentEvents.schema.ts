@@ -1,9 +1,15 @@
 import { FastifySchema } from "fastify";
 import { Type } from "@sinclair/typebox";
 
-import { ErrorSchema } from "../../../index.schema.js";
+import { ErrorSchema, EventSchema } from "../../../index.schema.js";
+import {
+  withPagination,
+  withFilters,
+  type WithPagination,
+} from "../../../components/pagination.schema.js";
+import { EventsFilterSchema } from "../../../components/filters.schema.js";
 
-export type GetDeploymentEventsSuccess = Array<unknown>;
+export type GetDeploymentEventsSuccess = WithPagination<EventSchema, "events">;
 export type GetDeploymentEventsError = ErrorSchema;
 
 export const GetDeploymentEventsSchema: FastifySchema = {
@@ -21,17 +27,13 @@ export const GetDeploymentEventsSchema: FastifySchema = {
     },
     required: ["deployment"],
   },
+  querystring: withFilters(EventsFilterSchema),
   response: {
     200: {
-      description: "List of events for the deployment.",
+      description: "List of events for the deployment with pagination.",
       content: {
         "application/json": {
-          schema: {
-            type: "array",
-            items: {
-              $ref: "Event",
-            },
-          },
+           schema: withPagination("events", Type.Ref("Event")),
         },
       },
     },

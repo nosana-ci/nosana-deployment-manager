@@ -39,7 +39,7 @@
     "@fastify/middie": "^9.0.3",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
-    "@nosana/kit": "2.0.62",
+    "@nosana/kit": "2.1.0",
     "@sinclair/typebox": "^0.34.38",
     "@solana/addresses": "^5.0.0",
     "@solana/signers": "^5.0.0",

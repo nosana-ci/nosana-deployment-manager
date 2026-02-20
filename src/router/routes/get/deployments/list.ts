@@ -19,12 +19,12 @@ export const deploymentsHandler: RouteHandler<{
   Reply: DeploymentsHandlerSuccess | DeploymentsHandlerError;
 }> = async (req, res) => {
   const userId = req.headers["x-user-id"];
-  const { status, strategy, id, vault, created_after, created_before, sort_order = 'desc', limit = 10, cursor } = req.query;
+  const { search, status, strategy, id, name, vault, created_after, created_before, sort_order = 'desc', limit = 10, cursor } = req.query;
 
   const {
     findPaginated,
     serializeDates,
-    filters: { buildMultiValueFilter, buildSingleValueFilter, buildDateRangeFilter },
+    filters: { buildMultiValueFilter, buildSingleValueFilter, buildDateRangeFilter, buildPartialMatchFilter },
   } = getRepository(NosanaCollections.DEPLOYMENTS);
 
   const { count: countJobs } = getRepository(NosanaCollections.JOBS);
@@ -33,9 +33,11 @@ export const deploymentsHandler: RouteHandler<{
     const { items: deployments, pagination } = await findPaginated({
       baseFilter: { owner: userId },
       additionalFilters: [
+        buildPartialMatchFilter([DeploymentDocumentFields.ID, DeploymentDocumentFields.NAME], search),
         buildMultiValueFilter(DeploymentDocumentFields.STATUS, status),
         buildMultiValueFilter(DeploymentDocumentFields.STRATEGY, strategy),
         buildMultiValueFilter(DeploymentDocumentFields.ID, id),
+        buildSingleValueFilter(DeploymentDocumentFields.NAME, name),
         buildSingleValueFilter(DeploymentDocumentFields.VAULT, vault),
         buildDateRangeFilter(DeploymentDocumentFields.CREATED_AT, created_after, created_before)
       ],

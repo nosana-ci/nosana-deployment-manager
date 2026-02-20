@@ -7,6 +7,7 @@ import {
   buildMultiValueFilter as buildMultiValueFilterUntyped,
   buildSingleValueFilter as buildSingleValueFilterUntyped,
   buildDateRangeFilter as buildDateRangeFilterUntyped,
+  buildPartialMatchFilter as buildPartialMatchFilterUntyped,
   type KeysetPaginationResult,
   type SortOrder,
   type PageSize
@@ -57,6 +58,7 @@ export type FilterBuilders<T extends Document> = {
   buildMultiValueFilter: <K extends Extract<keyof T, string>>(field: K, value: string | undefined) => Record<string, unknown> | undefined;
   buildSingleValueFilter: <K extends Extract<keyof T, string>>(field: K, value: string | number | undefined) => Record<string, unknown> | undefined;
   buildDateRangeFilter: <K extends Extract<keyof T, string>>(field: K, after?: string, before?: string) => Record<string, unknown> | undefined;
+  buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) => Record<string, unknown> | undefined;
 };
 
 type Repository<T extends Document = Document> = {
@@ -117,6 +119,8 @@ function createRepository<T extends Document = Document>(
         buildSingleValueFilterUntyped<T>(field, value),
       buildDateRangeFilter: <K extends Extract<keyof T, string>>(field: K, after?: string, before?: string) =>
         buildDateRangeFilterUntyped<T>(field, after, before),
+      buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) =>
+        buildPartialMatchFilterUntyped<T>(fields, searchTerm),
     },
     serializeDates: serializeDates as Repository<T>['serializeDates'],
   };

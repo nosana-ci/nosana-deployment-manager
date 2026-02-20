@@ -65,6 +65,29 @@ export function buildSingleValueFilter<T extends Document = Document>(
 }
 
 /**
+ * Builds a partial match filter using regex (case-insensitive)
+ * Creates an $or query to search across multiple fields
+ * @param fields - Array of field names to search across
+ * @param searchTerm - The search term to match partially
+ * @returns MongoDB $or query with $regex
+ */
+export function buildPartialMatchFilter<T extends Document = Document>(
+  fields: (keyof T & string)[],
+  searchTerm: string | undefined
+): Record<string, unknown> | undefined {
+  if (!searchTerm || searchTerm.trim() === '') return undefined;
+
+  // Escape special regex characters to prevent regex injection
+  const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  return {
+    $or: fields.map(field => ({
+      [field]: { $regex: escapedTerm, $options: 'i' }
+    }))
+  };
+}
+
+/**
  * Combines multiple filter objects into a single MongoDB query
  * Filters out undefined values
  * @param filters - Array of filter objects

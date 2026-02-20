@@ -163,9 +163,6 @@ export type Collections = {
   results: JobResultsCollection;
 };
 
-export type DeploymentAggregation = DeploymentDocument & {
-  active_jobs: number;
-};
 
 export const TaskType = {
   LIST: "LIST",

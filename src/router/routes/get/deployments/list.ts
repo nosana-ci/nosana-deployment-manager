@@ -55,8 +55,6 @@ export const deploymentsHandler: RouteHandler<{
           state: JobState.RUNNING
         });
 
-        Reflect.deleteProperty(deployment, "_id");
-
         return {
           ...serializeDates(deployment),
           active_jobs: activeJobsCount,

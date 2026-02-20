@@ -3,10 +3,10 @@ import type { NosanaApiGetJobByAddressResponse } from "@nosana/kit"
 import { getKit } from "../../../../../../../../kit/index.js";
 
 import type { DeploymentJobByIdSuccess } from "../../../../../../../schema/get/index.schema.js";
-import type { DeploymentAggregation, JobResultsDocument, JobsDocument, RevisionDocument } from "../../../../../../../../types/index.js";
+import type { DeploymentDocument, JobResultsDocument, JobsDocument, RevisionDocument } from "../../../../../../../../types/index.js";
 
 export async function buildDeploymentJobResponse(
-  deployment: DeploymentAggregation,
+  deployment: DeploymentDocument,
   job: JobsDocument,
   revision: RevisionDocument,
   results: JobResultsDocument | null,

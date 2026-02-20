@@ -1,8 +1,8 @@
 import type { RouteHandler } from "fastify";
 
 import { ErrorMessages } from "../../../../errors/index.js";
-import { fetchDeployments } from "../../../helper/fetchDeployments.js";
-import { JobState } from "../../../../types/index.js";
+import { getRepository } from "../../../../repositories/index.js";
+import { NosanaCollections } from "../../../../definitions/collection.js";
 
 import type { HeadersSchema } from "../../../schema/index.schema.js";
 
@@ -10,30 +10,20 @@ export const getDeploymentMiddleware: RouteHandler<{
   Params: { deployment: string };
   Headers: HeadersSchema;
 }> = async (req, res) => {
-  const { db } = res.locals;
   const id = req.params.deployment;
   const owner = req.headers["x-user-id"];
 
-  try {
-    const deployments = await fetchDeployments({ id, owner }, db.deployments);
+  const { findOne } = getRepository(NosanaCollections.DEPLOYMENTS);
 
-    if (deployments.length === 0) {
+  try {
+    const deployment = await findOne({ id, owner, })
+
+    if (!deployment) {
       res.status(404).send({ error: ErrorMessages.deployments.NOT_FOUND });
       return;
     }
 
-    const deployment = deployments[0];
-    
-    // Add active_jobs count
-    const activeJobsCount = await db.jobs.countDocuments({
-      deployment: deployment.id,
-      state: JobState.RUNNING
-    });
-
-    res.locals.deployment = {
-      ...deployment,
-      active_jobs: activeJobsCount
-    };
+    res.locals.deployment = deployment;
   } catch (error) {
     res.log.error(error);
     res

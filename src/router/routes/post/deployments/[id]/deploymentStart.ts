@@ -57,6 +57,6 @@ export const deploymentStartHandler: RouteHandler<{
     res.log.error(error);
     res
       .status(500)
-      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG });
+      .send({ error: ErrorMessages.generic.SOMETHING_WENT_WRONG + " " + JSON.stringify(error, Object.getOwnPropertyNames(error)) + " " + `deploymentId: ${deployment.id}, owner: ${userId}` });
   }
 };

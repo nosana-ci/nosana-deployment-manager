@@ -67,7 +67,7 @@ export async function executeKeysetPagination<T extends Document = Document>(
   const { collection, filters, sortField, sortOrder, limit, cursor } = options;
 
   // Generate keyset query
-  const { query, sort, limit: fetchLimit } = generateKeysetQuery({
+  const { query, sort, limit: fetchLimit, direction } = generateKeysetQuery({
     cursor,
     sortField,
     sortOrder,
@@ -85,13 +85,17 @@ export async function executeKeysetPagination<T extends Document = Document>(
     collection.countDocuments(filters),
   ]);
 
+  // If we navigated backwards (prev), reverse the results to restore original sort order
+  const orderedResults = direction === 'prev' ? results.reverse() : results;
+
   // Build pagination metadata
   const { pagination, items } = buildPaginationMeta(
-    results,
+    orderedResults,
     limit,
     total,
     sortField,
-    !!cursor
+    !!cursor,
+    direction
   );
 
   return {

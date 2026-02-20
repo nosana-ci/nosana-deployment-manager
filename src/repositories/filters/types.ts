@@ -49,5 +49,6 @@ export interface KeysetQueryResult {
   query: Record<string, unknown>;     // MongoDB query object
   sort: Record<string, 1 | -1>;      // MongoDB sort object
   limit: number;                      // Actual limit to fetch (limit + 1)
+  direction?: CursorDirection;        // Navigation direction (if cursor was used)
 }
 

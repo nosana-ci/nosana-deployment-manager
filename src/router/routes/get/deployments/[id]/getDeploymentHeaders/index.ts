@@ -38,7 +38,6 @@ export const deploymentGetHeaderHandler: RouteHandler<{
         const worker = new VaultWorker("../router/routes/get/deployments/[id]/getDeploymentHeaders/worker.js", {
           workerData: {
             includeTime: includeTime === "true",
-            config: getConfig(),
             vault: vaultDocument.vault_key,
           }
         });

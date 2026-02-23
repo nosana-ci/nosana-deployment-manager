@@ -1,6 +1,5 @@
 import type { RouteHandler } from "fastify";
 
-import { getConfig } from "../../../../../../config/index.js";
 import { VaultWorker } from "../../../../../../worker/Worker.js";
 import { GetDeploymentHeaderSuccess, GetDeploymentHeaderError } from "../../../../../schema/get/deployments/[id]/getDeploymentHeader.schema.js";
 
@@ -38,7 +37,6 @@ export const deploymentGetHeaderHandler: RouteHandler<{
         const worker = new VaultWorker("../router/routes/get/deployments/[id]/getDeploymentHeaders/worker.js", {
           workerData: {
             includeTime: includeTime === "true",
-            config: getConfig(),
             vault: vaultDocument.vault_key,
           }
         });

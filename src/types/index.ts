@@ -15,6 +15,7 @@ export type DeploymentsConfig = {
   deployment_manager_port: number;
   vault_key: string | undefined;
   dashboard_backend_url: string | undefined;
+  client_manager_url: string | undefined;
   docdb: {
     hostname: string;
     port: string | number;
@@ -51,22 +52,25 @@ export type DeploymentStrategy =
 
 export type DeploymentDocument =
   | ({
-    strategy: "SCHEDULED";
-    schedule: string;
-    rotation_time?: never;
-  } & DeploymentDocumentBase)
+      strategy: "SCHEDULED";
+      schedule: string;
+      rotation_time?: never;
+    } & DeploymentDocumentBase)
   | ({
-    strategy: "INFINITE";
-    rotation_time: number;
-    schedule?: never;
-  } & DeploymentDocumentBase)
+      strategy: "INFINITE";
+      rotation_time: number;
+      schedule?: never;
+    } & DeploymentDocumentBase)
   | ({
-    strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
-    schedule?: never;
-    rotation_time?: never;
-  } & DeploymentDocumentBase);
+      strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
+      schedule?: never;
+      rotation_time?: never;
+    } & DeploymentDocumentBase);
 
-export const DeploymentDocumentFields: Record<Uppercase<keyof DeploymentDocument>, keyof DeploymentDocument> = {
+export const DeploymentDocumentFields: Record<
+  Uppercase<keyof DeploymentDocument>,
+  keyof DeploymentDocument
+> = {
   ID: "id",
   VAULT: "vault",
   MARKET: "market",
@@ -83,7 +87,7 @@ export const DeploymentDocumentFields: Record<Uppercase<keyof DeploymentDocument
   STRATEGY: "strategy",
   SCHEDULE: "schedule",
   ROTATION_TIME: "rotation_time",
-}
+};
 
 export type DeploymentCollection = Collection<DeploymentDocument>;
 
@@ -149,9 +153,9 @@ export type RevisionCollection = Collection<RevisionDocument>;
 export type JobResultsDocument = {
   job: string;
   results: JobResultsSchema;
-}
+};
 
-export type JobResultsCollection = Collection<JobResultsDocument>
+export type JobResultsCollection = Collection<JobResultsDocument>;
 
 export type Collections = {
   deployments: DeploymentCollection;
@@ -162,7 +166,6 @@ export type Collections = {
   revisions: RevisionCollection;
   results: JobResultsCollection;
 };
-
 
 export const TaskType = {
   LIST: "LIST",
@@ -194,7 +197,10 @@ export const JobState = {
 
 export type JobState = (typeof JobState)[keyof typeof JobState];
 
-export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof JobsDocument> = {
+export const JobsDocumentFields: Record<
+  Uppercase<keyof JobsDocument>,
+  keyof JobsDocument
+> = {
   JOB: "job",
   MARKET: "market",
   DEPLOYMENT: "deployment",
@@ -204,7 +210,7 @@ export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof Job
   TIME_START: "time_start",
   CREATED_AT: "created_at",
   UPDATED_AT: "updated_at",
-}
+};
 
 export type JobsDocument = {
   job: string;
@@ -223,7 +229,7 @@ export type JobsCollection = Collection<JobsDocument>;
 export type ResultsDocument = {
   job: string;
   results: FlowState;
-}
+};
 
 export type ResultsCollection = Collection<ResultsDocument>;
 

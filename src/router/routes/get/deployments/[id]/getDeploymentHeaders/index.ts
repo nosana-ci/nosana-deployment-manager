@@ -1,6 +1,5 @@
 import type { RouteHandler } from "fastify";
 
-import { getConfig } from "../../../../../../config/index.js";
 import { VaultWorker } from "../../../../../../worker/Worker.js";
 import { GetDeploymentHeaderSuccess, GetDeploymentHeaderError } from "../../../../../schema/get/deployments/[id]/getDeploymentHeader.schema.js";
 

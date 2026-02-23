@@ -13,13 +13,11 @@ try {
   const { kit, useNosanaApiKey, includeTime } = await prepareWorker<WorkerData>(workerData);
 
   if (useNosanaApiKey) {
-    const res = await kit.api!.auth.signMessage(MESSAGE, { includeTime });
-    if (res) {
-      parentPort!.postMessage({
-        event: "GENERATED",
-        header: res.header,
-      });
-    }
+    const header = await kit.api!.auth.signMessage(MESSAGE, { includeTime });
+    parentPort!.postMessage({
+      event: "GENERATED",
+      header: header,
+    });
   } else {
     const header = await kit.authorization.generate(MESSAGE, { includeTime });
     parentPort!.postMessage({

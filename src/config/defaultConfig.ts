@@ -13,7 +13,6 @@ const commonConfig: Omit<
   | "rpc_network"
   | "frps_address"
   | "dashboard_backend_url"
-  | "client_manager_url"
 > = {
   tasks_batch_size: process.env.TASKS_BATCH_SIZE
     ? parseInt(process.env.TASKS_BATCH_SIZE)
@@ -37,6 +36,7 @@ const commonConfig: Omit<
   default_minutes_before_timeout: process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT
     ? parseInt(process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT)
     : 20,
+  client_manager_url: process.env.CLIENT_MANAGER_URL || undefined,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {
@@ -50,7 +50,6 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.prd.nos.ci",
     dashboard_backend_url:
       process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.prd.nos.ci",
-    client_manager_url: process.env.CLIENT_MANAGER_URL || undefined,
     ...commonConfig,
   },
   devnet: {
@@ -61,7 +60,7 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
     dashboard_backend_url:
       process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.dev.nos.ci",
-    client_manager_url: process.env.CLIENT_MANAGER_URL || undefined,
+
     ...commonConfig,
   },
 };

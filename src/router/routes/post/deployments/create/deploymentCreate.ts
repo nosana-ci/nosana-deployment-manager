@@ -4,7 +4,7 @@ import { DeploymentStrategy } from "@nosana/kit";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
 import { encryptWithKey } from "../../../../../vault/encrypt.js";
-import { doesHeaderContainerKey } from "../../../../helper/doesHeaderContainKey.js";
+import { getExtractApiKeyFromHeader } from "../../../../helper/doesHeaderContainKey.js";
 import { createAndStoreSharedVault, storeVaultDocument } from "../../vaults/createSharedVault/createSharedVaultFactory.js";
 
 import {
@@ -26,7 +26,7 @@ export const deploymentCreateHandler: RouteHandler<{
   const { db } = res.locals;
   const userId = req.headers["x-user-id"];
 
-  const isNosanaApiRequest = doesHeaderContainerKey(req.headers);
+  const apiKey = getExtractApiKeyFromHeader(req.headers);
 
   try {
     if (!typia.validate<DeploymentCreateBody>(req.body).success) {
@@ -47,7 +47,7 @@ export const deploymentCreateHandler: RouteHandler<{
 
     let vault = req.body.vault
 
-    if (!isNosanaApiRequest) {
+    if (!apiKey) {
       if (vault) {
         const existingVault = await db.vaults.findOne({ owner: userId, vault });
 
@@ -65,7 +65,7 @@ export const deploymentCreateHandler: RouteHandler<{
       }
     } else {
       vault = userId;
-      const vaultKey = encryptWithKey(req.headers.authorization);
+      const vaultKey = encryptWithKey(apiKey);
 
       const { acknowledged } = await storeVaultDocument(db.vaults, vault, vaultKey, vault);
 

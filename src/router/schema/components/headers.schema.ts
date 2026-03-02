@@ -8,6 +8,9 @@ export const HeadersSchema = Type.Object(
     authorization: Type.String({
       description: "Signed authentication message,",
     }),
+    "x-nosana-api": Type.Optional(Type.String({
+      description: "Nosana API key",
+    })),
   },
   {
     description: "Headers for deployment routes",

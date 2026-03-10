@@ -16,20 +16,19 @@ export const authMiddleware: RouteHandler<{
   const authToken = req.headers["authorization"];
 
   if (typeof userId !== "string" || typeof authToken !== "string") {
+    res.status(401).send("Unauthorized, missing or invalid headers");
+    return;
+  }
+
+  const kit = getKit();
+
+  if (
+    !kit.authorization.validateHeaders(req.headers, convertAddressToUnit8Array(userId), {
+      expiry: 300,
+    })
+  ) {
     res.status(401).send("Unauthorized");
     return;
   }
 
-  if (!authToken.startsWith("nos_")) {
-    const kit = getKit();
-
-    if (
-      !kit.authorization.validateHeaders(req.headers, convertAddressToUnit8Array(userId), {
-        expiry: 300,
-      })
-    ) {
-      res.status(401).send("Unauthorized");
-      return;
-    }
-  }
 };

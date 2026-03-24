@@ -17,6 +17,7 @@ export function onListConfirmed(
     job,
     tx,
     market: task.deployment.market,
+    node: null,
     state: JobState.QUEUED,
     deployment: task.deploymentId,
     revision: task.deployment.active_revision,

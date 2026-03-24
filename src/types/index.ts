@@ -52,20 +52,20 @@ export type DeploymentStrategy =
 
 export type DeploymentDocument =
   | ({
-      strategy: "SCHEDULED";
-      schedule: string;
-      rotation_time?: never;
-    } & DeploymentDocumentBase)
+    strategy: "SCHEDULED";
+    schedule: string;
+    rotation_time?: never;
+  } & DeploymentDocumentBase)
   | ({
-      strategy: "INFINITE";
-      rotation_time: number;
-      schedule?: never;
-    } & DeploymentDocumentBase)
+    strategy: "INFINITE";
+    rotation_time: number;
+    schedule?: never;
+  } & DeploymentDocumentBase)
   | ({
-      strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
-      schedule?: never;
-      rotation_time?: never;
-    } & DeploymentDocumentBase);
+    strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
+    schedule?: never;
+    rotation_time?: never;
+  } & DeploymentDocumentBase);
 
 export const DeploymentDocumentFields: Record<
   Uppercase<keyof DeploymentDocument>,
@@ -204,6 +204,7 @@ export const JobsDocumentFields: Record<
   JOB: "job",
   MARKET: "market",
   DEPLOYMENT: "deployment",
+  NODE: "node",
   REVISION: "revision",
   TX: "tx",
   STATE: "state",
@@ -215,6 +216,7 @@ export const JobsDocumentFields: Record<
 export type JobsDocument = {
   job: string;
   market: string;
+  node: string | null;
   deployment: string;
   revision: number;
   tx: string;

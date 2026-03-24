@@ -5,9 +5,10 @@ import { JobState } from "../../../types/index.js";
 
 export const JobSchema = Type.Object({
   tx: Type.String(),
-  job: PublicKeySchema,
   deployment: PublicKeySchema,
+  job: PublicKeySchema,
   market: Type.String(),
+  node: Type.Union([PublicKeySchema, Type.Null()]),
   revision: Type.Number({ minimum: 1 }),
   state: Type.Union([Type.Literal(JobState.QUEUED), Type.Literal(JobState.RUNNING), Type.Literal(JobState.COMPLETED), Type.Literal(JobState.STOPPED)]),
   time_start: Type.Number({ minimum: 0 }),

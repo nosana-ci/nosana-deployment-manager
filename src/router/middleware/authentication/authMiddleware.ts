@@ -8,7 +8,7 @@ import { convertAddressToUnit8Array, getKit } from "../../../kit/index.js";
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;
 }> = async (req, res) => {
-  if (!req.url.startsWith("/api/") || isJobHostRoute(req.url, req.method) || req.method === "OPTIONS") {
+  if (isJobHostRoute(req.url, req.method) || req.method === "OPTIONS") {
     return;
   }
 

@@ -11,13 +11,13 @@ export const createConfidentialJobDefinition = (): JobDefinition => {
       "send": {
         "type": "api",
         "args": {
-          "endpoint": `${base_url}/api/deployments/jobs/%%global.job%%/job-definition`
+          "endpoint": `${base_url}/deployments/jobs/%%global.job%%/job-definition`
         }
       },
       "receive": {
         "type": "api",
         "args": {
-          "endpoint": `${base_url}/api/deployments/jobs/%%global.job%%/results`
+          "endpoint": `${base_url}/deployments/jobs/%%global.job%%/results`
         }
       }
     },

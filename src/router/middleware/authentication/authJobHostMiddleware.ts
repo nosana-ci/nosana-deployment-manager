@@ -9,7 +9,7 @@ import { convertAddressToUnit8Array, getKit } from "../../../kit/index.js";
 
 import type { HeadersSchema } from "../../schema/index.schema.js";
 
-export const isJobHostRoute = (url: string, method: string) => url.startsWith("/api/deployments/jobs/") && !(method === "GET" && url.endsWith("results"))
+export const isJobHostRoute = (url: string, method: string) => url.startsWith("/deployments/jobs/") && !(method === "GET" && url.endsWith("results"))
 
 export const authJobHostMiddleware: RouteHandler<{
   Params: { job: string };

@@ -71,7 +71,7 @@ Once running, access the interactive Swagger documentation at:
 
 ### Base URL
 
-All API endpoints are prefixed with `/api/deployments`
+All API endpoints are prefixed with `/deployments`
 
 ### Authentication
 
@@ -83,7 +83,7 @@ Most endpoints require authentication headers:
 Example:
 
 ```bash
-curl -X GET http://localhost:3001/api/deployments \
+curl -X GET http://localhost:3001/deployments \
   -H "x-user-id: YOUR_SOLANA_ADDRESS" \
   -H "authorization: YOUR_AUTH_TOKEN"
 ```
@@ -92,31 +92,31 @@ curl -X GET http://localhost:3001/api/deployments \
 
 #### Deployments
 
-- `GET /api/deployments` - List all deployments
-- `GET /api/deployments/:deployment` - Get deployment by ID
-- `POST /api/deployments/create` - Create a new deployment
-- `POST /api/deployments/:deployment/start` - Start a deployment
-- `POST /api/deployments/:deployment/stop` - Stop a deployment
-- `POST /api/deployments/:deployment/create-revision` - Create a new revision
-- `PATCH /api/deployments/:deployment/update-active-revision` - Update active revision
-- `PATCH /api/deployments/:deployment/update-replica-count` - Update replica count
-- `PATCH /api/deployments/:deployment/update-schedule` - Update schedule
-- `PATCH /api/deployments/:deployment/update-timeout` - Update timeout
-- `POST /api/deployments/:deployment/archive` - Archive a deployment
-- `GET /api/deployments/:deployment/tasks` - Get scheduled tasks
-- `GET /api/deployments/:deployment/jobs/:job` - Get job by ID
+- `GET /deployments` - List all deployments
+- `GET /deployments/:deployment` - Get deployment by ID
+- `POST /deployments/create` - Create a new deployment
+- `POST /deployments/:deployment/start` - Start a deployment
+- `POST /deployments/:deployment/stop` - Stop a deployment
+- `POST /deployments/:deployment/create-revision` - Create a new revision
+- `PATCH /deployments/:deployment/update-active-revision` - Update active revision
+- `PATCH /deployments/:deployment/update-replica-count` - Update replica count
+- `PATCH /deployments/:deployment/update-schedule` - Update schedule
+- `PATCH /deployments/:deployment/update-timeout` - Update timeout
+- `POST /deployments/:deployment/archive` - Archive a deployment
+- `GET /deployments/:deployment/tasks` - Get scheduled tasks
+- `GET /deployments/:deployment/jobs/:job` - Get job by ID
 
 #### Jobs
 
-- See `/api/jobs` routes in Swagger documentation
+- See `/jobs` routes in Swagger documentation
 
 #### Stats
 
-- See `/api/stats` routes in Swagger documentation
+- See `/stats` routes in Swagger documentation
 
 #### Vault
 
-- See `/api/vault` routes in Swagger documentation
+- See `/vault` routes in Swagger documentation
 
 ## Local Development
 

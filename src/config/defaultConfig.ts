@@ -32,6 +32,7 @@ const commonConfig: Omit<
     username: process.env.DOCDB_USERNAME,
     password: process.env.DOCDB_PASSWORD,
     use_tls: fs.existsSync(path.join(__dirname, "../../../global-bundle.pem")),
+    dbname: process.env.DOCDB_DBNAME ?? "nosana_deployments",
   },
   default_minutes_before_timeout: process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT
     ? parseInt(process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT)

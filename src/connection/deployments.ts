@@ -4,7 +4,6 @@ import { init_db } from "./docdb/index.js";
 import { getConfig } from "../config/index.js";
 import { setRepository } from "../repositories/index.js";
 
-const DB_NAME = "nosana_deployments";
 export const BULK_WRITE_BATCH_SIZE = 999; // DocumentDB supports max 1000 operations per bulkWrite
 
 function createConnectionString(
@@ -20,7 +19,7 @@ function createConnectionString(
 export async function createDeploymentsConnection(): Promise<Db> {
   let db: Db | undefined = undefined;
   const {
-    docdb: { hostname, port, username, password, use_tls },
+    docdb: { hostname, port, username, password, use_tls, dbname },
   } = getConfig();
   if (!db) {
     const connectionString = use_tls
@@ -30,7 +29,7 @@ export async function createDeploymentsConnection(): Promise<Db> {
     const mongo = new MongoClient(connectionString);
 
     const client = await mongo.connect();
-    db = client.db(DB_NAME);
+    db = client.db(dbname);
 
     setRepository(client, db);
 

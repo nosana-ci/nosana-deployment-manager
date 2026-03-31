@@ -4,7 +4,6 @@ import { routes } from "../routes/index.js";
 import { routeSchemas } from "../schema/index.schema.js";
 import { skipSwaggerValidation } from "../validators/index.js";
 
-import { authJobHostMiddleware } from "../middleware/authentication/authJobHostMiddleware.js";
 import { API_PREFIX } from "../../definitions/api.js";
 
 const {
@@ -19,8 +18,6 @@ const {
 const JOBS_API_PREFIX = `${API_PREFIX}/jobs`;
 
 export function setupJobsRoutes(server: FastifyInstance) {
-  server.addHook("onRequest", authJobHostMiddleware);
-
   // GET
   server.get(
     `${JOBS_API_PREFIX}/:job/job-definition`,

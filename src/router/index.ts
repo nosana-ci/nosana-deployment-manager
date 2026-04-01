@@ -6,7 +6,7 @@ import swagger from "@fastify/swagger";
 import swaggerUI from "@fastify/swagger-ui";
 
 import { getConfig } from "../config/index.js";
-import { authMiddleware } from "./middleware/index.js";
+import { authMiddleware, authJobHostMiddleware } from "./middleware/index.js";
 import { nosanaLogo } from "./ui/index.js";
 import { CollectionsNames } from "../definitions/collection.js";
 import { setupDeploymentsRoutes, setupJobsRoutes, setupStatsRoutes, setupVaultRoutes } from "./setup/index.js";
@@ -110,6 +110,7 @@ export async function startDeploymentManagerApi(db: Db) {
     },
   });
 
+  // Open routes
   server.get("/documentation/json", {
     logLevel: "silent",
     schema: { hide: true }
@@ -118,16 +119,25 @@ export async function startDeploymentManagerApi(db: Db) {
     return server.swagger();
   });
 
-  server.addHook("onRequest", authMiddleware);
-
-  setupDeploymentsRoutes(server);
-  setupJobsRoutes(server);
-  setupStatsRoutes(server);
-  setupVaultRoutes(server);
-
   server.get("/", { logLevel: "silent", schema: { hide: true } }, (_req, res) =>
     res.status(200).send()
   );
+
+  // Job host authenticated routes
+  server.register(async (scoped) => {
+    scoped.addHook("onRequest", authJobHostMiddleware);
+    setupJobsRoutes(scoped);
+  });
+
+  // Protected routes
+  server.register(async (scoped) => {
+    scoped.addHook("onRequest", authMiddleware);
+    setupDeploymentsRoutes(scoped);
+    setupVaultRoutes(scoped);
+  });
+
+  setupStatsRoutes(server);
+
   try {
     await server.ready();
     await server.listen({

@@ -26,6 +26,8 @@ export const deploymentCreateHandler: RouteHandler<{
   const { db } = res.locals;
   const userId = req.headers["x-user-id"];
 
+  req.log.debug("Received deployment creation request from user %s with body: %o, headers: %o", userId, req.body, req.headers);
+
   const apiKey = getExtractApiKeyFromHeader(req.headers);
 
   try {

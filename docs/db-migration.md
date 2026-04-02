@@ -205,7 +205,7 @@ apt-get update && apt-get install -y curl
 # Download mongo tools version that cna restore the dump
 # See bug https://github.com/documentdb/documentdb/issues/148
 curl -sO https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.11.0.deb
-apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.11.0.deb 
+apt install -y ./mongodb-database-tools-ubuntu2404-x86_64-100.11.0.deb 
 
 # Download the Amazon DocumentDB TLS certificate bundle
 curl -sO https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem

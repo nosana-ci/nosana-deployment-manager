@@ -23,7 +23,7 @@ export async function createDeploymentsConnection(): Promise<Db> {
   } = getConfig();
   if (!db) {
     const connectionString = use_tls
-      ? `${createConnectionString(hostname, port, username, password)}/?tls=true&tlsCAFile=global-bundle.pem&replicaSet=rs0`
+      ? `${createConnectionString(hostname, port, username, password)}/?tls=true&tlsCAFile=global-bundle.pem&replicaSet=rs0&authMechanism=SCRAM-SHA-1`
       : `${createConnectionString(hostname, port, username, password)}/?directConnection=true`;
 
     const mongo = new MongoClient(connectionString);

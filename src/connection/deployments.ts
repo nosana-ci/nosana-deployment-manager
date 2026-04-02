@@ -10,10 +10,11 @@ function createConnectionString(
   hostname: string,
   port: string | number,
   username: string | undefined,
-  password: string | undefined
+  password: string | undefined,
+  dbname: string
 ): string {
   return `mongodb://${username && password ? `${username}:${encodeURIComponent(password)}@` : ""
-    }${hostname}:${port}`;
+    }${hostname}:${port}/${dbname}`;
 }
 
 export async function createDeploymentsConnection(): Promise<Db> {
@@ -23,8 +24,8 @@ export async function createDeploymentsConnection(): Promise<Db> {
   } = getConfig();
   if (!db) {
     const connectionString = use_tls
-      ? `${createConnectionString(hostname, port, username, password)}/?tls=true&tlsCAFile=global-bundle.pem&replicaSet=rs0&authMechanism=SCRAM-SHA-1`
-      : `${createConnectionString(hostname, port, username, password)}/?directConnection=true`;
+      ? `${createConnectionString(hostname, port, username, password, dbname)}?tls=true&tlsCAFile=global-bundle.pem&replicaSet=rs0&authMechanism=SCRAM-SHA-1`
+      : `${createConnectionString(hostname, port, username, password, dbname)}?directConnection=true`;
 
     const mongo = new MongoClient(connectionString);
 
@@ -33,7 +34,7 @@ export async function createDeploymentsConnection(): Promise<Db> {
 
     setRepository(client, db);
 
-    await init_db(db, use_tls);
+    await init_db(db);
   }
 
   return db;

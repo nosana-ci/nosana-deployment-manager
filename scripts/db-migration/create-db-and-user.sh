@@ -16,6 +16,13 @@ mongosh "${DST_URI}" --eval "
     });
 "
 
+echo "Enabling change streams on ${DB_NAME}..."
+mongosh "${DST_URI}" --eval "
+    db.adminCommand({modifyChangeStreams: 1,
+        database: '${DB_NAME}',
+        collection: '',
+        enable: true});
+"
 
 echo ""
-echo "DB and suer created"
+echo "DB and user created"

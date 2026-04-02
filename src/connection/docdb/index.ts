@@ -7,23 +7,7 @@ import { createCollections } from "./collections/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export async function init_db(db: Db, use_tls: boolean = false) {
-  if (use_tls) {
-    try {
-      await db.admin().command({
-        modifyChangeStreams: 1,
-        database: "",
-        collection: "",
-        enable: true,
-      });
-    } catch (error) {
-      console.error("Error enabling change streams");
-      throw error;
-    }
-
-    console.log("Change streams enabled successfully.");
-  }
-
+export async function init_db(db: Db) {
   await createCollections(db);
 
   const migrations = fs

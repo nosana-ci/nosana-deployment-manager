@@ -1,13 +1,13 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 set -e
 
 DB_NAME="${SRC_DBNAME}"
-TLS_OPTS="tls=true&tlsCAFile=/data/global-bundle.pem&replicaSet=rs0"
-SRC_URI="mongodb://${SRC_USERNAME}:${SRC_PASSWORD}@${SRC_HOST}:${SRC_PORT}/${DB_NAME}?${TLS_OPTS}"
+SRC_URI="mongodb://${SRC_USERNAME}:${SRC_PASSWORD}@${SRC_HOST}:${SRC_PORT}/${DB_NAME}"
 
 echo "Dumping ${DB_NAME} from source cluster..."
 mongodump \
+    --ssl --sslCAFile /data/global-bundle.pem \
     --uri="${SRC_URI}" \
     --out=/data/dump
 

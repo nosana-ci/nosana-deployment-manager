@@ -28,7 +28,7 @@ vpcId=$(
 srcSgId=$(
     aws --profile ${aws_profile} --region ${aws_region} ec2 get-security-groups-for-vpc \
         --vpc-id ${vpcId} \
-        --filter Name=group-name,Values=*docdb-deployment-manager* \
+        --filter Name=group-name,Values=nos-${environment}-docdb-deployment-manager-${environment} \
     | jq -r '.SecurityGroupForVpcs[].GroupId'
 )
 
@@ -36,7 +36,7 @@ srcSgId=$(
 dstSgId=$(
     aws --profile ${aws_profile} --region ${aws_region} ec2 get-security-groups-for-vpc \
         --vpc-id ${vpcId} \
-        --filter Name=group-name,Values=*documentdb* \
+        --filter Name=group-name,Values=nos-${environment}-platform-documentdb-${environment} \
     | jq -r '.SecurityGroupForVpcs[].GroupId'
 )
 
@@ -64,7 +64,18 @@ metadata:
   name: docdb-migration
 spec:
   containers:
-    - name: main
+    - name: mongo3
+      image: mongo:3.6
+      command: ["tail", "-f", "/dev/null"]
+      envFrom:
+        - secretRef:
+            name: docdb-migration-credentials
+      volumeMounts:
+        - mountPath: /data
+          name: data
+        - name: scripts
+          mountPath: /scripts-src
+    - name: mongo8
       image: mongo:8.0
       command: ["tail", "-f", "/dev/null"]
       envFrom:
@@ -77,23 +88,27 @@ spec:
           mountPath: /scripts-src
   volumes:
     - name: data
-      emptyDir:
-        sizeLimit: 2Gi
+      hostPath:
+        path: /tmp/docdb-migration
     - name: scripts
       configMap:
         name: docdb-migration-scripts
         items:
           - key: dump.sh
             path: dump.sh
+          - key: create-db-and-user.sh
+            path: create-db-and-user.sh
           - key: restore.sh
             path: restore.sh
-          - key: verify.sh
-            path: verify.sh
+          - key: verify-dump.sh
+            path: verify-dump.sh
+          - key: verify-restore.sh
+            path: verify-restore.sh
 ```
 
 Save the definition to a file called `docdb-migration.yaml`.
 
-Create a secret with DB credentials.
+Gather required connection information (credentials, hostnames, etc)
 ```bash
 # Set kubectl context to dev or prd
 
@@ -103,13 +118,33 @@ srcPort="$(kubectl get secret -n deployment-manager deployment-manager-variable-
 srcUsername="$(kubectl get secret -n deployment-manager deployment-manager-variable-secrets -o json | jq -r '.data["DOCDB_USERNAME"]' | base64 --decode)"
 srcPassword="$(kubectl get secret -n deployment-manager deployment-manager-variable-secrets -o json | jq -r '.data["DOCDB_PASSWORD"]' | base64 --decode)"
 
-# Destination credentials (from 1Password: "Managed by Terraform: [ENV] DocumentDB credentials")
-dstHost="<destination-hostname>"
-dstPort="27017"
-dstUsername="<destination-username>"
-dstPassword="<destination-password>"
+# 1Password items 
+dstPasswordOpItem_dev="seut5ho7podnxbuow6xaizidmu"
+dstPasswordOpItem_prd="rjxzxk7qf53owm3sn6tjlz46yi"
+masterDbOpItem_dev="jkuzhnpvbzfrzwejqa6pjtvktm"
+masterDbOpItem_prd="xqb6zkfnjpvombjdihnaaotczq"
+if [[ "${environment}" == "dev" ]]; then
+  dstPasswordOpItem="${dstPasswordOpItem_dev}"
+  masterOpItem="${masterDbOpItem_dev}"
+elif [[ "${environment}" == "prd" ]]; then
+  dstPasswordOpItem="${dstPasswordOpItem_prd}"
+  masterOpItem="${masterDbOpItem_prd}"
+fi
 
-kubectl -n deployment-manager create secret generic docdb-migration-credentials \
+# Destination credentials (from 1Password)
+dstPort="27017"
+dstHost="$(nos-op-ops-fetch "${dstPasswordOpItem}" "hostname")"
+dstUsername="$(nos-op-ops-fetch "${dstPasswordOpItem}" "username")"
+dstPassword="$(nos-op-ops-fetch "${dstPasswordOpItem}" "password")"
+
+# Master credentials (from 1Password)
+masterUsername="$(nos-op-ops-fetch "${masterOpItem}" "username")"
+masterPassword="$(nos-op-ops-fetch "${masterOpItem}" "password")"
+```
+
+Create a secret with connection information and a configmap with scripts to run the migration.
+```bash
+kubectl create secret generic docdb-migration-credentials \
   --from-literal="SRC_DBNAME=nosana_deployments" \
   --from-literal="SRC_HOST=${srcHost}" \
   --from-literal="SRC_PORT=${srcPort}" \
@@ -119,25 +154,29 @@ kubectl -n deployment-manager create secret generic docdb-migration-credentials 
   --from-literal="DST_HOST=${dstHost}" \
   --from-literal="DST_PORT=${dstPort}" \
   --from-literal="DST_USERNAME=${dstUsername}" \
-  --from-literal="DST_PASSWORD=${dstPassword}"
-```
+  --from-literal="DST_PASSWORD=${dstPassword}" \
+  --from-literal="MASTER_USERNAME=${masterUsername}" \
+  --from-literal="MASTER_PASSWORD=${masterPassword}"
 
-Create a configmap with scripts to run the migration.
-```bash
-kubectl -n deployment-manager create configmap docdb-migration-scripts \
+kubectl create configmap docdb-migration-scripts \
   --from-file=dump.sh=scripts/db-migration/dump.sh \
   --from-file=restore.sh=scripts/db-migration/restore.sh \
-  --from-file=verify.sh=scripts/db-migration/verify.sh
+  --from-file=verify-dump.sh=scripts/db-migration/verify-dump.sh \
+  --from-file=verify-restore.sh=scripts/db-migration/verify-restore.sh \
+  --from-file=create-db-and-user.sh=scripts/db-migration/create-db-and-user.sh
 ```
 
 Run pod.
 ```bash
-kubectl -n deployment-manager apply -f docdb-migration.yaml
+kubectl apply -f docdb-migration.yaml
 ```
 
-Get a shell on the pod container.
+Get a shell on the mongo3 pod container to perform the dump
 ```bash
-kubectl -n deployment-manager exec -it docdb-migration -- bash
+kubectl exec -it docdb-migration -c mongo3 -- bash
+
+# Install curl
+apt-get update && apt-get install -y curl
 
 # Download the Amazon DocumentDB TLS certificate bundle
 curl -sO https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
@@ -148,10 +187,40 @@ cp /scripts-src/* /scripts/
 chmod +x /scripts/*.sh
 
 /scripts/dump.sh
-/scripts/restore.sh
-/scripts/verify.sh
-# Verify that all collection counts match between source and destination
 echo $?
+/scripts/verify-dump.sh
+# Take note of the collection count stats to later compare against the restore verification
+
+# Leave the shell and exit the pod
+ctrl^d
+```
+
+Get a shell on the mongo8 pod container to perform the restore
+```bash
+kubectl exec -it docdb-migration -c mongo8 -- bash
+
+# Install curl
+apt-get update && apt-get install -y curl
+
+# Download mongo tools version that cna restore the dump
+# See bug https://github.com/documentdb/documentdb/issues/148
+curl -sO https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2404-x86_64-100.11.0.deb
+apt install ./mongodb-database-tools-ubuntu2404-x86_64-100.11.0.deb 
+
+# Download the Amazon DocumentDB TLS certificate bundle
+curl -sO https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+mv global-bundle.pem /data/
+
+mkdir /scripts
+cp /scripts-src/* /scripts/
+chmod +x /scripts/*.sh
+
+/scripts/create-db-and-user.sh
+echo $?
+/scripts/restore.sh
+echo $?
+/scripts/verify-restore.sh
+# Compare stats with the ones from the dump
 
 # Leave the shell and exit the pod
 ctrl^d
@@ -161,9 +230,9 @@ ctrl^d
 
 Delete pod, secret and configmap.
 ```bash
-kubectl -n deployment-manager delete -f docdb-migration.yaml --force=true
-kubectl -n deployment-manager delete secret docdb-migration-credentials
-kubectl -n deployment-manager delete configmap docdb-migration-scripts
+kubectl delete -f docdb-migration.yaml --force=true
+kubectl delete secret docdb-migration-credentials
+kubectl delete configmap docdb-migration-scripts
 ```
 
 Close off security groups.

@@ -226,10 +226,133 @@ echo $?
 ctrl^d
 ```
 
+## Run a deployment-manager pod that connects to the new database
+
+Update the image tag in the manifest to the version you want to test with.
+Save the manifest to a file called `deployment-manager-mongov8.yaml`.
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app.kubernetes.io/instance: deployment-manager-mongov8
+    app.kubernetes.io/name: deployment-manager-mongov8
+    role: deployment-manager-security-group-role
+  name: deployment-manager-mongov8
+  namespace: deployment-manager
+spec:
+  automountServiceAccountToken: true
+  containers:
+  - env:
+    - name: FRPS_INTERNAL_ADDRESS
+      value: frps-api.frps.svc.cluster.local:7501
+    - name: FRPS_INTERNAL_USE_TLS
+      value: "false"
+    - name: BASE_URL
+      value: https://deployment-manager.k8s.dev.nos.ci
+    - name: CONFIDENTIAL_BY_DEFAULT
+      value: "true"
+    - name: DASHBOARD_BACKEND_URL
+      value: http://dashboard.dashboard.svc.cluster.local:3000
+    - name: DEPLOYMENT_MANAGER_PORT
+      value: "3000"
+    - name: FRPS_API_URL
+      value: http://frps-api.frps.svc.cluster.local:7501
+    - name: NETWORK
+      value: devnet
+    - name: TASKS_BATCH_SIZE
+      value: "50"
+    - name: SOLANA_NETWORK
+      value: https://api.devnet.solana.com
+    - name: DOCDB_DBNAME
+      value: nosana_deployment
+    envFrom:
+    - secretRef:
+        name: deployment-manager-variable-secrets-mongov8
+    image: registry.gitlab.com/nosana-ci/apps/platform/deployment-manager:edec38ac0536b5629376a2995cca3ea3e7425928
+    imagePullPolicy: IfNotPresent
+#    command: ["tail", "-f", "/dev/null"]
+    livenessProbe:
+      httpGet:
+        path: /stats
+        port: 3000
+    name: deployment-manager
+    ports:
+    - containerPort: 3000
+      name: http
+      protocol: TCP
+    readinessProbe:
+      failureThreshold: 3
+      periodSeconds: 10
+      successThreshold: 1
+      httpGet:
+        path: /stats
+        port: 3000
+      timeoutSeconds: 1
+    resources:
+      limits:
+        cpu: "2"
+        memory: 8Gi
+        vpc.amazonaws.com/pod-eni: "1"
+      requests:
+        cpu: "1"
+        memory: 6Gi
+        vpc.amazonaws.com/pod-eni: "1"
+#    startupProbe:
+#      failureThreshold: 30
+#      periodSeconds: 5
+#      successThreshold: 1
+#      tcpSocket:
+#        port: 3000
+#      timeoutSeconds: 1
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  imagePullSecrets:
+  - name: deployment-manager-image-pull-secrets
+  restartPolicy: Always
+  securityContext: {}
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+```
+
+Create a secret with the new connection information.
+```bash
+vaultKey="$(kubectl get secret deployment-manager-variable-secrets -o json | jq -r '.data["VAULT_KEY"]' | base64 --decode)"
+
+kubectl create secret -n deployment-manager generic deployment-manager-variable-secrets-mongov8 \
+  --from-literal="DOCDB_HOST=${dstHost}" \
+  --from-literal="DOCDB_PORT=${dstPort}" \
+  --from-literal="DOCDB_USERNAME=${dstUsername}" \
+  --from-literal="DOCDB_PASSWORD=${dstPassword}" \
+  --from-literal="VAULT_KEY=${vaultKey}"
+```
+
+Run the pod and check that it becomes ready
+```bash
+kubectl apply -f deployment-manager-mongov8.yaml
+
+kubectl get pods -n deployment-manager -w
+```
+
+When the pod is ready, get the logs.
+```bash
+kubectl -n deployment-manager logs deployment-manager-mongov8
+```
+
+If there are no unexpected errors in the log then the migration was successful.
+
+
 ## Cleanup
 
-Delete pod, secret and configmap.
+Delete pods, secrets and configmap.
 ```bash
+# Delete validation pod
+kubectl delete -f deployment-manager-mongov8.yaml --force=true
+kubectl delete secret deployment-manager-variable-secrets-mongov8
+
+# Delete migration pod
 kubectl delete -f docdb-migration.yaml --force=true
 kubectl delete secret docdb-migration-credentials
 kubectl delete configmap docdb-migration-scripts

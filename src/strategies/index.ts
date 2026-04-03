@@ -2,15 +2,19 @@ import {
   deploymentReplicaUpdate,
   deploymentRevisionUpdate,
   deploymentStatusStartingUpdate,
-  deploymentStatusStoppingUpdate
-} from "./all/index.js"
-import { infiniteJobRunningUpdate, infiniteJobStateCompletedOrStopUpdate } from "./infinite/index.js";
+  deploymentStatusStoppingUpdate,
+} from "./all/index.js";
+import {
+  infiniteJobRunningUpdate,
+  infiniteJobStateCompletedOrStopUpdate,
+} from "./infinite/index.js";
 import { deploymentScheduleUpdate } from "./scheduled/index.js";
 import { simpleExtendedJobRunningUpdate } from "./simple-extended/index.js";
 
 import type { StrategyListener } from "../client/listener/types.js";
 import type { DeploymentDocument, JobsDocument } from "../types/index.js";
 import { jobAllActiveJobsStop } from "./all/jobAllActiveJobsStop.js";
+import { jobRapidCompletionFailSafe } from "./all/jobRapidCompletionFailSafe.js";
 
 interface StrategyListeners {
   deployments: StrategyListener<DeploymentDocument>[];
@@ -23,12 +27,13 @@ export const strategyListeners: StrategyListeners = {
     deploymentRevisionUpdate,
     deploymentStatusStartingUpdate,
     deploymentStatusStoppingUpdate,
-    deploymentScheduleUpdate
+    deploymentScheduleUpdate,
   ],
   jobs: [
     jobAllActiveJobsStop,
+    jobRapidCompletionFailSafe,
     simpleExtendedJobRunningUpdate,
     infiniteJobRunningUpdate,
-    infiniteJobStateCompletedOrStopUpdate
-  ]
-}
+    infiniteJobStateCompletedOrStopUpdate,
+  ],
+};

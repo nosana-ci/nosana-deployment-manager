@@ -14,7 +14,6 @@ import { simpleExtendedJobRunningUpdate } from "./simple-extended/index.js";
 import type { StrategyListener } from "../client/listener/types.js";
 import type { DeploymentDocument, JobsDocument } from "../types/index.js";
 import { jobAllActiveJobsStop } from "./all/jobAllActiveJobsStop.js";
-import { jobRapidCompletionFailSafe } from "./all/jobRapidCompletionFailSafe.js";
 
 interface StrategyListeners {
   deployments: StrategyListener<DeploymentDocument>[];
@@ -31,7 +30,6 @@ export const strategyListeners: StrategyListeners = {
   ],
   jobs: [
     jobAllActiveJobsStop,
-    jobRapidCompletionFailSafe,
     simpleExtendedJobRunningUpdate,
     infiniteJobRunningUpdate,
     infiniteJobStateCompletedOrStopUpdate,

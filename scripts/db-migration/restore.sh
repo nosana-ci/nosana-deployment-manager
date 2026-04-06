@@ -8,6 +8,7 @@ DST_URI="mongodb://${DST_USERNAME}:${DST_PASSWORD}@${DST_HOST}:${DST_PORT}/${DB_
 
 echo "Restoring ${DB_NAME} to destination cluster..."
 mongorestore \
+    -- drop \
     --uri="${DST_URI}" \
     --dir=/data/dump/${SRC_DBNAME}
 

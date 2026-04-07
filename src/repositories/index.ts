@@ -86,10 +86,10 @@ function createRepository<T extends Document = Document>(
 ): Repository<T> {
   return {
     findOne: async (filter: Partial<T>): Promise<WithId<T> | null> => {
-      return db.collection<T>(collection).findOne(filter);
+      return db.collection<T>(collection).findOne(filter as Filter<T>);
     },
     findAll: async (filter: Partial<T>): Promise<WithId<T>[]> => {
-      return db.collection<T>(collection).find(filter).toArray();
+      return db.collection<T>(collection).find(filter as Filter<T>).toArray();
     },
     count: async (filter: Filter<T>): Promise<number> => {
       return db.collection<T>(collection).countDocuments(filter);

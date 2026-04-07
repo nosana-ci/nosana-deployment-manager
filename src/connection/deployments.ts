@@ -4,37 +4,37 @@ import { init_db } from "./docdb/index.js";
 import { getConfig } from "../config/index.js";
 import { setRepository } from "../repositories/index.js";
 
-const DB_NAME = "nosana_deployments";
 export const BULK_WRITE_BATCH_SIZE = 999; // DocumentDB supports max 1000 operations per bulkWrite
 
 function createConnectionString(
   hostname: string,
   port: string | number,
   username: string | undefined,
-  password: string | undefined
+  password: string | undefined,
+  dbname: string
 ): string {
   return `mongodb://${username && password ? `${username}:${encodeURIComponent(password)}@` : ""
-    }${hostname}:${port}`;
+    }${hostname}:${port}/${dbname}`;
 }
 
 export async function createDeploymentsConnection(): Promise<Db> {
   let db: Db | undefined = undefined;
   const {
-    docdb: { hostname, port, username, password, use_tls },
+    docdb: { hostname, port, username, password, use_tls, dbname },
   } = getConfig();
   if (!db) {
-    const mongo = new MongoClient(
-      `${createConnectionString(hostname, port, username, password)}/?${use_tls ? "tls=true&tlsCAFile=global-bundle.pem&" : ""
-      }replicaSet=rs0`,
-      { directConnection: true }
-    );
+    const connectionString = use_tls
+      ? `${createConnectionString(hostname, port, username, password, dbname)}?tls=true&tlsCAFile=global-bundle.pem&replicaSet=rs0&authMechanism=SCRAM-SHA-1&retryWrites=false`
+      : `${createConnectionString(hostname, port, username, password, dbname)}?directConnection=true`;
+
+    const mongo = new MongoClient(connectionString);
 
     const client = await mongo.connect();
-    db = client.db(DB_NAME);
+    db = client.db(dbname);
 
     setRepository(client, db);
 
-    await init_db(db, use_tls);
+    await init_db(db);
   }
 
   return db;

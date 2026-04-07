@@ -36,7 +36,7 @@ export default () => {
       setupFiles: ['./testing/scenario/setup.ts'],
       env: {
         NETWORK: process.env.NETWORK ?? "devnet",
-        BACKEND_URL: process.env.BACKEND_URL ?? "http://localhost:3001",
+        BACKEND_URL: process.env.BACKEND_URL ?? "https://dashboard.k8s.dev.nosana.com",
         TEST_VAULT_ADDRESS: process.env.TEST_VAULT_ADDRESS,
         TEST_DEPLOYER_KEY_PATH: process.env.TEST_DEPLOYER_KEY_PATH ?? "~/.nosana/nosana_key.json",
         TEST_NODE_KEY_PATH: process.env.TEST_NODE_KEY_PATH ?? "~/.nosana/nosana_key.json",

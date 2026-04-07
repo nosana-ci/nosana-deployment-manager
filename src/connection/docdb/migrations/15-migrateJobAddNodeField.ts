@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { AnyBulkWriteOperation, Db } from "mongodb";
 import { JobState as OnChainState } from "@nosana/kit";
 
 import { getKit } from "../../../kit/index.js";
@@ -18,7 +18,7 @@ export default async function migrateJobAddNodeField(db: Db) {
   if (runningJobs.length === 0) return;
 
   const kit = getKit();
-  const batch: Parameters<typeof jobsCollection.bulkWrite>[0] = [];
+  let batch: AnyBulkWriteOperation<JobsDocument>[] = [];
 
   const onchainRunningJobs = await kit.jobs.all({ state: OnChainState.RUNNING });
 
@@ -44,7 +44,7 @@ export default async function migrateJobAddNodeField(db: Db) {
 
     if (batch.length === BULK_WRITE_BATCH_SIZE) {
       await jobsCollection.bulkWrite(batch, { ordered: false });
-      batch.length = 0;
+      batch = [];
     }
   }
 

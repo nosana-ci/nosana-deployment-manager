@@ -198,10 +198,21 @@ export async function withTransaction<T>(
   }
 }
 
-export const DeploymentsRepository = getRepository(NosanaCollections.DEPLOYMENTS);
-export const EventsRepository = getRepository(NosanaCollections.EVENTS);
-export const VaultsRepository = getRepository(NosanaCollections.VAULTS);
-export const JobsRepository = getRepository(NosanaCollections.JOBS);
-export const TasksRepository = getRepository(NosanaCollections.TASKS);
-export const RevisionsRepository = getRepository(NosanaCollections.REVISIONS);
-export const ResultsRepository = getRepository(NosanaCollections.RESULTS);
+function lazyRepository<K extends keyof CollectionsMap>(
+  collection: K
+): Repository<CollectionsMap[K]> {
+  return new Proxy({} as Repository<CollectionsMap[K]>, {
+    get(_target, prop) {
+      const repo = getRepository(collection);
+      return Reflect.get(repo, prop);
+    },
+  });
+}
+
+export const DeploymentsRepository = lazyRepository(NosanaCollections.DEPLOYMENTS);
+export const EventsRepository = lazyRepository(NosanaCollections.EVENTS);
+export const VaultsRepository = lazyRepository(NosanaCollections.VAULTS);
+export const JobsRepository = lazyRepository(NosanaCollections.JOBS);
+export const TasksRepository = lazyRepository(NosanaCollections.TASKS);
+export const RevisionsRepository = lazyRepository(NosanaCollections.REVISIONS);
+export const ResultsRepository = lazyRepository(NosanaCollections.RESULTS);

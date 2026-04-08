@@ -12,7 +12,7 @@ import {
   JobState,
   TaskType,
 } from "../../types/index.js";
-import { DeploymentsRepository, EventsRepository, JobsRepository } from "../../repositories/index.js";
+import { DeploymentsRepository, EventsRepository, JobsRepository, withTransaction } from "../../repositories/index.js";
 import { allJobsRapid } from "./utils/allJobsRapid.js";
 import { getConfig } from "../../config/index.js";
 /**
@@ -43,19 +43,22 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       })
 
       if (allJobsRapid(recentJobs)) {
-        await Promise.allSettled([
-          DeploymentsRepository.update(
-            { id: deployment.id },
+        await withTransaction(async (session) => {
+          const updated = await DeploymentsRepository.update(
+            { id: deployment.id, status: DeploymentStatus.RUNNING },
             { status: DeploymentStatus.STOPPING },
-          ),
-          EventsRepository.createOrUpdate({}, {
+            { session },
+          );
+          if (!updated) return;
+
+          await EventsRepository.create({
             category: EventType.DEPLOYMENT,
             deploymentId: deployment.id,
             type: "RAPID_COMPLETION_FAIL_SAFE",
             message: `Deployment automatically stopped: last ${rapid_completion_job_count} jobs all completed in under ${rapid_completion_threshold_minutes} minutes.`,
             created_at: new Date(),
-          })
-        ]);
+          }, { session });
+        });
 
         return;
       }

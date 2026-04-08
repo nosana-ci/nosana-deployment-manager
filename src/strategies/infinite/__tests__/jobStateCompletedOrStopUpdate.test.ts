@@ -6,8 +6,9 @@ vi.mock('../../../tasks/scheduleTask.js', () => ({
 
 vi.mock('../../../repositories/index.js', () => ({
   DeploymentsRepository: { update: vi.fn() },
-  EventsRepository: { createOrUpdate: vi.fn() },
+  EventsRepository: { create: vi.fn() },
   JobsRepository: { findAll: vi.fn(), count: vi.fn() },
+  withTransaction: vi.fn(async (fn: (session: unknown) => Promise<unknown>) => fn({ __fakeSession: true })),
 }));
 
 import { infiniteJobStateCompletedOrStopUpdate } from '../jobStateCompletedOrStopUpdate.js';
@@ -15,7 +16,7 @@ import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentF
 import type { Db } from 'mongodb';
 
 import { scheduleTask } from '../../../tasks/scheduleTask.js';
-import { DeploymentsRepository, EventsRepository, JobsRepository } from '../../../repositories/index.js';
+import { DeploymentsRepository, EventsRepository, JobsRepository, withTransaction } from '../../../repositories/index.js';
 
 import { OnEvent } from '../../../client/listener/types.js';
 
@@ -38,9 +39,10 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
   } as unknown as Db;
 
   const mockedDeploymentsUpdate = vi.mocked(DeploymentsRepository.update);
-  const mockedEventsCreateOrUpdate = vi.mocked(EventsRepository.createOrUpdate);
+  const mockedEventsCreate = vi.mocked(EventsRepository.create);
   const mockedJobsFindAll = vi.mocked(JobsRepository.findAll);
   const mockedJobsCount = vi.mocked(JobsRepository.count);
+  const mockedWithTransaction = vi.mocked(withTransaction);
 
   const mockJobDocument: JobsDocument = {
     job: 'job-123',
@@ -75,10 +77,16 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
     vi.setSystemTime(mockNow);
     vi.clearAllMocks();
 
+    // Re-wire withTransaction after clearAllMocks
+    mockedWithTransaction.mockImplementation(
+      async (fn: (session: unknown) => Promise<unknown>) => fn({ __fakeSession: true }) as Promise<never>,
+    );
+
     // Default: no recent rapid jobs (fail-safe won't trigger)
     mockedJobsFindAll.mockResolvedValue([]);
-    mockedDeploymentsUpdate.mockResolvedValue(null);
-    mockedEventsCreateOrUpdate.mockResolvedValue(null);
+    // Update succeeds by default — return a sentinel doc so the `if (!updated)` guard passes
+    mockedDeploymentsUpdate.mockResolvedValue({ id: testDeployment } as never);
+    mockedEventsCreate.mockResolvedValue({} as never);
   });
 
   afterEach(() => {
@@ -260,9 +268,11 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
       await handler(mockJobDocument, mockDb);
 
+      expect(mockedWithTransaction).toHaveBeenCalled();
       expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
-        { id: testDeployment },
+        { id: testDeployment, status: DeploymentStatus.RUNNING },
         { status: DeploymentStatus.STOPPING },
+        expect.objectContaining({ session: expect.anything() }),
       );
     });
 
@@ -275,14 +285,28 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
       await handler(mockJobDocument, mockDb);
 
-      expect(mockedEventsCreateOrUpdate).toHaveBeenCalledWith(
-        {},
+      expect(mockedEventsCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           category: EventType.DEPLOYMENT,
           deploymentId: testDeployment,
           type: 'RAPID_COMPLETION_FAIL_SAFE',
         }),
+        expect.objectContaining({ session: expect.anything() }),
       );
+    });
+
+    it('should NOT emit event when deployment update returns null (race lost)', async () => {
+      mockedJobsFindAll.mockResolvedValue([
+        makeRapidJob(0, 60_000),
+        makeRapidJob(1, 60_000),
+        makeRapidJob(2, 60_000),
+      ]);
+      mockedDeploymentsUpdate.mockResolvedValue(null);
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(mockedDeploymentsUpdate).toHaveBeenCalled();
+      expect(mockedEventsCreate).not.toHaveBeenCalled();
     });
 
     it('should NOT schedule a replacement job when fail-safe triggers', async () => {

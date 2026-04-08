@@ -61,13 +61,15 @@ export type FilterBuilders<T extends Document> = {
   buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) => Record<string, unknown> | undefined;
 };
 
+export type WriteOptions = { session?: ClientSession };
+
 type Repository<T extends Document = Document> = {
   findOne: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T> | null>;
   findAll: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T>[]>;
   count: (filter: Filter<T>) => Promise<number>;
-  create: (doc: OptionalUnlessRequiredId<T>) => Promise<WithId<T>>;
-  update: (filter: Filter<T>, update: Partial<T>) => Promise<WithId<T> | null>;
-  createOrUpdate: (filter: Filter<T>, update: Partial<T>) => Promise<WithId<T> | null>;
+  create: (doc: OptionalUnlessRequiredId<T>, options?: WriteOptions) => Promise<WithId<T>>;
+  update: (filter: Filter<T>, update: Partial<T>, options?: WriteOptions) => Promise<WithId<T> | null>;
+  createOrUpdate: (filter: Filter<T>, update: Partial<T>, options?: WriteOptions) => Promise<WithId<T> | null>;
   findPaginated: (options: {
     baseFilter?: StrictFilter<T>;
     additionalFilters?: (Record<string, unknown> | undefined)[];
@@ -97,25 +99,23 @@ function createRepository<T extends Document = Document>(
     count: async (filter: Filter<T>): Promise<number> => {
       return db.collection<T>(collection).countDocuments(filter);
     },
-    create: async (doc: OptionalUnlessRequiredId<T>): Promise<WithId<T>> => {
-      const result = await db.collection<T>(collection).insertOne(doc);
+    create: async (doc: OptionalUnlessRequiredId<T>, options?: WriteOptions): Promise<WithId<T>> => {
+      const result = await db.collection<T>(collection).insertOne(doc, options);
       return { ...doc, _id: result.insertedId } as WithId<T>;
     },
-    update: async (filter: Filter<T>, update: Partial<T>): Promise<WithId<T> | null> => {
-      const result = await db.collection<T>(collection).findOneAndUpdate(
+    update: async (filter: Filter<T>, update: Partial<T>, options?: WriteOptions): Promise<WithId<T> | null> => {
+      return db.collection<T>(collection).findOneAndUpdate(
         filter,
         { $set: update as MatchKeysAndValues<T> },
-        { returnDocument: "after" },
+        { ...options, returnDocument: "after" },
       );
-      return result?.value ?? null;
     },
-    createOrUpdate: async (filter: Filter<T>, update: Partial<T>): Promise<WithId<T> | null> => {
-      const result = await db.collection<T>(collection).findOneAndUpdate(
+    createOrUpdate: async (filter: Filter<T>, update: Partial<T>, options?: WriteOptions): Promise<WithId<T> | null> => {
+      return db.collection<T>(collection).findOneAndUpdate(
         filter,
         { $set: update as MatchKeysAndValues<T> },
-        { upsert: true, returnDocument: "after" },
+        { ...options, upsert: true, returnDocument: "after" },
       );
-      return result?.value ?? null;
     },
     findPaginated: async (options): Promise<KeysetPaginationResult<T>> => {
       const { baseFilter, additionalFilters = [], sortField, sortOrder, limit, cursor } = options;

@@ -24,6 +24,8 @@ export type DeploymentsConfig = {
     use_tls: boolean;
   };
   default_minutes_before_timeout: number;
+  rapid_completion_job_count: number;
+  rapid_completion_threshold_ms: number;
 };
 
 export const DeploymentStatus = {

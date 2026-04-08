@@ -43,12 +43,12 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       })
 
       if (allJobsRapid(recentJobs)) {
-        Promise.allSettled([
-          await DeploymentsRepository.update(
+        await Promise.allSettled([
+          DeploymentsRepository.update(
             { id: deployment.id },
             { status: DeploymentStatus.STOPPING },
           ),
-          await EventsRepository.createOrUpdate({}, {
+          EventsRepository.createOrUpdate({}, {
             category: EventType.DEPLOYMENT,
             deploymentId: deployment.id,
             type: "RAPID_COMPLETION_FAIL_SAFE",

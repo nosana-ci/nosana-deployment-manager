@@ -62,8 +62,8 @@ export type FilterBuilders<T extends Document> = {
 };
 
 type Repository<T extends Document = Document> = {
-  findOne: (filter: Filter<T>, options?: FindOptions<T>) => Promise<WithId<T> | null>;
-  findAll: (filter: Filter<T>, options?: FindOptions<T>) => Promise<WithId<T>[]>;
+  findOne: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T> | null>;
+  findAll: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T>[]>;
   count: (filter: Filter<T>) => Promise<number>;
   create: (doc: OptionalUnlessRequiredId<T>) => Promise<WithId<T>>;
   update: (filter: Filter<T>, update: Partial<T>) => Promise<WithId<T> | null>;
@@ -88,10 +88,10 @@ function createRepository<T extends Document = Document>(
   collection: string
 ): Repository<T> {
   return {
-    findOne: async (filter: Filter<T>, options?: FindOptions<T>): Promise<WithId<T> | null> => {
+    findOne: async (filter: Filter<T>, options?: FindOptions): Promise<WithId<T> | null> => {
       return db.collection<T>(collection).findOne(filter, options);
     },
-    findAll: async (filter: Filter<T>, options?: FindOptions<T>): Promise<WithId<T>[]> => {
+    findAll: async (filter: Filter<T>, options?: FindOptions): Promise<WithId<T>[]> => {
       return db.collection<T>(collection).find(filter, options).toArray();
     },
     count: async (filter: Filter<T>): Promise<number> => {
@@ -107,7 +107,7 @@ function createRepository<T extends Document = Document>(
         { $set: update as MatchKeysAndValues<T> },
         { returnDocument: "after" },
       );
-      return result.value ?? null;
+      return result?.value ?? null;
     },
     createOrUpdate: async (filter: Filter<T>, update: Partial<T>): Promise<WithId<T> | null> => {
       const result = await db.collection<T>(collection).findOneAndUpdate(
@@ -115,7 +115,7 @@ function createRepository<T extends Document = Document>(
         { $set: update as MatchKeysAndValues<T> },
         { upsert: true, returnDocument: "after" },
       );
-      return result.value ?? null;
+      return result?.value ?? null;
     },
     findPaginated: async (options): Promise<KeysetPaginationResult<T>> => {
       const { baseFilter, additionalFilters = [], sortField, sortOrder, limit, cursor } = options;

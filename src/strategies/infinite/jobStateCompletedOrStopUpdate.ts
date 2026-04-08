@@ -29,7 +29,7 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
   [
     OnEvent.UPDATE,
     async ({ deployment: jobDeployment }, db) => {
-      const { rapid_completion_job_count } = getConfig();
+      const { rapid_completion_job_count, rapid_completion_threshold_minutes } = getConfig();
       const deployment = await findDeployment(db, jobDeployment);
       if (!deployment || !isActiveInfiniteDeployment(deployment)) return;
 
@@ -52,7 +52,7 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
             category: EventType.DEPLOYMENT,
             deploymentId: deployment.id,
             type: "RAPID_COMPLETION_FAIL_SAFE",
-            message: `Deployment automatically stopped: last ${rapid_completion_job_count} jobs all completed in under 5 minutes.`,
+            message: `Deployment automatically stopped: last ${rapid_completion_job_count} jobs all completed in under ${rapid_completion_threshold_minutes} minutes.`,
             created_at: new Date(),
           })
         ]);

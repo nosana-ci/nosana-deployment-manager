@@ -41,9 +41,9 @@ const commonConfig: Omit<
   rapid_completion_job_count: process.env.RAPID_COMPLETION_JOB_COUNT
     ? parseInt(process.env.RAPID_COMPLETION_JOB_COUNT)
     : 3,
-  rapid_completion_threshold_ms: process.env.RAPID_COMPLETION_THRESHOLD_MS
-    ? parseInt(process.env.RAPID_COMPLETION_THRESHOLD_MS)
-    : 5 * 60 * 1000, // 5 minutes
+  rapid_completion_threshold_minutes: process.env.RAPID_COMPLETION_THRESHOLD_MINUTES
+    ? parseInt(process.env.RAPID_COMPLETION_THRESHOLD_MINUTES)
+    : 5,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {

@@ -38,6 +38,12 @@ const commonConfig: Omit<
     ? parseInt(process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT)
     : 20,
   client_manager_url: process.env.CLIENT_MANAGER_URL || undefined,
+  rapid_completion_job_count: process.env.RAPID_COMPLETION_JOB_COUNT
+    ? parseInt(process.env.RAPID_COMPLETION_JOB_COUNT)
+    : 3,
+  rapid_completion_threshold_minutes: process.env.RAPID_COMPLETION_THRESHOLD_MINUTES
+    ? parseInt(process.env.RAPID_COMPLETION_THRESHOLD_MINUTES)
+    : 5,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {

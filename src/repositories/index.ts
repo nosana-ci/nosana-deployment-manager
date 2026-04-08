@@ -1,4 +1,4 @@
-import { Db, WithId, ClientSession, MongoClient, Filter, Document } from "mongodb";
+import { Db, WithId, ClientSession, MongoClient, Filter, FindOptions, MatchKeysAndValues, OptionalUnlessRequiredId, Document } from "mongodb";
 
 import { CollectionsMap, NosanaCollections } from "../definitions/collection.js";
 import {
@@ -61,10 +61,15 @@ export type FilterBuilders<T extends Document> = {
   buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) => Record<string, unknown> | undefined;
 };
 
+export type WriteOptions = { session?: ClientSession };
+
 type Repository<T extends Document = Document> = {
-  findOne: (filter: Partial<T>) => Promise<WithId<T> | null>;
-  findAll: (filter: Partial<T>) => Promise<WithId<T>[]>;
+  findOne: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T> | null>;
+  findAll: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T>[]>;
   count: (filter: Filter<T>) => Promise<number>;
+  create: (doc: OptionalUnlessRequiredId<T>, options?: WriteOptions) => Promise<WithId<T>>;
+  update: (filter: Filter<T>, update: Partial<T>, options?: WriteOptions) => Promise<WithId<T> | null>;
+  createOrUpdate: (filter: Filter<T>, update: Partial<T>, options?: WriteOptions) => Promise<WithId<T> | null>;
   findPaginated: (options: {
     baseFilter?: StrictFilter<T>;
     additionalFilters?: (Record<string, unknown> | undefined)[];
@@ -85,14 +90,32 @@ function createRepository<T extends Document = Document>(
   collection: string
 ): Repository<T> {
   return {
-    findOne: async (filter: Partial<T>): Promise<WithId<T> | null> => {
-      return db.collection<T>(collection).findOne(filter as Filter<T>);
+    findOne: async (filter: Filter<T>, options?: FindOptions): Promise<WithId<T> | null> => {
+      return db.collection<T>(collection).findOne(filter, options);
     },
-    findAll: async (filter: Partial<T>): Promise<WithId<T>[]> => {
-      return db.collection<T>(collection).find(filter as Filter<T>).toArray();
+    findAll: async (filter: Filter<T>, options?: FindOptions): Promise<WithId<T>[]> => {
+      return db.collection<T>(collection).find(filter, options).toArray();
     },
     count: async (filter: Filter<T>): Promise<number> => {
       return db.collection<T>(collection).countDocuments(filter);
+    },
+    create: async (doc: OptionalUnlessRequiredId<T>, options?: WriteOptions): Promise<WithId<T>> => {
+      const result = await db.collection<T>(collection).insertOne(doc, options);
+      return { ...doc, _id: result.insertedId } as WithId<T>;
+    },
+    update: async (filter: Filter<T>, update: Partial<T>, options?: WriteOptions): Promise<WithId<T> | null> => {
+      return db.collection<T>(collection).findOneAndUpdate(
+        filter,
+        { $set: update as MatchKeysAndValues<T> },
+        { ...options, returnDocument: "after" },
+      );
+    },
+    createOrUpdate: async (filter: Filter<T>, update: Partial<T>, options?: WriteOptions): Promise<WithId<T> | null> => {
+      return db.collection<T>(collection).findOneAndUpdate(
+        filter,
+        { $set: update as MatchKeysAndValues<T> },
+        { ...options, upsert: true, returnDocument: "after" },
+      );
     },
     findPaginated: async (options): Promise<KeysetPaginationResult<T>> => {
       const { baseFilter, additionalFilters = [], sortField, sortOrder, limit, cursor } = options;
@@ -174,3 +197,11 @@ export async function withTransaction<T>(
     await session.endSession();
   }
 }
+
+export const DeploymentsRepository = getRepository(NosanaCollections.DEPLOYMENTS);
+export const EventsRepository = getRepository(NosanaCollections.EVENTS);
+export const VaultsRepository = getRepository(NosanaCollections.VAULTS);
+export const JobsRepository = getRepository(NosanaCollections.JOBS);
+export const TasksRepository = getRepository(NosanaCollections.TASKS);
+export const RevisionsRepository = getRepository(NosanaCollections.REVISIONS);
+export const ResultsRepository = getRepository(NosanaCollections.RESULTS);

@@ -46,6 +46,13 @@ try {
         }
       }
     } catch (error) {
+      // Validate the job is already stopped or completed, if so we can ignore the error
+      const state = await kit.jobs.get(address(job)).then(({ state }) => state).catch(() => null);
+
+      if (state !== null) {
+        if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
+      }
+
       parentPort!.postMessage({
         event: "ERROR",
         error: workerErrorFormatter(error)

@@ -1,6 +1,6 @@
 services:
   deployments_db:
-    image: mongo:7.0
+    image: mongo:8.0
     volumes:
       - deploymentsdbdata:/data/db
     networks:

@@ -22,6 +22,7 @@ export type DeploymentsConfig = {
     username: string | undefined;
     password: string | undefined;
     use_tls: boolean;
+    dbname: string;
   };
   default_minutes_before_timeout: number;
   rapid_completion_job_count: number;

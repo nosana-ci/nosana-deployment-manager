@@ -97,7 +97,7 @@ function createRepository<T extends Document = Document>(
     count: async (filter: Filter<T>): Promise<number> => {
       return db.collection<T>(collection).countDocuments(filter);
     },
-    insert: async (doc: OptionalUnlessRequiredId<T>): Promise<WithId<T>> => {
+    create: async (doc: OptionalUnlessRequiredId<T>): Promise<WithId<T>> => {
       const result = await db.collection<T>(collection).insertOne(doc);
       return { ...doc, _id: result.insertedId } as WithId<T>;
     },

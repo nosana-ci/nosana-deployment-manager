@@ -1,9 +1,9 @@
 import { vi } from 'vitest';
 import { NosanaClient } from '@nosana/kit';
-import { createNosanaClient, QueryClient } from '@nosana/api/dist/client/index.js';
+import { createNosanaDashboardApiClient, QueryClient } from '@nosana/api/dist/client/index.js';
 
 export function createApiClient(deployerClient: NosanaClient): QueryClient {
-  return createNosanaClient("devnet", {
+  return createNosanaDashboardApiClient("devnet", {
     identifier: deployerClient.wallet?.address.toString() || '',
     generate: deployerClient.authorization.generate,
     solana: {

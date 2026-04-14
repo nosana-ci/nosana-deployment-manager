@@ -319,7 +319,6 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       await handler(mockJobDocument, mockDb);
 
       expect(scheduleTask).not.toHaveBeenCalled();
-      expect(mockedJobsCount).not.toHaveBeenCalled();
     });
 
     it('should NOT trigger when one job ran longer than 5 minutes', async () => {

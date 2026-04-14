@@ -246,7 +246,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       return {
         ...mockJobDocument,
         state: JobState.COMPLETED,
-        time_start: updatedAt.getTime() - durationMs,
+        time_start: (updatedAt.getTime() - durationMs) / 1000,
         created_at: new Date(updatedAt.getTime() - durationMs),
         updated_at: updatedAt,
       };

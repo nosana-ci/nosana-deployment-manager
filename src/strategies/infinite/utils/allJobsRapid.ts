@@ -8,7 +8,7 @@ export function allJobsRapid(jobs: JobsDocument[]): boolean {
 
   if (jobs.length >= rapid_completion_job_count) {
     const allRapid = jobs.every((job) => {
-      const duration = job.updated_at.getTime() - job.time_start;
+      const duration = job.updated_at.getTime() - job.time_start * 1000;
       return duration < thresholdMs;
     });
     return allRapid;

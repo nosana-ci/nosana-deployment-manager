@@ -21,6 +21,7 @@ try {
     instructions.push(...await kit.nos.transfer({
       to: owner,
       amount: NOS * 1e6,
+      payerForATA: address(owner),
     }));
   }
 

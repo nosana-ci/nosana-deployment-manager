@@ -10,11 +10,19 @@ import { getOutstandingTasks } from "./getOutstandingTasks.js";
 import { TaskDocument, TaskFinishedReason, TaskType } from "../types/index.js";
 import { addTaskStat, removeTaskStat } from "../stats/index.js";
 
-export function startTaskCollectionListener(db: Db) {
+export const TASK_TIMEOUT_MS = 120_000;
+export const TASK_DRAIN_POLL_INTERVAL_MS = 500;
+
+export type TaskCollectionListenerHandle = {
+  stop: () => Promise<void>;
+};
+
+export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandle {
   const tasks = new Map<ObjectId, Worker>();
   const collection = db.collection<TaskDocument>("tasks");
   const { tasks_batch_size } = getConfig();
   let fetchTasksInterval: NodeJS.Timeout | undefined = undefined;
+  let stopped = false;
 
   const completeTask = async (id: ObjectId, successCount: number, reason: TaskFinishedReason) => {
     const { acknowledged } = await collection.deleteOne({
@@ -36,10 +44,11 @@ export function startTaskCollectionListener(db: Db) {
         completeTask(taskId, 0, "TIMEOUT");
         worker.terminate();
       }
-    }, 120 * 1000);
+    }, TASK_TIMEOUT_MS);
   };
 
   const fetchNewTasks = async () => {
+    if (stopped) return;
     if (tasks.size >= tasks_batch_size) {
       return;
     }
@@ -80,9 +89,25 @@ export function startTaskCollectionListener(db: Db) {
   });
 
   return {
-    stop: () => {
+    stop: async () => {
+      stopped = true;
       if (fetchTasksInterval) {
         clearInterval(fetchTasksInterval);
+        fetchTasksInterval = undefined;
+      }
+
+      // Wait for in-flight workers to finish, capped at the per-task timeout.
+      const deadline = Date.now() + TASK_TIMEOUT_MS;
+      while (tasks.size > 0 && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, TASK_DRAIN_POLL_INTERVAL_MS));
+      }
+
+      // Force-terminate any survivors. Their task documents stay in Mongo and
+      // are reclaimed by the next process via the same polling logic
+      // (at-least-once semantics, already exercised by the existing TIMEOUT path).
+      for (const [id, worker] of tasks) {
+        await worker.terminate();
+        tasks.delete(id);
       }
     },
   };

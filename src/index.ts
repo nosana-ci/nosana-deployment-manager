@@ -1,19 +1,35 @@
 #!/usr/bin/env node
 
+import type { FastifyInstance } from "fastify";
+
 import { initKit } from "./kit/index.js";
 import { initStats } from "./stats/index.js";
 import { setConfig } from "./config/index.js";
 import { startDeploymentManagerApi } from "./router/index.js";
-import { createDeploymentsConnection } from "./connection/deployments.js";
-import { startDeploymentManagerListeners } from "./listeners/index.js";
+import { startHealthServer } from "./health/server.js";
+import {
+  closeDeploymentsConnection,
+  createDeploymentsConnection,
+} from "./connection/deployments.js";
+import {
+  startDeploymentManagerListeners,
+  type DeploymentManagerListenersHandle,
+} from "./listeners/index.js";
 import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
+import { getAppMode, shouldRunApi, shouldRunWorker } from "./config/mode.js";
+
+const SHUTDOWN_TIMEOUT_MS = 130_000; // 120s task drain + 10s margin
+
+const mode = getAppMode();
+console.log(`[deployment-manager] starting in mode "${mode}"`);
 
 initStats();
 
-const kit = initKit();
-
-const confidentialIpfsPin = await kit.ipfs.pin(createConfidentialJobDefinition());
-setConfig("confidential_ipfs_pin", confidentialIpfsPin);
+if (shouldRunWorker(mode)) {
+  const kit = initKit();
+  const confidentialIpfsPin = await kit.ipfs.pin(createConfidentialJobDefinition());
+  setConfig("confidential_ipfs_pin", confidentialIpfsPin);
+}
 
 const dbClient = await createDeploymentsConnection();
 
@@ -21,5 +37,65 @@ if (!dbClient) {
   throw new Error("Failed to connect to the database");
 }
 
-startDeploymentManagerListeners(dbClient);
-startDeploymentManagerApi(dbClient);
+let listenersHandle: DeploymentManagerListenersHandle | null = null;
+let apiServer: FastifyInstance | null = null;
+let healthServer: FastifyInstance | null = null;
+
+if (shouldRunWorker(mode)) {
+  listenersHandle = await startDeploymentManagerListeners(dbClient);
+}
+
+if (shouldRunApi(mode)) {
+  apiServer = await startDeploymentManagerApi(dbClient, mode);
+} else if (shouldRunWorker(mode)) {
+  // Worker without api: spin up a tiny HTTP server for the k8s liveness probe
+  // and ops-side `/stats` access.
+  healthServer = await startHealthServer(mode);
+}
+
+let shuttingDown = false;
+
+const shutdown = async (signal: NodeJS.Signals) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  console.log(`[deployment-manager] shutting down gracefully (signal=${signal})`);
+
+  const forceExit = setTimeout(() => {
+    console.warn("[deployment-manager] shutdown timed out, forcing exit");
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  forceExit.unref();
+
+  try {
+    // 1. Stop accepting new HTTP traffic and drain in-flight requests.
+    if (apiServer) {
+      await apiServer.close();
+      console.log("[deployment-manager] stopped api server");
+    }
+    if (healthServer) {
+      await healthServer.close();
+      console.log("[deployment-manager] stopped health server");
+    }
+
+    // 2. Stop the worker subsystems: tasks polling + worker_threads drain,
+    //    then change streams + Solana monitor.
+    if (listenersHandle) {
+      await listenersHandle.stop();
+      console.log("[deployment-manager] stopped task scheduling");
+      console.log("[deployment-manager] closed change streams");
+    }
+
+    // 3. Close the MongoDB connection last.
+    await closeDeploymentsConnection();
+    console.log("[deployment-manager] shutdown complete");
+  } catch (err) {
+    console.error("[deployment-manager] error during shutdown", err);
+  } finally {
+    clearTimeout(forceExit);
+    process.exit(0);
+  }
+};
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

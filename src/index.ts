@@ -31,7 +31,7 @@ if (shouldRunWorker(mode)) {
   setConfig("confidential_ipfs_pin", confidentialIpfsPin);
 }
 
-const dbClient = await createDeploymentsConnection();
+const dbClient = await createDeploymentsConnection(mode);
 
 if (!dbClient) {
   throw new Error("Failed to connect to the database");

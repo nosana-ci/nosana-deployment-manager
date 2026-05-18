@@ -6,6 +6,8 @@ import { setRepository } from "../repositories/index.js";
 
 export const BULK_WRITE_BATCH_SIZE = 999; // DocumentDB supports max 1000 operations per bulkWrite
 
+let mongoClient: MongoClient | undefined = undefined;
+
 function createConnectionString(
   hostname: string,
   port: string | number,
@@ -30,6 +32,7 @@ export async function createDeploymentsConnection(): Promise<Db> {
     const mongo = new MongoClient(connectionString);
 
     const client = await mongo.connect();
+    mongoClient = client;
     db = client.db(dbname);
 
     setRepository(client, db);
@@ -38,4 +41,11 @@ export async function createDeploymentsConnection(): Promise<Db> {
   }
 
   return db;
+}
+
+export async function closeDeploymentsConnection(): Promise<void> {
+  if (mongoClient) {
+    await mongoClient.close();
+    mongoClient = undefined;
+  }
 }

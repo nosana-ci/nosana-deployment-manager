@@ -1,4 +1,4 @@
-import { Collection, Db, Document } from "mongodb";
+import { ChangeStream, Collection, Db, Document } from "mongodb";
 
 import { matchFilter } from "./helpers/matchFilter.js";
 import { CollectionsNames } from "../../definitions/collection.js";
@@ -23,6 +23,9 @@ export function createCollectionListener<T extends Document>(
     callback: EventCallback<T>;
   }> = [];
 
+  let stream: ChangeStream<T> | null = null;
+  let stopped = false;
+
   const addListener = (...params: InsertEvent<T> | UpdateEvent<T>): void => {
     const [eventType, callback, options] = params;
     switch (eventType) {
@@ -38,35 +41,49 @@ export function createCollectionListener<T extends Document>(
   };
 
   const start = async () => {
-    const stream = collection.watch<T>([], {
+    if (stream || stopped) return;
+
+    stream = collection.watch<T>([], {
       fullDocument: "updateLookup",
     });
 
-    for await (const event of stream) {
-      switch (event.operationType) {
-        case "insert":
-          insertCallbacks.forEach((callback) => callback(event.fullDocument, db));
-          break;
-        case "update":
-          updateCallbacks.forEach(({ options, callback }) => {
-            const updatedFields = event.updateDescription.updatedFields;
-            if (!updatedFields) return;
+    try {
+      for await (const event of stream) {
+        switch (event.operationType) {
+          case "insert":
+            insertCallbacks.forEach((callback) => callback(event.fullDocument, db));
+            break;
+          case "update":
+            updateCallbacks.forEach(({ options, callback }) => {
+              const updatedFields = event.updateDescription.updatedFields;
+              if (!updatedFields) return;
 
-            if (options?.fields && !options.fields.some((field) => field in updatedFields)) {
-              return;
-            }
+              if (options?.fields && !options.fields.some((field) => field in updatedFields)) {
+                return;
+              }
 
-            if (options?.filters && !matchFilter(updatedFields, options.filters)) {
-              return;
-            }
+              if (options?.filters && !matchFilter(updatedFields, options.filters)) {
+                return;
+              }
 
-            if (event.fullDocument) {
-              callback(event.fullDocument, db);
-            }
-          });
+              if (event.fullDocument) {
+                callback(event.fullDocument, db);
+              }
+            });
+        }
       }
+    } catch (err) {
+      // Swallow errors raised when the stream is closed during graceful shutdown.
+      if (!stopped) throw err;
     }
   };
 
-  return { addListener, start };
+  const stop = async () => {
+    stopped = true;
+    if (stream && !stream.closed) {
+      await stream.close();
+    }
+  };
+
+  return { addListener, start, stop };
 }

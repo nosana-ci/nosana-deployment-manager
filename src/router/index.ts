@@ -1,5 +1,5 @@
 import { Db } from "mongodb";
-import fastify from "fastify";
+import fastify, { FastifyInstance } from "fastify";
 import middie from "@fastify/middie";
 import cors from "@fastify/cors";
 import swagger from "@fastify/swagger";
@@ -10,6 +10,7 @@ import { authMiddleware, authJobHostMiddleware } from "./middleware/index.js";
 import { nosanaLogo } from "./ui/index.js";
 import { CollectionsNames } from "../definitions/collection.js";
 import { setupDeploymentsRoutes, setupJobsRoutes, setupStatsRoutes, setupVaultRoutes } from "./setup/index.js";
+import { AppMode } from "../config/mode.js";
 
 import { addSchemas } from "./schema/index.schema.js";
 
@@ -17,7 +18,7 @@ import { Collections } from "../types/index.js";
 
 import pkg from "../../package.json" with { type: "json" };
 
-export async function startDeploymentManagerApi(db: Db) {
+export async function startDeploymentManagerApi(db: Db, mode: AppMode): Promise<FastifyInstance> {
   const server = fastify({
     logger: true, ajv: {
       customOptions: {
@@ -123,6 +124,14 @@ export async function startDeploymentManagerApi(db: Db) {
     res.status(200).send()
   );
 
+  server.get("/health", { logLevel: "silent", schema: { hide: true } }, (_req, res) =>
+    res.status(200).send({
+      status: "healthy",
+      mode,
+      timestamp: new Date().toISOString(),
+    })
+  );
+
   // Job host authenticated routes
   server.register(async (scoped) => {
     scoped.addHook("onRequest", authJobHostMiddleware);
@@ -148,4 +157,6 @@ export async function startDeploymentManagerApi(db: Db) {
     server.log.error(err);
     process.exit(1);
   }
+
+  return server;
 }

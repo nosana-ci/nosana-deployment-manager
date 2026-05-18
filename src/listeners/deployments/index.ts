@@ -9,7 +9,7 @@ import { NosanaCollections } from "../../definitions/collection.js";
 
 import type { DeploymentDocument } from "../../types/index.js";
 
-export function startDeploymentCollectionListener(db: Db) {
+export function startDeploymentCollectionListener(db: Db): { stop: () => Promise<void> } {
   const listener: CollectionListener<DeploymentDocument> =
     createCollectionListener(NosanaCollections.DEPLOYMENTS, db);
 
@@ -24,5 +24,8 @@ export function startDeploymentCollectionListener(db: Db) {
     }
   });
 
-  listener.start();
+  // Run the change-stream loop in the background; it resolves only when stop() is called.
+  void listener.start();
+
+  return { stop: () => listener.stop() };
 }

@@ -2,6 +2,16 @@
 
 A deployment manager service for managing Nosana job deployments with MongoDB persistence and a RESTful API.
 
+## Run modes
+
+The service is split across two run modes selected at startup via `APP_MODE`:
+
+- `api` — Fastify HTTP server only. Multi-replica, autoscaled, RollingUpdate.
+- `worker` — Mongo change-stream listeners (deployments, jobs), the Solana RPC monitor (`kit.jobs.monitor()`), and the task scheduler + worker_threads pool. Singleton: 1 replica with `Recreate` strategy.
+- `all` — both (default; used by `compose.yaml` for local dev).
+
+`APP_MODE` defaults to `all`. See [`docs/modes.md`](docs/modes.md) for the full mode reference, startup ordering, the graceful-shutdown sequence, and the rationale behind the split.
+
 ## Prerequisites
 
 - Docker and Docker Compose

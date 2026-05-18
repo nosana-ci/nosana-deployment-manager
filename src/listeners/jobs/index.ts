@@ -9,7 +9,7 @@ import { NosanaCollections } from "../../definitions/collection.js";
 
 import type { JobsDocument } from "../../types/index.js";
 
-export function startJobsCollectionListener(db: Db) {
+export function startJobsCollectionListener(db: Db): { stop: () => Promise<void> } {
   const listener: CollectionListener<JobsDocument> =
     createCollectionListener(NosanaCollections.JOBS, db);
 
@@ -24,5 +24,8 @@ export function startJobsCollectionListener(db: Db) {
     }
   });
 
-  listener.start();
+  // Run the change-stream loop in the background; it resolves only when stop() is called.
+  void listener.start();
+
+  return { stop: () => listener.stop() };
 }

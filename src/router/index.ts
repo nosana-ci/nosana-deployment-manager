@@ -18,7 +18,9 @@ import { Collections } from "../types/index.js";
 
 import pkg from "../../package.json" with { type: "json" };
 
-export async function startDeploymentManagerApi(db: Db, mode: AppMode): Promise<FastifyInstance> {
+import type { MetricsHandle } from "../metrics/index.js";
+
+export async function startDeploymentManagerApi(db: Db, mode: AppMode, metricsHandle: MetricsHandle): Promise<FastifyInstance> {
   const server = fastify({
     logger: true, ajv: {
       customOptions: {
@@ -37,6 +39,13 @@ export async function startDeploymentManagerApi(db: Db, mode: AppMode): Promise<
       done(err, undefined);
     }
   });
+
+  // Register metrics instrumentation and the /metrics scrape endpoint early,
+  // before other plugins, so all routes are covered by the HTTP hook.
+  if (metricsHandle.http) {
+    await server.register(metricsHandle.http.plugin);
+  }
+  await server.register(metricsHandle.mountRoute);
 
   await server.register(swagger, {
     refResolver: {

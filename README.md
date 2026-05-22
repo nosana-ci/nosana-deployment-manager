@@ -2,6 +2,52 @@
 
 A deployment manager service for managing Nosana job deployments with MongoDB persistence and a RESTful API.
 
+## Observability / Metrics
+
+This service exposes Prometheus metrics on `GET /metrics` (same port as `/health`):
+
+- Port: 3000 (default; `DEPLOYMENT_MANAGER_PORT` env var, mapped externally to `3001`)
+- Content-Type: `text/plain; version=0.0.4; charset=utf-8`
+
+Constant labels on every metric:
+
+- `service="deployment-manager"`
+- `app_mode="<all|api|worker>"` (from `APP_MODE` env var)
+
+### Metrics by mode
+
+| Metric family | api | worker | all |
+|---|:-:|:-:|:-:|
+| `process_*`, `nodejs_*` (defaults) | ✓ | ✓ | ✓ |
+| `http_requests_total{method,route,status_range}` | ✓ | ✓* | ✓ |
+| `http_request_duration_seconds{method,route}` | ✓ | ✓* | ✓ |
+| `worker_tasks_in_progress{task_type}` | — | ✓ | ✓ |
+| `worker_tasks_total{task_type,outcome}` | — | ✓ | ✓ |
+| `worker_task_duration_seconds{task_type}` | — | ✓ | ✓ |
+| `worker_jobs_processed_total{action}` | — | ✓ | ✓ |
+| `worker_started_at_seconds` | — | ✓ | ✓ |
+| `worker_last_task_finished_timestamp_seconds` | — | ✓ | ✓ |
+
+\* In `worker` mode, HTTP metrics are recorded on the health server (`:3000`), not the main API server.
+
+`task_type` values: `LIST`, `EXTEND`, `STOP`
+`outcome` values: `successful`, `failed`, `timed_out`
+`action` values: `listed`, `extended`, `stopped`
+
+### Local scrape
+
+```bash
+curl http://localhost:3001/metrics
+```
+
+### Known limitation: port collision in `all` mode
+
+In `all` mode both the API server and the health server attempt to bind the same port (`DEPLOYMENT_MANAGER_PORT`). This is pre-existing behaviour — the health server only starts when `worker`-only mode is active. The `/metrics` route is only registered on the API server in `all` mode and on the health server in `worker`-only mode. Follow-up ticket will address the port binding cleanly.
+
+### Wiring it to Prometheus
+
+This service is currently NOT scraped — a follow-up MR will add a `ServiceMonitor` / Pod annotation in `apps/platform/k8s/`.
+
 ## Run modes
 
 The service is split across two run modes selected at startup via `APP_MODE`:

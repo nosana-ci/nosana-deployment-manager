@@ -3,7 +3,7 @@
 import type { FastifyInstance } from "fastify";
 
 import { initKit } from "./kit/index.js";
-import { initStats } from "./stats/index.js";
+import { initStats, registerWorkerMetrics } from "./stats/index.js";
 import { setConfig } from "./config/index.js";
 import { startDeploymentManagerApi } from "./router/index.js";
 import { startHealthServer } from "./health/server.js";
@@ -17,6 +17,7 @@ import {
 } from "./listeners/index.js";
 import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
 import { getAppMode, shouldRunApi, shouldRunWorker } from "./config/mode.js";
+import { createMetrics } from "./metrics/index.js";
 
 const SHUTDOWN_TIMEOUT_MS = 130_000; // 120s task drain + 10s margin
 
@@ -24,6 +25,10 @@ const mode = getAppMode();
 console.log(`[deployment-manager] starting in mode "${mode}"`);
 
 initStats();
+const metrics = createMetrics(mode);
+if (metrics.worker) {
+  registerWorkerMetrics(metrics.worker);
+}
 
 if (shouldRunWorker(mode)) {
   const kit = initKit();
@@ -46,11 +51,11 @@ if (shouldRunWorker(mode)) {
 }
 
 if (shouldRunApi(mode)) {
-  apiServer = await startDeploymentManagerApi(dbClient, mode);
+  apiServer = await startDeploymentManagerApi(dbClient, mode, metrics);
 } else if (shouldRunWorker(mode)) {
-  // Worker without api: spin up a tiny HTTP server for the k8s liveness probe
-  // and ops-side `/stats` access.
-  healthServer = await startHealthServer(mode);
+  // Worker without api: spin up a tiny HTTP server for the k8s liveness probe,
+  // ops-side `/stats` access, and Prometheus scrape endpoint.
+  healthServer = await startHealthServer(mode, metrics);
 }
 
 let shuttingDown = false;

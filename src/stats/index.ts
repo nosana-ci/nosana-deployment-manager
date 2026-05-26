@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 
 import { TaskFinishedReason, TaskType } from "../types/index.js";
+import type { WorkerMetrics } from "../metrics/worker.js";
 
 export type Stats = {
   started_at: Date;
@@ -20,6 +21,7 @@ export type Stats = {
 
 let stats: Stats;
 let in_progress_tasks: Map<ObjectId, [TaskType, Date]> = new Map();
+let workerMetricsHandle: WorkerMetrics | null = null;
 
 export function initStats(): void {
   stats = {
@@ -39,6 +41,15 @@ export function initStats(): void {
   };
 }
 
+/**
+ * Registers a `WorkerMetrics` handle so that `addTaskStat` / `removeTaskStat`
+ * additionally drive the Prometheus worker metric collectors. Gated on a
+ * nullable handle so existing call sites that don't pass metrics remain valid.
+ */
+export function registerWorkerMetrics(handle: WorkerMetrics): void {
+  workerMetricsHandle = handle;
+}
+
 export function addTaskStat(taskId: ObjectId, taskType: TaskType): void {
   if (!stats) {
     throw new Error("Stats not initialized.");
@@ -46,7 +57,16 @@ export function addTaskStat(taskId: ObjectId, taskType: TaskType): void {
 
   in_progress_tasks.set(taskId, [taskType, new Date()]);
   stats.tasks.in_progress += 1;
+
+  workerMetricsHandle?.recordTaskStart(taskId.toHexString(), taskType);
 }
+
+/** Maps a `TaskFinishedReason` to the Prometheus `WorkerOutcome` label value. */
+const REASON_TO_OUTCOME: Record<TaskFinishedReason, import("../metrics/worker.js").WorkerOutcome> = {
+  COMPLETED: "successful",
+  FAILED: "failed",
+  TIMEOUT: "timed_out",
+};
 
 export function removeTaskStat(taskId: ObjectId, successCount: number, reason: TaskFinishedReason): void {
   if (!stats) {
@@ -82,12 +102,18 @@ export function removeTaskStat(taskId: ObjectId, successCount: number, reason: T
         break;
     }
 
-    const taskDuration = new Date().getTime() - startTime.getTime();
+    const taskDurationMs = new Date().getTime() - startTime.getTime();
     const totalCompletedTasks = stats.tasks.successful + stats.tasks.failed + stats.tasks.timed_out;
 
-    stats.tasks.average_time_ms += (taskDuration - stats.tasks.average_time_ms) / totalCompletedTasks;
+    stats.tasks.average_time_ms += (taskDurationMs - stats.tasks.average_time_ms) / totalCompletedTasks;
 
     stats.tasks.in_progress -= 1;
+
+    workerMetricsHandle?.recordTaskFinish(
+      taskId.toHexString(),
+      taskDurationMs / 1000,
+      REASON_TO_OUTCOME[reason],
+    );
   }
 }
 

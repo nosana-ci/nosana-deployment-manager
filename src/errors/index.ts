@@ -27,6 +27,7 @@ export const ErrorMessages = {
     FAILED_TO_DELETE: "Failed to delete deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
+    FAILED_NAME_UPDATE: "Failed to update deployment name.",
     FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",
     FAILED_TO_CREATE_NEW_REVISION: "Failed to create a new deployment revision.",
     INVALID_ACTIVE_REVISION: "The specified revision does not exist.",

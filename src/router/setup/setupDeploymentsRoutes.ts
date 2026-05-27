@@ -35,6 +35,7 @@ const {
   patch: {
     deploymentArchiveHandler,
     deploymentUpdateActiveRevisionHandler,
+    deploymentUpdateNameHandler,
     deploymentUpdateReplicaCountHandler,
     deploymentUpdateScheduleHandler,
     deploymentUpdateTimeoutHandler,
@@ -59,6 +60,7 @@ const {
   patch: {
     DeploymentArchiveSchema,
     DeploymentUpdateActiveRevisionSchema,
+    DeploymentUpdateNameSchema,
     DeploymentUpdateReplicaCountSchema,
     DeploymentUpdateScheduleSchema,
     DeploymentUpdateTimeoutSchema,
@@ -195,6 +197,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentArchiveHandler
+  );
+
+  server.patch(
+    `${API_PREFIX}/:deployment/update-name`,
+    {
+      schema: DeploymentUpdateNameSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    deploymentUpdateNameHandler
   );
 
   server.patch(

@@ -25,7 +25,7 @@ export const DeploymentSchema = Type.Intersect([
     market: PublicKeySchema,
     owner: PublicKeySchema,
     status: DeploymentStatusSchema,
-    replicas: Type.Number({ minimum: 1 }),
+    replicas: Type.Number({ minimum: 0 }),
     timeout: Type.Number({ minimum: 1 }),
     endpoints: Type.Array(EndpointSchema),
     confidential: Type.Boolean(),

@@ -34,7 +34,7 @@ try {
   const length = task.limit
     ? task.limit
     : strategy === "SIMPLE" || strategy === "SIMPLE-EXTEND"
-      ? replicas - task.jobs.length
+      ? Math.max(0, replicas - task.jobs.length)
       : replicas;
 
   await Promise.all(

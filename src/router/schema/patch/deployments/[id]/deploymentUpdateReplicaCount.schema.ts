@@ -4,7 +4,7 @@ import { Static, Type } from "@sinclair/typebox";
 import { ErrorSchema } from "../../../index.schema.js";
 
 const DeploymentUpdateReplicaCountSuccess = Type.Object({
-  replicas: Type.Number({ minimum: 1 }),
+  replicas: Type.Number({ minimum: 0 }),
   updated_at: Type.String({ format: "date-time" }),
 });
 export type DeploymentUpdateReplicaCountSuccess = Static<
@@ -28,7 +28,7 @@ export const DeploymentUpdateReplicaCountSchema: FastifySchema = {
     required: ["deployment"],
   },
   body: Type.Object({
-    replicas: Type.Number({ minimum: 1 }),
+    replicas: Type.Number({ minimum: 0 }),
   }),
   response: {
     200: {

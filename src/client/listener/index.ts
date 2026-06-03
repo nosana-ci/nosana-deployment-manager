@@ -62,7 +62,10 @@ export function createCollectionListener<T extends Document>(
                 return;
               }
 
-              if (options?.filters && !matchFilter(updatedFields, options.filters)) {
+              if (
+                options?.filters &&
+                (!event.fullDocument || !matchFilter(event.fullDocument, options.filters))
+              ) {
                 return;
               }
 

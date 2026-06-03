@@ -100,4 +100,21 @@ describe('matchValue', () => {
       expect(matchValue(12, { $gte: 5, $lte: 10 })).toBe(false);
     });
   });
+
+  describe('unsupported operators', () => {
+    it('throws on an operator it does not implement (e.g. value-level $or)', () => {
+      // The type system lets this through because FilterOperators includes `{}`.
+      expect(() => matchValue('SIMPLE', { $or: ['SIMPLE', 'SIMPLE-EXTEND'] })).toThrow(
+        /\$or/,
+      );
+    });
+
+    it('throws when an unknown operator is mixed with a known one', () => {
+      expect(() => matchValue(5, { $eq: 5, $between: [1, 10] })).toThrow(/\$between/);
+    });
+
+    it('does not throw for a condition with no operators', () => {
+      expect(matchValue('anything', {})).toBe(true);
+    });
+  });
 });

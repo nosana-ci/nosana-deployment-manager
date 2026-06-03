@@ -193,6 +193,46 @@ describe("createCollectionListener", () => {
     await started;
   });
 
+  it("matches `filters` against the full document, not just the changed fields", async () => {
+    const stream = createFakeStream();
+    const db = createFakeDb(stream);
+
+    const onUpdate = vi.fn();
+    const listener = createCollectionListener("deployments", db);
+    listener.addListener("update", onUpdate, {
+      fields: ["replicas"],
+      filters: { strategy: { $in: ["SIMPLE", "SIMPLE-EXTEND"] } },
+    });
+
+    const started = listener.start();
+
+    // A SCHEDULED deployment changing replicas: `strategy` is not in the delta,
+    // so the filter must read it from the full document to exclude it.
+    stream.push({
+      operationType: "update",
+      updateDescription: { updatedFields: { replicas: 4 } },
+      fullDocument: { _id: "x", strategy: "SCHEDULED", replicas: 4 },
+    });
+    await flush();
+    expect(onUpdate).not.toHaveBeenCalled();
+
+    // A SIMPLE deployment changing replicas: the filter still must match using
+    // the full document's `strategy`.
+    stream.push({
+      operationType: "update",
+      updateDescription: { updatedFields: { replicas: 4 } },
+      fullDocument: { _id: "x", strategy: "SIMPLE", replicas: 4 },
+    });
+    await flush();
+    expect(onUpdate).toHaveBeenCalledWith(
+      { _id: "x", strategy: "SIMPLE", replicas: 4 },
+      db,
+    );
+
+    await listener.stop();
+    await started;
+  });
+
   it("skips update events without a fullDocument", async () => {
     const stream = createFakeStream();
     const db = createFakeDb(stream);

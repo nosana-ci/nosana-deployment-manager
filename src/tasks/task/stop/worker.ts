@@ -2,15 +2,16 @@ import { JobState } from "@nosana/kit";
 import { address } from "@solana/addresses";
 import { parentPort, workerData } from "worker_threads";
 import { prepareWorker, workerErrorFormatter } from "../../../worker/Worker.js";
+import { selectJobsToStop } from "./selectJobsToStop.js";
 import type { WorkerData } from "../../../types/index.js";
 
 const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
 
 try {
-  const jobs = task.jobs
-    .filter(({ revision }) => !(task.active_revision && task.active_revision === revision))
-    .sort(({ updated_at: a }, { updated_at: b }) => a.getTime() - b.getTime())
-    .slice(0, task.limit || task.jobs.length);
+  const jobs = selectJobsToStop(task.jobs, {
+    limit: task.limit,
+    activeRevision: task.active_revision,
+  });
 
   await Promise.all(jobs.map(async ({ job }) => {
     const { state } = await kit.jobs.get(address(job));

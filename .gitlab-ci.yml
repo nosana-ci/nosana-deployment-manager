@@ -60,5 +60,5 @@ auto deploy prd:
   stage: .post
   extends: .auto-deploy
   variables:
-    AUTO_BUMP_SCG_PREFIX: image_tag [^}]* prd = \"
+    AUTO_BUMP_SCG_PREFIX: container_tag [^}]* prd = \"
   when: manual

@@ -8,7 +8,8 @@ try {
 
   const instructions = [];
   const SOL = await kit.solana.getBalance();
-  const NOS = await kit.nos.getBalance();
+  const nosAccount = await kit.nos.getTokenAccountForAddress(kit.wallet!.address);
+  const NOS = nosAccount?.amount ?? 0n;
 
   if (SOL && SOL > 0) {
     instructions.push(await kit.solana.transfer({
@@ -17,10 +18,10 @@ try {
     }));
   }
 
-  if (NOS && NOS > 0) {
+  if (NOS > 0n) {
     instructions.push(...await kit.nos.transfer({
       to: owner,
-      amount: NOS * 1e6,
+      amount: NOS,
       payerForATA: address(owner),
     }));
   }

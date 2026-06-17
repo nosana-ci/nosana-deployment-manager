@@ -84,3 +84,20 @@ export async function prepareWorker<
     ...workerData,
   };
 }
+
+/**
+ * Build + sign an instruction into a serialized blob and capture its
+ * `lastValidBlockHeight`, without broadcasting. This is the per-unit half of the
+ * persist-before-send protocol shared by the LIST/STOP/EXTEND signer workers.
+ */
+export async function signTransactionToBlob(
+  kit: NosanaClient,
+  instruction: Parameters<NosanaClient["solana"]["buildTransaction"]>[0],
+): Promise<{ blob: string; lastValidBlockHeight: number }> {
+  const message = await kit.solana.buildTransaction(instruction);
+  const signed = await kit.solana.signTransaction(message);
+  return {
+    blob: kit.solana.serializeTransaction(signed),
+    lastValidBlockHeight: Number(message.lifetimeConstraint.lastValidBlockHeight),
+  };
+}

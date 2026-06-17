@@ -5,24 +5,23 @@ import {
   EventDocument,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
+import { deploymentStatusFromError } from "../../deploymentStatusFromError.js";
 
 export function onStopError(
-  tx: string | undefined,
-  error: string | undefined,
+  error: string,
   collection: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument,
-  deploymentErrorStatus: (status: DeploymentStatus) => void
+  deploymentErrorStatus: (status: DeploymentStatus) => void,
+  tx?: string
 ) {
-  if (!error) return;
-
   collection.insertOne({
     deploymentId,
     category: "Deployment",
     type: "JOB_STOP_ERROR",
-    tx,
     message: error,
+    tx,
     created_at: new Date(),
   });
 
-  deploymentErrorStatus(error.includes("InsufficientFundsForRent") ? DeploymentStatus.INSUFFICIENT_FUNDS : DeploymentStatus.ERROR);
+  deploymentErrorStatus(deploymentStatusFromError(error));
 }

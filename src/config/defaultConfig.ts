@@ -44,6 +44,15 @@ const commonConfig: Omit<
   rapid_completion_threshold_minutes: process.env.RAPID_COMPLETION_THRESHOLD_MINUTES
     ? parseInt(process.env.RAPID_COMPLETION_THRESHOLD_MINUTES)
     : 5,
+  task_lease_ms: process.env.TASK_LEASE_MS
+    ? parseInt(process.env.TASK_LEASE_MS)
+    : 120_000,
+  task_max_attempts: process.env.TASK_MAX_ATTEMPTS
+    ? parseInt(process.env.TASK_MAX_ATTEMPTS)
+    : 5,
+  task_confirm_poll_interval_ms: process.env.TASK_CONFIRM_POLL_INTERVAL_MS
+    ? parseInt(process.env.TASK_CONFIRM_POLL_INTERVAL_MS)
+    : 2_000,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {

@@ -16,6 +16,7 @@ export function onStopConfirmed(
     category: "Deployment",
     type: "JOB_STOPPED_CONFIRMED",
     message: `Successfully stopped job ${job}. TX ${tx}`,
+    tx,
     created_at: new Date(),
   });
 }

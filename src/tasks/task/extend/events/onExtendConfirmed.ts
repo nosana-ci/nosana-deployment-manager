@@ -7,28 +7,27 @@ import { TaskType } from "../../../../types/index.js";
 import type { EventsCollection, OutstandingTasksDocument } from "../../../../types/index.js";
 
 export function onExtendConfirmed(
-  job: string,
-  tx: string,
   events: EventsCollection,
-  { deploymentId, deployment: { timeout, status } }: OutstandingTasksDocument,
-  db: Db
+  task: OutstandingTasksDocument,
+  db: Db,
+  signature: string,
+  job: string
 ) {
   events.insertOne({
-    deploymentId: deploymentId,
+    deploymentId: task.deploymentId,
     category: "Deployment",
     type: "JOB_EXTEND_SUCCESSFUL",
-    message: `Successfully extended job - TX ${tx}`,
+    message: `Successfully extended job - TX ${signature}`,
+    tx: signature,
     created_at: new Date(),
   });
 
   scheduleTask(
     db,
     TaskType.EXTEND,
-    deploymentId,
-    status,
-    getNextExtendTime(timeout, false),
-    {
-      job
-    }
+    task.deploymentId,
+    task.deployment.status,
+    getNextExtendTime(task.deployment.timeout, false),
+    { job }
   );
 }

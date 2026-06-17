@@ -1,13 +1,7 @@
 import type { Db } from "mongodb";
 
-import {
-  DeploymentCollection,
-  DeploymentDocument,
-  DeploymentStatus,
-  TaskDocument,
-  TasksCollection,
-  TaskType,
-} from "../types/index.js";
+import { getRepository } from "../repositories/index.js";
+import { DeploymentStatus, TaskStatus, TaskType } from "../types/index.js";
 
 type ScheduleTaskOptions = Partial<{
   active_revision?: number;
@@ -16,6 +10,8 @@ type ScheduleTaskOptions = Partial<{
 }>
 
 export async function scheduleTask(
+  // `db` is retained for the existing strategy callers; the collections now come
+  // from the repository singleton.
   db: Db,
   task: TaskType,
   deploymentId: string,
@@ -27,8 +23,9 @@ export async function scheduleTask(
     job,
   }: ScheduleTaskOptions = {}
 ) {
-  const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
-  const deployments: DeploymentCollection = db.collection<DeploymentDocument>("deployments");
+  void db;
+  const tasks = getRepository("tasks").collection;
+  const deployments = getRepository("deployments").collection;
 
   const { acknowledged } = await tasks.insertOne({
     task,
@@ -39,6 +36,8 @@ export async function scheduleTask(
     limit,
     job,
     created_at: new Date(),
+    status: TaskStatus.PENDING,
+    attempts: 0,
   });
 
   if (!acknowledged) {

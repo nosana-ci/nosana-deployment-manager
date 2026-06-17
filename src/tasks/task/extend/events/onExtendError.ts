@@ -5,22 +5,23 @@ import {
   EventDocument,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
+import { deploymentStatusFromError } from "../../deploymentStatusFromError.js";
 
 export function onExtendError(
-  error: string | undefined,
-  setError: (status: DeploymentStatus) => void,
+  error: string,
   events: Collection<EventDocument>,
-  { deploymentId }: OutstandingTasksDocument
+  { deploymentId }: OutstandingTasksDocument,
+  setError: (status: DeploymentStatus) => void,
+  tx?: string
 ) {
-  if (!error) return;
-
   events.insertOne({
     deploymentId,
     category: "Deployment",
     type: "JOB_EXTEND_ERROR",
     message: error,
+    tx,
     created_at: new Date(),
   });
 
-  setError(error.includes("InsufficientFundsForRent") ? DeploymentStatus.INSUFFICIENT_FUNDS : DeploymentStatus.ERROR);
+  setError(deploymentStatusFromError(error));
 }

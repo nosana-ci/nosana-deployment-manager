@@ -1,3 +1,39 @@
+# Shared env for both deployment-manager roles (APP_MODE is set per service).
+x-dm-env: &dm-env
+  NETWORK: "${NETWORK:-devnet}"
+  VAULT_KEY: "${VAULT_KEY:-change_me}"
+  TASKS_BATCH_SIZE: "${TASKS_BATCH_SIZE:-10}"
+  CONFIDENTIAL_BY_DEFAULT: "${CONFIDENTIAL_BY_DEFAULT:-true}"
+  DEPLOYMENT_MANAGER_PORT: "${DEPLOYMENT_MANAGER_PORT:-3000}"
+  SOLANA_NETWORK: "${SOLANA_NETWORK}"
+  DOCDB_HOST: "${DOCDB_HOST:-host.docker.internal}"
+  DOCDB_PORT: "${DOCDB_PORT:-27017}"
+  DOCDB_USERNAME: "${DOCDB_USERNAME}"
+  DOCDB_PASSWORD: "${DOCDB_PASSWORD}"
+
+# Shared build/runtime config for both deployment-manager roles.
+x-deployment-manager: &deployment-manager
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      SKIP_FETCH_RDS_BUNDLE: true
+  image: deployment_manager:latest
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  networks:
+    - deployments_network
+  develop:
+    watch:
+      - action: sync+restart
+        path: ./
+        target: /app
+        ignore:
+          - node_modules/
+          - examples/
+      - action: rebuild
+        path: package.json
+
 services:
   deployments_db:
     image: mongo:8.0
@@ -31,44 +67,42 @@ services:
       - ME_CONFIG_BASICAUTH=false
     networks:
       - deployments_network
-  deployment_manager:
+
+  # API role: serves HTTP, schedules tasks. Single instance. In `api` mode the
+  # process waits for migrations to be applied (the workers run them).
+  deployment_manager_api:
+    <<: *deployment-manager
     depends_on:
       deployments_db:
         condition: service_healthy
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        SKIP_FETCH_RDS_BUNDLE: true
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./
-          target: /app
-          ignore:
-            - node_modules/
-            - examples/
-        - action: rebuild
-          path: package.json
+      # Start the workers first so migrations are running before the api waits.
+      deployment_manager_worker:
+        condition: service_started
     environment:
-      - APP_MODE=${APP_MODE:-all}
-      - NETWORK=${NETWORK:-devnet}
-      - VAULT_KEY=${VAULT_KEY:-change_me}
-      - TASKS_BATCH_SIZE=${TASKS_BATCH_SIZE:-10}
-      - CONFIDENTIAL_BY_DEFAULT=${CONFIDENTIAL_BY_DEFAULT:-true}
-      - DEPLOYMENT_MANAGER_PORT=${DEPLOYMENT_MANAGER_PORT:-3000}
-      - SOLANA_NETWORK=${SOLANA_NETWORK}
-      - DOCDB_HOST=${DOCDB_HOST:-host.docker.internal}
-      - DOCDB_PORT=${DOCDB_PORT:-27017}
-      - DOCDB_USERNAME=${DOCDB_USERNAME}
-      - DOCDB_PASSWORD=${DOCDB_PASSWORD}
-    image: deployment_manager:latest
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      <<: *dm-env
+      APP_MODE: api
     ports:
       - "3001:3000"
-    networks:
-      - deployments_network
+
+  # Worker role: the task consumer. Scaled to 2 replicas to exercise the
+  # multi-consumer claim/lease path (atomic claim + per-deployment lock) under a
+  # real scaling condition. No api server — just the listener loop plus a small
+  # health/metrics server.
+  deployment_manager_worker:
+    <<: *deployment-manager
+    depends_on:
+      deployments_db:
+        condition: service_healthy
+    environment:
+      <<: *dm-env
+      APP_MODE: worker
+    deploy:
+      replicas: 2
+    # Two replicas can't share a fixed host port; publish container 3000 to an
+    # ephemeral host port per replica so each worker's /health, /stats and
+    # /metrics are reachable (find them with `docker compose port`).
+    ports:
+      - "3000"
 
 volumes:
   deploymentsdbdata:

@@ -1,5 +1,5 @@
 export type UnitOutcome =
-  | { result: "CONFIRMED"; signature: string }
+  | { result: "CONFIRMED"; signature: string; jobCount?: number }
   | { result: "EXPIRED"; signature?: string }
   | { result: "ERROR"; signature?: string; error: string }
   | { result: "ABORTED"; signature?: string };

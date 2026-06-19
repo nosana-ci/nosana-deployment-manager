@@ -1,5 +1,6 @@
 import { sendUnit, UnitOutcome } from "../transactions/index.js";
 import { OrchestrateResult, UnitContext } from "./types.js";
+import { recordJobs, recordRuns } from "./record.js";
 import { TxRecord } from "../../../types/index.js";
 
 /** Patch one persisted unit's sub-document (matched by its `unit` index). */
@@ -31,14 +32,21 @@ export async function applyOutcome(
   outcome: UnitOutcome
 ): Promise<UnitOutcome> {
   switch (outcome.result) {
-    case "CONFIRMED":
+    case "CONFIRMED": {
       await markRecord(ctx, record.unit, {
         status: "CONFIRMED",
         signature: outcome.signature,
         blob: null,
       });
-      await ctx.handlers.onConfirmed(record.unit, outcome.signature, record.job, record.run);
-      break;
+      // A bulked tx confirms atomically, so every job it packed is now created;
+      // fan the per-job bookkeeping out so the handlers stay single-job.
+      const jobs = recordJobs(record);
+      const runs = recordRuns(record);
+      for (let i = 0; i < jobs.length; i++) {
+        await ctx.handlers.onConfirmed(record.unit, outcome.signature, jobs[i], runs[i]);
+      }
+      return { ...outcome, jobCount: jobs.length };
+    }
     case "EXPIRED":
       await markRecord(ctx, record.unit, { status: "SENT", blob: null });
       break;
@@ -62,7 +70,8 @@ export function tally(outcomes: UnitOutcome[], aborted: boolean): OrchestrateRes
   let confirmed = 0;
   let errored = 0;
   for (const outcome of outcomes) {
-    if (outcome.result === "CONFIRMED") confirmed++;
+    // `confirmed` counts JOBS, not units: a bulked unit confirms N jobs at once.
+    if (outcome.result === "CONFIRMED") confirmed += outcome.jobCount ?? 1;
     else if (outcome.result === "ERROR") errored++;
     else if (outcome.result === "ABORTED") aborted = true;
   }

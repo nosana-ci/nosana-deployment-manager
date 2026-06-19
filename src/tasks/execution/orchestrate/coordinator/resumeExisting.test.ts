@@ -33,6 +33,7 @@ const record = (unit: number, status: TxRecord["status"], signature = ""): TxRec
   signature,
   lastValidBlockHeight: 100,
   status,
+  jobs: [`job-${unit}`],
 });
 
 describe("resumeExisting", () => {
@@ -45,7 +46,7 @@ describe("resumeExisting", () => {
   it("turns already-confirmed records into CONFIRMED outcomes without re-running them", async () => {
     const result = await resumeExisting(ctx(), [record(0, "CONFIRMED", "sig-a")]);
 
-    expect(result).toEqual([{ result: "CONFIRMED", signature: "sig-a" }]);
+    expect(result).toEqual([{ result: "CONFIRMED", signature: "sig-a", jobCount: 1 }]);
     expect(recoverUnits).not.toHaveBeenCalled();
     expect(applyOutcome).not.toHaveBeenCalled();
     expect(driveSend).not.toHaveBeenCalled();
@@ -76,14 +77,14 @@ describe("resumeExisting", () => {
 
     // recoverUnits is only handed the non-confirmed records
     expect(recoverUnits).toHaveBeenCalledWith([expect.objectContaining({ unit: 1 })]);
-    expect(out).toContainEqual({ result: "CONFIRMED", signature: "sig-0" });
+    expect(out).toContainEqual({ result: "CONFIRMED", signature: "sig-0", jobCount: 1 });
     expect(out).toHaveLength(2);
   });
 
   it("returns only confirmed outcomes and skips recovery when aborted", async () => {
     const out = await resumeExisting(ctx(true), [record(0, "CONFIRMED", "sig-0"), record(1, "SENT")]);
 
-    expect(out).toEqual([{ result: "CONFIRMED", signature: "sig-0" }]);
+    expect(out).toEqual([{ result: "CONFIRMED", signature: "sig-0", jobCount: 1 }]);
     expect(recoverUnits).not.toHaveBeenCalled();
   });
 });

@@ -31,8 +31,12 @@ export type SignedUnitMessage = {
   unit: number;
   blob: string;
   lastValidBlockHeight: number;
-  job?: string;
-  run?: string;
+  /** Pre-computed tx signature (signBatch yields it up front; persisted before send). */
+  signature?: string;
+  /** Job addresses this bucket creates/targets — LIST bulks N, STOP/EXTEND one. */
+  jobs?: string[];
+  /** Run addresses, index-aligned with `jobs` (LIST). */
+  runs?: string[];
 };
 
 export type ConfirmedUnitMessage = {
@@ -61,7 +65,10 @@ export type WorkerData = {
   task: OutstandingTasksDocument;
   vault: string;
   confidential_ipfs_pin: string;
-  /** Number of units the signer should produce this run (parent-decided). */
+  /**
+   * Number of jobs the signer should produce this run (parent-decided); the
+   * signer packs them into the fewest size/CU-bounded txs.
+   */
   count?: number;
   /** Unit index to assign to the first produced unit (for reclaim top-up). */
   startUnit?: number;

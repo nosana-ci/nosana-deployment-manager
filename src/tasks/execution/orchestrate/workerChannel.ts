@@ -32,12 +32,14 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
         if (msg.event === "SIGNED") {
           const record: TxRecord = {
             unit: msg.unit,
-            signature: "",
+            // signBatch yields the signature up front; persist it so recovery can
+            // status-check even if we crash between persist and broadcast.
+            signature: msg.signature ?? "",
             lastValidBlockHeight: msg.lastValidBlockHeight,
             status: "SIGNED",
             blob: msg.blob,
-            job: msg.job,
-            run: msg.run,
+            jobs: msg.jobs,
+            runs: msg.runs,
           };
           outcomes.push(
             (async () => {

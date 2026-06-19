@@ -41,7 +41,7 @@ try {
         unit: startUnit,
         blob,
         lastValidBlockHeight,
-        job,
+        jobs: [job],
       });
     }
   } catch (error) {

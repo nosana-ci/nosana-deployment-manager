@@ -49,7 +49,7 @@ try {
             : await kit.jobs.end({ job: address(job) });
         const { blob, lastValidBlockHeight } = await signTransactionToBlob(kit, instruction);
 
-        parentPort!.postMessage({ event: "SIGNED", unit, blob, lastValidBlockHeight, job });
+        parentPort!.postMessage({ event: "SIGNED", unit, blob, lastValidBlockHeight, jobs: [job] });
       } catch (error) {
         // The failure is benign if the job is already settled: either it still
         // reports a terminal on-chain state, or its account has been cleaned up

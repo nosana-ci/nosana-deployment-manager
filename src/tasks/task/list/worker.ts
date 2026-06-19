@@ -4,22 +4,23 @@ import { parentPort, workerData } from "worker_threads";
 import {
   prepareWorker,
   workerErrorFormatter,
-  signTransactionToBlob,
 } from "../../../worker/Worker.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
  * LIST signer worker.
  *
- * Self-custody path: build + sign `count` job-creation transactions and emit one
- * SIGNED message per unit (blob + lastValidBlockHeight + job/run). It does NOT
- * broadcast — the parent persists each record then sends/confirms, so a crash
- * mid-send is recoverable.
+ * Self-custody path: build `count` job-creation instructions, let the kit pack
+ * them into the fewest size/CU-bounded transactions, and sign each — emitting one
+ * SIGNED message per packed bucket (blob + lastValidBlockHeight + signature + the
+ * bucket's jobs/runs). It does NOT broadcast — the parent persists each record
+ * then sends/confirms, so a crash mid-send is recoverable.
  *
- * API-key path (unchanged): submit via the Nosana API and emit CONFIRMED/ERROR.
+ * API-key path (unchanged): submit one job per API call and emit CONFIRMED/ERROR.
  *
- * `count` / `startUnit` are decided by the parent (reconciled against desired vs
- * already-confirmed), so this worker just produces exactly what it is told.
+ * `count` (jobs to create) / `startUnit` are decided by the parent (reconciled
+ * against desired vs already-confirmed), so this worker produces exactly what it
+ * is told and only packs how those jobs map onto txs.
  */
 try {
   const { kit, useNosanaApiKey, task, count = 0, startUnit = 0 } =
@@ -42,11 +43,12 @@ try {
     ipfs_definition_hash = activeRevision.ipfs_definition_hash;
   }
 
-  await Promise.all(
-    Array.from({ length: count }, async (_unused, index) => {
-      const unit = startUnit + index;
-      try {
-        if (useNosanaApiKey) {
+  if (useNosanaApiKey) {
+    // API-key path is unchanged: one job per API call, confirmed server-side.
+    await Promise.all(
+      Array.from({ length: count }, async (_unused, index) => {
+        const unit = startUnit + index;
+        try {
           const res = await kit.api!.jobs.list({
             ipfsHash: ipfs_definition_hash,
             timeout: timeout * 60,
@@ -59,33 +61,41 @@ try {
             run: res.run,
             tx: res.tx,
           });
-        } else {
-          const instruction = await kit.jobs.post({
-            ipfsHash: ipfs_definition_hash,
-            timeout: timeout * 60,
-            market: address(market),
-          });
-          const { blob, lastValidBlockHeight } = await signTransactionToBlob(kit, instruction);
-
+        } catch (error) {
+          console.log("Error preparing job:", error);
           parentPort!.postMessage({
-            event: "SIGNED",
+            event: "ERROR",
             unit,
-            blob,
-            lastValidBlockHeight,
-            job: instruction.accounts[0].address.toString(),
-            run: instruction.accounts[2].address.toString(),
+            error: workerErrorFormatter(error),
           });
         }
-      } catch (error) {
-        console.log("Error preparing job:", error);
-        parentPort!.postMessage({
-          event: "ERROR",
-          unit,
-          error: workerErrorFormatter(error),
-        });
-      }
-    })
-  );
+      })
+    );
+  } else {
+    // Self-custody: build `count` list instructions and let the kit pack + sign
+    // them into the fewest txs (never sends). One SIGNED per packed bucket; the
+    // parent persists each blob before broadcasting. signBatch throws (no partial)
+    // on any build/sign failure, so the whole run errors → the task reclaims and
+    // reconciles. computeUnitMargin defaults to 3 (covers the market queue's
+    // 250-address cap); passed explicitly to stay safe if the kit default shifts.
+    const instructions = await kit.jobs.listMany(
+      { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market: address(market) },
+      count
+    );
+    const signed = await kit.jobs.signBatch(instructions, { computeUnitMargin: 3 });
+
+    signed.forEach((tx, bucket) => {
+      parentPort!.postMessage({
+        event: "SIGNED",
+        unit: startUnit + bucket,
+        blob: tx.blob,
+        lastValidBlockHeight: Number(tx.lastValidBlockHeight),
+        signature: String(tx.signature),
+        jobs: (tx.accounts.jobs ?? []).map(String),
+        runs: (tx.accounts.runs ?? []).map(String),
+      });
+    });
+  }
 
   // Sentinel: the channel is FIFO, so receiving DONE means every unit message
   // above has already been delivered to the parent.

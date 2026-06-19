@@ -1,4 +1,5 @@
 import { applyOutcome, driveSend } from "../unit.js";
+import { recordJobs } from "../record.js";
 import { recoverUnits, type UnitOutcome } from "../../transactions/index.js";
 
 import type { UnitContext } from "../types.js";
@@ -16,7 +17,11 @@ export async function resumeExisting(ctx: UnitContext, existing: TxRecord[]): Pr
 
   for (const record of existing) {
     if (record.status === "CONFIRMED") {
-      confirmedOutcomes.push({ result: "CONFIRMED", signature: record.signature });
+      confirmedOutcomes.push({
+        result: "CONFIRMED",
+        signature: record.signature,
+        jobCount: recordJobs(record).length,
+      });
     } else {
       toRecover.push(record);
     }

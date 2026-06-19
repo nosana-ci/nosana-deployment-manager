@@ -57,9 +57,19 @@ export type TxRecord = {
    * artifact lives at rest.
    */
   blob?: string | null;
-  /** Public job address this unit creates/targets (recorded for LIST). */
+  /**
+   * Public job addresses this unit creates/targets. A bulked LIST tx packs N
+   * jobs into one unit (one per `accounts.jobs` entry); STOP/EXTEND carry one.
+   */
+  jobs?: string[];
+  /** Public run addresses, index-aligned with `jobs` (recorded for LIST). */
+  runs?: string[];
+  /**
+   * @deprecated Pre-bulking single-job shape. Read through `recordJobs`/
+   * `recordRuns` so a record persisted by an older replica still resolves its
+   * job(s) across a rolling deploy; never written going forward.
+   */
   job?: string;
-  /** Public run address (recorded for LIST). */
   run?: string;
 };
 

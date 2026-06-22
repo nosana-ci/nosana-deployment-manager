@@ -91,4 +91,10 @@ export type WorkerData = {
   count?: number;
   /** Unit index to assign to the first produced unit (for reclaim top-up). */
   startUnit?: number;
+  /**
+   * Fixed total replica slots for the task (LIST). The API path issues only the
+   * slots in `0..target-1` that have no CONFIRMED record yet, so a partial-success
+   * reclaim re-issues just the unconfirmed slots instead of every slot.
+   */
+  target?: number;
 };

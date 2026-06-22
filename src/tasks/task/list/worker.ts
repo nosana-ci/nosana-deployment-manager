@@ -6,6 +6,7 @@ import {
   workerErrorFormatter,
 } from "../../../worker/Worker.js";
 import { runIdempotentCall, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
+import { pendingSlots } from "./pendingSlots.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
@@ -17,14 +18,13 @@ import type { WorkerData } from "../../../types/index.js";
  * bucket's jobs/runs). It does NOT broadcast — the parent persists each record
  * then sends/confirms, so a crash mid-send is recoverable.
  *
- * API-key path (unchanged): submit one job per API call and emit CONFIRMED/ERROR.
- *
- * `count` (jobs to create) / `startUnit` are decided by the parent (reconciled
- * against desired vs already-confirmed), so this worker produces exactly what it
- * is told and only packs how those jobs map onto txs.
+ * API-key path: submit one job per API call. Rather than `count`/`startUnit`, it
+ * issues exactly the replica slots in `0..target-1` with no CONFIRMED record yet
+ * ({@link pendingSlots}) — so a partial-success reclaim re-issues only the slots
+ * that didn't land, keyed `taskId:slot:epoch` so any over-issue is CM-deduped.
  */
 try {
-  const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0 } =
+  const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0, target } =
     await prepareWorker<WorkerData>(workerData);
   const { active_revision, confidential, market, timeout } = task.deployment;
 
@@ -50,9 +50,11 @@ try {
     // in-flight response, retried on reclaim, is de-duplicated by the CM instead
     // of posting a second job. CONFIRMED on success; RETRY when in-flight / no
     // definitive response (reclaim, same key); ERROR only on a definitive failure.
+    // Only slots without a CONFIRMED record are (re)issued — on a fresh run that's
+    // all of them; on a partial-success reclaim it's just the ones that didn't land.
+    const slots = pendingSlots(task.transactions, target ?? startUnit + count);
     await Promise.all(
-      Array.from({ length: count }, async (_unused, index) => {
-        const unit = startUnit + index;
+      slots.map(async (unit) => {
         const result = await runIdempotentCall({
           taskId,
           unit,

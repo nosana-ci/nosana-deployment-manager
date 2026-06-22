@@ -22,6 +22,16 @@ export function persistSignedRecord(ctx: UnitContext, record: TxRecord) {
 }
 
 /**
+ * Persist an API-path unit's CONFIRMED record AFTER its bookkeeping handler has
+ * run, so a reclaim skips re-issuing that slot. Pushed post-handler (not before)
+ * so the slot is only marked skippable once its job is durably recorded — a crash
+ * in between just leaves the slot un-recorded, to be re-issued (and CM-deduped).
+ */
+export function persistConfirmedRecord(ctx: UnitContext, record: TxRecord) {
+  return ctx.tasks.updateOne({ _id: ctx.taskId }, { $push: { transactions: record } });
+}
+
+/**
  * Record a unit's terminal outcome: update its persisted status and fire the
  * matching handler. Returns the outcome so callers can tally without tracking
  * mutable counters.

@@ -1,7 +1,7 @@
 import { Worker } from "worker_threads";
 
 import { UnitOutcome } from "../transactions/index.js";
-import { driveSend, persistSignedRecord } from "./unit.js";
+import { driveSend, persistSignedRecord, persistConfirmedRecord } from "./unit.js";
 import { UnitContext } from "./types.js";
 import { TxRecord, WorkerMessage } from "../../../types/index.js";
 
@@ -48,10 +48,24 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
             })()
           );
         } else if (msg.event === "CONFIRMED") {
+          // API-key path (self-custody never emits CONFIRMED). Record the job
+          // FIRST, then persist the slot's CONFIRMED record so a reclaim skips
+          // re-issuing it — ordering keeps "slot recorded" ⊆ "job recorded".
+          const unit = msg.unit ?? 0;
+          const record: TxRecord = {
+            unit,
+            signature: msg.tx,
+            lastValidBlockHeight: 0,
+            status: "CONFIRMED",
+            jobs: msg.job ? [msg.job] : [],
+            runs: msg.run ? [msg.run] : [],
+          };
           outcomes.push(
-            Promise.resolve(ctx.handlers.onConfirmed(msg.unit ?? 0, msg.tx, msg.job, msg.run)).then(
-              () => ({ result: "CONFIRMED", signature: msg.tx })
-            )
+            (async () => {
+              await ctx.handlers.onConfirmed(unit, msg.tx, msg.job, msg.run);
+              await persistConfirmedRecord(ctx, record);
+              return { result: "CONFIRMED", signature: msg.tx };
+            })()
           );
         } else if (msg.event === "ERROR") {
           const error = msg.error ?? "unknown error";

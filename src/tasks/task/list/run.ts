@@ -70,6 +70,7 @@ export async function runListTask(
           confidential_ipfs_pin: getConfig().confidential_ipfs_pin,
           count,
           startUnit,
+          target,
         },
       }),
   });

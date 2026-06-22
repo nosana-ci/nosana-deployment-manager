@@ -6,6 +6,7 @@ import {
   workerErrorFormatter,
   signTransactionToBlob,
 } from "../../../worker/Worker.js";
+import { runIdempotentCall, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
@@ -15,7 +16,7 @@ import type { WorkerData } from "../../../types/index.js";
  * API-key (unchanged): submit via the API and emit CONFIRMED.
  */
 try {
-  const { kit, useNosanaApiKey, task, startUnit = 0 } =
+  const { kit, useNosanaApiKey, task, taskId, startUnit = 0 } =
     await prepareWorker<WorkerData>(workerData);
   const {
     deployment: { timeout },
@@ -28,9 +29,29 @@ try {
 
   try {
     if (useNosanaApiKey) {
-      const res = await kit.api!.jobs.extend({ address: job, seconds: timeout * 60 });
-      if (res) {
-        parentPort!.postMessage({ event: "CONFIRMED", unit: startUnit, job: res.job, tx: res.tx });
+      // Idempotent extend: the deterministic key de-duplicates a retried request
+      // so a lost in-flight response can't double-extend (extra runtime/credits).
+      const result = await runIdempotentCall({
+        taskId,
+        unit: startUnit,
+        maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+        attempt: (idempotencyKey) =>
+          kit.api!.jobs.extend({ address: job, seconds: timeout * 60 }, { idempotencyKey }),
+      });
+
+      if (result.kind === "ok") {
+        if (result.value) {
+          parentPort!.postMessage({
+            event: "CONFIRMED",
+            unit: startUnit,
+            job: result.value.job,
+            tx: result.value.tx,
+          });
+        }
+      } else if (result.kind === "retry") {
+        parentPort!.postMessage({ event: "RETRY", unit: startUnit, retryAfterMs: result.retryAfterMs });
+      } else {
+        parentPort!.postMessage({ event: "ERROR", unit: startUnit, error: result.error });
       }
     } else {
       const instruction = await kit.jobs.extend({ job: address(job), timeout: timeout * 60 });

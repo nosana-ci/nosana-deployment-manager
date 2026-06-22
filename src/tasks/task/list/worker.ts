@@ -5,6 +5,7 @@ import {
   prepareWorker,
   workerErrorFormatter,
 } from "../../../worker/Worker.js";
+import { runIdempotentCall, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
@@ -23,7 +24,7 @@ import type { WorkerData } from "../../../types/index.js";
  * is told and only packs how those jobs map onto txs.
  */
 try {
-  const { kit, useNosanaApiKey, task, count = 0, startUnit = 0 } =
+  const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0 } =
     await prepareWorker<WorkerData>(workerData);
   const { active_revision, confidential, market, timeout } = task.deployment;
 
@@ -44,30 +45,38 @@ try {
   }
 
   if (useNosanaApiKey) {
-    // API-key path is unchanged: one job per API call, confirmed server-side.
+    // API-key path: one job per API call, posted+confirmed server-side. Each call
+    // carries the deterministic `taskId:unit:epoch` idempotency key so a lost
+    // in-flight response, retried on reclaim, is de-duplicated by the CM instead
+    // of posting a second job. CONFIRMED on success; RETRY when in-flight / no
+    // definitive response (reclaim, same key); ERROR only on a definitive failure.
     await Promise.all(
       Array.from({ length: count }, async (_unused, index) => {
         const unit = startUnit + index;
-        try {
-          const res = await kit.api!.jobs.list({
-            ipfsHash: ipfs_definition_hash,
-            timeout: timeout * 60,
-            market,
-          });
+        const result = await runIdempotentCall({
+          taskId,
+          unit,
+          maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+          attempt: (idempotencyKey) =>
+            kit.api!.jobs.list(
+              { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market },
+              { idempotencyKey }
+            ),
+        });
+
+        if (result.kind === "ok") {
           parentPort!.postMessage({
             event: "CONFIRMED",
             unit,
-            job: res.job,
-            run: res.run,
-            tx: res.tx,
+            job: result.value.job,
+            run: result.value.run,
+            tx: result.value.tx,
           });
-        } catch (error) {
-          console.log("Error preparing job:", error);
-          parentPort!.postMessage({
-            event: "ERROR",
-            unit,
-            error: workerErrorFormatter(error),
-          });
+        } else if (result.kind === "retry") {
+          parentPort!.postMessage({ event: "RETRY", unit, retryAfterMs: result.retryAfterMs });
+        } else {
+          console.log("Error preparing job:", result.error);
+          parentPort!.postMessage({ event: "ERROR", unit, error: result.error });
         }
       })
     );

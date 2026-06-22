@@ -86,6 +86,12 @@ export type TaskDocument = {
   status: TaskStatus;
   /** Number of times this task has been claimed; bounds crash-loop reclaim. */
   attempts: number;
+  /**
+   * Consecutive in-flight retries (API-path IN_PROGRESS / transient / lost
+   * response). Counted separately from `attempts` — these are legitimate waits,
+   * not crashes — and bounded by `task_max_inflight_retries`.
+   */
+  inflight_retries?: number;
   /** Identifier of the consumer currently holding the lease. */
   claimed_by?: string;
   /** Visibility timeout; while in the future the task is hidden from claims. */
@@ -128,10 +134,16 @@ export type OutstandingTasksDocument = Document &
 export type TaskFinishedReason = "COMPLETED" | "FAILED" | "TIMEOUT";
 
 /**
- * Result of running a claimed task. ABORTED means the lease was killed mid-run;
- * the task is left in Mongo (not deleted) to be reclaimed and resumed.
+ * Result of running a claimed task.
+ *   - ABORTED — lease killed mid-run; left in Mongo to be reclaimed (counts as a
+ *     crash-loop attempt).
+ *   - RETRY — an API-path unit is in-flight / got no definitive response; the
+ *     task is rescheduled after `retryAfterMs` WITHOUT counting as a crash, and
+ *     re-issues the same idempotency key (CM de-dupes).
  */
 export type TaskRunResult = {
-  outcome: "COMPLETED" | "FAILED" | "ABORTED";
+  outcome: "COMPLETED" | "FAILED" | "ABORTED" | "RETRY";
   successCount: number;
+  /** Delay (ms) before the in-flight retry becomes claimable; RETRY only. */
+  retryAfterMs?: number;
 };

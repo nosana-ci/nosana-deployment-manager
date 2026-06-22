@@ -5,7 +5,16 @@ import { TaskDocument } from "../../../types/index.js";
 export type OrchestrateResult = {
   confirmed: number;
   errored: number;
+  /** Lease killed mid-run: reclaim and re-run (counts as a crash-loop attempt). */
   aborted: boolean;
+  /**
+   * An API-path unit is in-flight / got no definitive response: reschedule (NOT
+   * a crash) and re-issue the same idempotency key. Distinct from `aborted` so a
+   * legitimate wait doesn't burn the crash-loop budget. `aborted` takes priority.
+   */
+  retry: boolean;
+  /** CM `Retry-After` hint (ms) — the max across in-flight units this run. */
+  retryAfterMs?: number;
 };
 
 export type OrchestrateHandlers = {

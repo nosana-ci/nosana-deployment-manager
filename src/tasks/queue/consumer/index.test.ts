@@ -145,6 +145,45 @@ describe("startTaskCollectionListener", () => {
     await handle.stop();
   });
 
+  it("reschedules an in-flight RETRY without deleting, and undoes the crash attempt", async () => {
+    const task = baseTask(TaskType.LIST);
+    claimTasks.mockResolvedValueOnce([task]);
+    enrichClaimedTasks.mockResolvedValueOnce([task]);
+    runListTask.mockResolvedValueOnce({ outcome: "RETRY", successCount: 0, retryAfterMs: 7000 });
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(deleteOne).not.toHaveBeenCalled(); // not terminal — comes back
+    expect(updateOne).toHaveBeenCalledWith(
+      { _id: task._id, claimed_by: expect.any(String) },
+      expect.objectContaining({
+        $set: expect.objectContaining({ status: TaskStatus.PENDING }),
+        $inc: { attempts: -1, inflight_retries: 1 }, // legitimate wait, not a crash
+      })
+    );
+    expect(releaseDeploymentLock).toHaveBeenCalled();
+
+    await handle.stop();
+  });
+
+  it("abandons a task that exceeds the in-flight retry cap (distinct from the crash cap)", async () => {
+    const task = { ...baseTask(TaskType.LIST), inflight_retries: 99 };
+    claimTasks.mockResolvedValueOnce([task]);
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
+    expect(deploymentsUpdateOne).toHaveBeenCalledWith(
+      { id: task.deploymentId },
+      { $set: { status: "ERROR" } }
+    );
+    expect(runListTask).not.toHaveBeenCalled();
+
+    await handle.stop();
+  });
+
   it("returns a task to PENDING when the deployment lock is contended", async () => {
     const task = baseTask(TaskType.LIST);
     claimTasks.mockResolvedValueOnce([task]);

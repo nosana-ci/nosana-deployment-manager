@@ -65,6 +65,7 @@ export async function runListTask(
       new VaultWorker<WorkerData>("../tasks/task/list/worker.js", {
         workerData: {
           task,
+          taskId: task._id.toHexString(),
           vault: task.deployment.vault.vault_key,
           confidential_ipfs_pin: getConfig().confidential_ipfs_pin,
           count,
@@ -73,6 +74,9 @@ export async function runListTask(
       }),
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
+  if (result.retry) {
+    return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: result.retryAfterMs };
+  }
 
   await onListExit(task, deploymentErrorStatus);
 

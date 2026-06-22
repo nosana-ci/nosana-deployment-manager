@@ -8,9 +8,11 @@ import { claimTasks, enrichClaimedTasks } from "../claim/index.js";
 import { acquireDeploymentLock, getDeploymentLocks, releaseDeploymentLock } from "../lock/index.js";
 import {
   abandonOverCap,
+  abandonInflightExhausted,
   deleteCompletedTask,
   incrementAttempt,
   releaseTaskToPending,
+  rescheduleInflight,
 } from "../transitions/index.js";
 
 import {
@@ -41,7 +43,8 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
   const deployments = getRepository("deployments").collection;
   const locks = getDeploymentLocks();
 
-  const { tasks_batch_size, task_lease_ms, task_max_attempts } = getConfig();
+  const { tasks_batch_size, task_lease_ms, task_max_attempts, task_max_inflight_retries } =
+    getConfig();
 
   const consumerId = `${os.hostname()}:${process.pid}`;
   let fetchInterval: NodeJS.Timeout | undefined;
@@ -76,6 +79,18 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
   const abandonInflight = (task: OutstandingTasksDocument, successCount: number) =>
     teardown(task, successCount, "TIMEOUT", false);
 
+  // API-path in-flight (IN_PROGRESS / no definitive response): reschedule after
+  // the CM's backoff WITHOUT counting it as a crash-loop attempt, then drop local
+  // state. Re-issues the same idempotency key on the next claim (CM de-dupes).
+  const rescheduleInflightTask = async (task: OutstandingTasksDocument, result: TaskRunResult) => {
+    await rescheduleInflight(collection, task._id, consumerId, result.retryAfterMs);
+    // teardown drops local state + releases the lock (no delete). The "TIMEOUT"
+    // metric bucket is reused for "left without completing, comes back" — the
+    // crash-loop accounting, which is what actually matters, is kept separate via
+    // `inflight_retries` in rescheduleInflight.
+    await teardown(task, result.successCount, "TIMEOUT", false);
+  };
+
   const dispatch = (task: OutstandingTasksDocument) => {
     const controller = new AbortController();
     inflight.set(task._id.toHexString(), { controller, task });
@@ -84,11 +99,11 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
     const leaseTimer = setTimeout(() => controller.abort(), task_lease_ms);
 
     void runTask(db, task, controller.signal)
-      .then((result) =>
-        result.outcome === "ABORTED"
-          ? abandonInflight(task, result.successCount)
-          : finishTerminal(task, result)
-      )
+      .then((result) => {
+        if (result.outcome === "ABORTED") return abandonInflight(task, result.successCount);
+        if (result.outcome === "RETRY") return rescheduleInflightTask(task, result);
+        return finishTerminal(task, result);
+      })
       .catch(async (error) => {
         console.error("[tasks] task run errored", error);
         await abandonInflight(task, 0);
@@ -113,6 +128,12 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       // abandoned rather than dispatched again.
       if (task.attempts >= task_max_attempts) {
         await abandonOverCap(collection, deployments, task);
+        continue;
+      }
+      // Separate, more generous bound on legitimate in-flight retries (which don't
+      // touch `attempts`): stops a stuck key / CM outage from retrying forever.
+      if ((task.inflight_retries ?? 0) >= task_max_inflight_retries) {
+        await abandonInflightExhausted(collection, deployments, task);
         continue;
       }
       survivors.push(task);

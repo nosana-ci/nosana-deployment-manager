@@ -33,6 +33,13 @@ export type DeploymentsConfig = {
   task_lease_ms: number;
   /** Crash-loop guard: claims beyond this are abandoned (Phase 1 = deleted). */
   task_max_attempts: number;
+  /**
+   * Bound on consecutive in-flight retries (API-path IN_PROGRESS / transient
+   * 5xx / lost response). These are legitimate waits, not crashes, so they do
+   * NOT count against `task_max_attempts`; this separate, more generous cap stops
+   * a stuck key or a CM outage from retrying forever.
+   */
+  task_max_inflight_retries: number;
   /** How often the parent polls a sent transaction's confirmation status. */
   task_confirm_poll_interval_ms: number;
 };

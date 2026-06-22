@@ -57,6 +57,7 @@ export async function runStopTask(
   const worker = new VaultWorker<WorkerData>("../tasks/task/stop/worker.js", {
     workerData: {
       task,
+      taskId: task._id.toHexString(),
       vault: task.deployment.vault.vault_key,
       confidential_ipfs_pin: getConfig().confidential_ipfs_pin,
     },
@@ -71,6 +72,9 @@ export async function runStopTask(
     handlers,
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: stoppedJobs.length };
+  if (result.retry) {
+    return { outcome: "RETRY", successCount: stoppedJobs.length, retryAfterMs: result.retryAfterMs };
+  }
 
   await onStopExit(stoppedJobs, jobsCollection, task, deployments, deploymentErrorStatus);
 

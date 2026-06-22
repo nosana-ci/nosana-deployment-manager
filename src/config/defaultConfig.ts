@@ -50,6 +50,9 @@ const commonConfig: Omit<
   task_max_attempts: process.env.TASK_MAX_ATTEMPTS
     ? parseInt(process.env.TASK_MAX_ATTEMPTS)
     : 5,
+  task_max_inflight_retries: process.env.TASK_MAX_INFLIGHT_RETRIES
+    ? parseInt(process.env.TASK_MAX_INFLIGHT_RETRIES)
+    : 60,
   task_confirm_poll_interval_ms: process.env.TASK_CONFIRM_POLL_INTERVAL_MS
     ? parseInt(process.env.TASK_CONFIRM_POLL_INTERVAL_MS)
     : 2_000,

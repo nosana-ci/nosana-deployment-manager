@@ -61,6 +61,11 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
               error,
             }))
           );
+        } else if (msg.event === "RETRY") {
+          // In-flight / no definitive response: no bookkeeping, no failure flag.
+          // The RETRY outcome makes the run non-terminal so the task is rescheduled
+          // (not counted as a crash) and re-issues the same idempotency key.
+          outcomes.push(Promise.resolve({ result: "RETRY", retryAfterMs: msg.retryAfterMs }));
         } else if (msg.event === "DONE") {
           resolve();
         }

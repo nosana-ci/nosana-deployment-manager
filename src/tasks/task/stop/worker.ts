@@ -8,6 +8,7 @@ import {
   signTransactionToBlob,
 } from "../../../worker/Worker.js";
 import { selectJobsToStop } from "./selectJobsToStop.js";
+import { runIdempotentCall, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
@@ -21,7 +22,7 @@ import type { WorkerData } from "../../../types/index.js";
  * Self-custody: build delist (QUEUED) / end (RUNNING), sign, emit SIGNED.
  * API-key (unchanged): submit via the API and emit CONFIRMED.
  */
-const { kit, useNosanaApiKey, task } = await prepareWorker<WorkerData>(workerData);
+const { kit, useNosanaApiKey, task, taskId } = await prepareWorker<WorkerData>(workerData);
 
 try {
   const jobs = selectJobsToStop(task.jobs, {
@@ -36,11 +37,29 @@ try {
         if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
 
         if (useNosanaApiKey) {
-          const res = await kit.api!.jobs.stop(job);
-          if (res) {
-            parentPort!.postMessage({ event: "CONFIRMED", unit, job: res.job, tx: res.tx });
+          // Idempotent stop, keyed on the JOB ADDRESS (not the positional slot,
+          // which is unstable as the job set shrinks across reclaims). De-dupes a
+          // retried request so settlement runs at most once per stop.
+          const result = await runIdempotentCall({
+            taskId,
+            unit: job,
+            maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+            attempt: (idempotencyKey) => kit.api!.jobs.stop(job, { idempotencyKey }),
+          });
+
+          if (result.kind === "ok") {
+            if (result.value) {
+              parentPort!.postMessage({ event: "CONFIRMED", unit, job: result.value.job, tx: result.value.tx });
+            }
+            return;
           }
-          return;
+          if (result.kind === "retry") {
+            parentPort!.postMessage({ event: "RETRY", unit, retryAfterMs: result.retryAfterMs });
+            return;
+          }
+          // FATAL: route through the benign-terminal check below — a stop that
+          // "failed" because the job is already settled must not surface as ERROR.
+          throw new Error(result.error);
         }
 
         const instruction =

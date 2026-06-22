@@ -26,7 +26,7 @@ export async function reconcileUnits(args: {
 
   const resume = existing.length
     ? await orchestrateUnits({ tasks, taskId, existing, worker: null, signal, handlers })
-    : { confirmed: 0, errored: 0, aborted: signal.aborted };
+    : { confirmed: 0, errored: 0, aborted: signal.aborted, retry: false };
   if (resume.aborted) return resume;
 
   const needed = Math.max(0, target - resume.confirmed);
@@ -41,9 +41,13 @@ export async function reconcileUnits(args: {
     handlers,
   });
 
+  // RETRY only ever comes from the fresh worker (the resume path is on-chain
+  // recovery, which never yields RETRY), but combine both for completeness.
   return {
     confirmed: resume.confirmed + fresh.confirmed,
     errored: resume.errored + fresh.errored,
     aborted: fresh.aborted,
+    retry: resume.retry || fresh.retry,
+    retryAfterMs: fresh.retryAfterMs ?? resume.retryAfterMs,
   };
 }

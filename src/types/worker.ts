@@ -53,16 +53,35 @@ export type ErrorUnitMessage = {
   error?: string;
 };
 
+/**
+ * RETRY — API-key path: the op is in-flight or got no definitive response, so it
+ * is neither confirmed nor failed. The parent leaves the task for reclaim, which
+ * re-issues the SAME deterministic idempotency key and the CM de-duplicates.
+ */
+export type RetryUnitMessage = {
+  event: "RETRY";
+  unit?: number;
+  /** CM `Retry-After` backoff hint (ms) for the in-flight reschedule, if given. */
+  retryAfterMs?: number;
+};
+
 export type DoneMessage = { event: "DONE" };
 
 export type WorkerMessage =
   | SignedUnitMessage
   | ConfirmedUnitMessage
   | ErrorUnitMessage
+  | RetryUnitMessage
   | DoneMessage;
 
 export type WorkerData = {
   task: OutstandingTasksDocument;
+  /**
+   * Task `_id` as a hex string. Passed explicitly because the ObjectId on `task`
+   * does not survive the structured clone into the worker thread, and the API
+   * path needs it to build the deterministic `taskId:unit:epoch` idempotency key.
+   */
+  taskId: string;
   vault: string;
   confidential_ipfs_pin: string;
   /**

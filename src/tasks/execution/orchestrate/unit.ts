@@ -69,11 +69,23 @@ export async function driveSend(ctx: UnitContext, record: TxRecord): Promise<Uni
 export function tally(outcomes: UnitOutcome[], aborted: boolean): OrchestrateResult {
   let confirmed = 0;
   let errored = 0;
+  let retry = false;
+  let retryAfterMs: number | undefined;
   for (const outcome of outcomes) {
     // `confirmed` counts JOBS, not units: a bulked unit confirms N jobs at once.
     if (outcome.result === "CONFIRMED") confirmed += outcome.jobCount ?? 1;
     else if (outcome.result === "ERROR") errored++;
     else if (outcome.result === "ABORTED") aborted = true;
+    // RETRY (API-key in-flight) leaves the run non-terminal like ABORTED, but is a
+    // legitimate wait, not a crash — surfaced separately so the consumer reschedules
+    // it without burning the crash-loop budget. Wait the LONGEST hint so a re-run
+    // doesn't fire before every in-flight unit is plausibly ready.
+    else if (outcome.result === "RETRY") {
+      retry = true;
+      if (outcome.retryAfterMs != null) {
+        retryAfterMs = Math.max(retryAfterMs ?? 0, outcome.retryAfterMs);
+      }
+    }
   }
-  return { confirmed, errored, aborted };
+  return { confirmed, errored, aborted, retry, retryAfterMs };
 }

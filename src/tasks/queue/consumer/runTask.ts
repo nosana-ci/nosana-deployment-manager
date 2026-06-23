@@ -6,9 +6,10 @@ import { runExtendTask } from "../../task/extend/run.js";
 import { OutstandingTasksDocument, TaskRunResult, TaskType } from "../../../types/index.js";
 
 /**
- * Route a claimed task to the runner for its type. `db` is threaded only to the
- * EXTEND runner, whose confirm handler reschedules via `scheduleTask(db, …)`;
- * LIST/STOP read their collections from the repository singleton.
+ * Route a claimed task to the runner for its type. `db` is threaded to the EXTEND
+ * and STOP runners, whose reschedules go through `scheduleTask(db, …)` (EXTEND's
+ * confirm cycle; STOP's full-stop straggler self-heal); LIST reads its collections
+ * from the repository singleton.
  */
 export function runTask(
   db: Db,
@@ -19,7 +20,7 @@ export function runTask(
     case TaskType.LIST:
       return runListTask(task, signal);
     case TaskType.STOP:
-      return runStopTask(task, signal);
+      return runStopTask(db, task, signal);
     case TaskType.EXTEND:
       return runExtendTask(db, task, signal);
     default:

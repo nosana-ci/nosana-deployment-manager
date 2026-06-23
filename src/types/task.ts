@@ -104,6 +104,14 @@ export type TaskDocument = {
    * progress tops up instead of restarting or overshooting.
    */
   target_count?: number;
+  /**
+   * Frozen ordered set of job addresses a STOP task commits to stopping, fixed on
+   * the first attempt. The API batch path sends this exact set under one stable
+   * idempotency key on every reclaim — a shrinking payload would be
+   * `IDEMPOTENCY_KEY_PAYLOAD_MISMATCH` — and the CM treats an already-settled job
+   * as a confirmed no-op, so a job that ends between attempts never fails the batch.
+   */
+  stop_targets?: string[];
 };
 
 export type TasksCollection = Collection<TaskDocument>;

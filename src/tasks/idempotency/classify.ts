@@ -1,17 +1,13 @@
+import { IdempotencyCode, isNosanaApiError } from "@nosana/kit";
+
 /**
- * Machine codes the Credit Manager attaches to a coded idempotency error. They
- * arrive on the thrown `ApiError.code` (the kit's `errorFormatter` lifts the
- * response body's `code` onto the Error), so the DM discriminates on these
- * rather than on HTTP status or message text.
+ * The Credit Manager's idempotency control codes, re-exported from the kit so the
+ * DM branches on the single source of truth. The kit keeps these in lockstep with
+ * the client-manager OpenAPI spec (a compile-time assertion), so a drift between
+ * the CM and what we match on becomes a build error rather than a silent
+ * misclassification — which is why we no longer hardcode the strings here.
  */
-export const IdempotencyCode = {
-  /** Same key replayed with a different payload — a client bug, never retried. */
-  PAYLOAD_MISMATCH: "IDEMPOTENCY_KEY_PAYLOAD_MISMATCH",
-  /** The stored signed tx is provably dead (past its blockhash); re-post under a fresh epoch. */
-  EXPIRED: "IDEMPOTENCY_KEY_EXPIRED",
-  /** The op is mid-flight (slow confirm / concurrent duplicate); retry the SAME key later. */
-  IN_PROGRESS: "IDEMPOTENCY_KEY_IN_PROGRESS",
-} as const;
+export { IdempotencyCode };
 
 /**
  * What the caller should do with a failed idempotent request.
@@ -21,34 +17,27 @@ export const IdempotencyCode = {
  */
 export type IdempotencyAction = "RETRY" | "EXPIRED" | "FATAL";
 
-type CodedError = { code?: unknown; statusCode?: unknown };
-
-function read(error: unknown): CodedError {
-  return typeof error === "object" && error !== null ? (error as CodedError) : {};
-}
-
 /**
  * Classify a thrown idempotent-request error into the action the DM should take.
  *
  * A *lost response is indistinguishable from a slow confirm*, so anything without
  * a definitive HTTP response — network error, timeout, abort — is RETRY, never a
- * failure. A 5xx is likewise RETRY. Only a coded `EXPIRED` bumps the epoch; only
- * a coded fatal (or any other 4xx) is non-retryable. An unrecognised coded error
- * defaults to FATAL so a buggy reuse can't silently loop.
+ * failure. The kit's {@link isNosanaApiError} guard is precisely that distinction:
+ * it is false unless a numeric `statusCode` came back from the server. Only a
+ * coded `EXPIRED` bumps the epoch; only a coded fatal (or any other 4xx) is
+ * non-retryable; a 5xx is transient. An unrecognised coded 4xx defaults to FATAL
+ * so a buggy reuse can't silently loop.
  */
 export function classifyApiError(error: unknown): IdempotencyAction {
-  const { code, statusCode } = read(error);
-
-  if (code === IdempotencyCode.EXPIRED) return "EXPIRED";
-  if (code === IdempotencyCode.IN_PROGRESS) return "RETRY";
-  if (code === IdempotencyCode.PAYLOAD_MISMATCH) return "FATAL";
-
-  // A definitive HTTP response: 5xx is transient (retry), other 4xx are fatal.
-  if (typeof statusCode === "number") {
-    return statusCode >= 500 ? "RETRY" : "FATAL";
-  }
-
   // No response reached us (network / timeout / abort): could be a lost success,
   // so retry the same key and let the CM de-duplicate.
-  return "RETRY";
+  if (!isNosanaApiError(error)) return "RETRY";
+
+  if (error.code === IdempotencyCode.EXPIRED) return "EXPIRED";
+  if (error.code === IdempotencyCode.IN_PROGRESS) return "RETRY";
+  if (error.code === IdempotencyCode.PAYLOAD_MISMATCH) return "FATAL";
+
+  // A definitive HTTP response with no (or an unrecognised) code: 5xx is
+  // transient (retry), any other 4xx is a definitive client error (fatal).
+  return error.statusCode >= 500 ? "RETRY" : "FATAL";
 }

@@ -7,88 +7,98 @@ import {
   workerErrorFormatter,
   signTransactionToBlob,
 } from "../../../worker/Worker.js";
-import { selectJobsToStop } from "./selectJobsToStop.js";
-import { runIdempotentCall, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
+import { runIdempotentBatch, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
- * STOP signer worker.
+ * STOP signer worker, over the frozen `stopTargets` set (the jobs the task
+ * committed to stopping on its first attempt — see stop/run.ts).
  *
- * One unit per job that still needs stopping. Idempotent across reclaims: jobs
- * already STOPPED/COMPLETED are skipped via an on-chain state check (and stopped
- * jobs also drop out of the enriched QUEUED/RUNNING set), so re-running never
- * re-stops a job.
+ * API-key path: ONE stopBatch call settles the whole set under a single per-epoch
+ * idempotency key (`taskId:stop:epoch`). The frozen set is the stable payload the
+ * key requires; the CM replays its verdict on resend (so a job settles at most
+ * once) and reports an already-settled job as a confirmed no-op (no tx). We emit
+ * CONFIRMED only for job addresses without a CONFIRMED record yet, so each is
+ * recorded once across reclaims.
  *
- * Self-custody: build delist (QUEUED) / end (RUNNING), sign, emit SIGNED.
- * API-key (unchanged): submit via the API and emit CONFIRMED.
+ * Self-custody path: per job, read on-chain state, build delist (QUEUED) / end
+ * (RUNNING), sign, emit SIGNED — skipping jobs already terminal.
  */
-const { kit, useNosanaApiKey, task, taskId } = await prepareWorker<WorkerData>(workerData);
+const { kit, useNosanaApiKey, task, taskId, stopTargets = [] } =
+  await prepareWorker<WorkerData>(workerData);
 
 try {
-  const jobs = selectJobsToStop(task.jobs, {
-    limit: task.limit,
-    activeRevision: task.active_revision,
-  });
+  if (useNosanaApiKey) {
+    const units = stopTargets.map((jobAddress, index) => ({
+      id: index,
+      body: { jobAddress },
+    }));
 
-  await Promise.all(
-    jobs.map(async ({ job }, unit) => {
-      try {
-        const { state } = await kit.jobs.get(address(job));
-        if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
+    const result = await runIdempotentBatch({
+      taskId,
+      op: "stop",
+      maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+      units,
+      post: (jobs, idempotencyKey) => kit.api!.jobs.stopBatch({ jobs }, { idempotencyKey }),
+    });
 
-        if (useNosanaApiKey) {
-          // Idempotent stop, keyed on the JOB ADDRESS (not the positional slot,
-          // which is unstable as the job set shrinks across reclaims). De-dupes a
-          // retried request so settlement runs at most once per stop.
-          const result = await runIdempotentCall({
-            taskId,
-            unit: job,
-            maxEpoch: MAX_IDEMPOTENCY_EPOCH,
-            attempt: (idempotencyKey) => kit.api!.jobs.stop(job, { idempotencyKey }),
-          });
+    // Dedupe by job address across reclaims: the walk re-collects every confirmed
+    // job from epoch 0, so emit CONFIRMED only for jobs not already recorded.
+    const recorded = new Set(
+      (task.transactions ?? [])
+        .filter((record) => record.status === "CONFIRMED")
+        .flatMap((record) => record.jobs ?? [])
+    );
+    for (const confirmation of result.confirmed) {
+      const jobAddress = confirmation.job ?? stopTargets[confirmation.id];
+      if (recorded.has(jobAddress)) continue;
+      parentPort!.postMessage({
+        event: "CONFIRMED",
+        unit: confirmation.id,
+        job: jobAddress,
+        tx: confirmation.tx,
+      });
+    }
 
-          if (result.kind === "ok") {
-            if (result.value) {
-              parentPort!.postMessage({ event: "CONFIRMED", unit, job: result.value.job, tx: result.value.tx });
-            }
-            return;
-          }
-          if (result.kind === "retry") {
-            parentPort!.postMessage({ event: "RETRY", unit, retryAfterMs: result.retryAfterMs });
-            return;
-          }
-          // FATAL: route through the benign-terminal check below — a stop that
-          // "failed" because the job is already settled must not surface as ERROR.
-          throw new Error(result.error);
-        }
-
-        const instruction =
-          state === JobState.QUEUED
-            ? await kit.jobs.delist({ job: address(job) })
-            : await kit.jobs.end({ job: address(job) });
-        const { blob, lastValidBlockHeight } = await signTransactionToBlob(kit, instruction);
-
-        parentPort!.postMessage({ event: "SIGNED", unit, blob, lastValidBlockHeight, jobs: [job] });
-      } catch (error) {
-        // The failure is benign if the job is already settled: either it still
-        // reports a terminal on-chain state, or its account has been cleaned up
-        // entirely (a delisted/ended job account gets closed, so the re-fetch
-        // throws "Account does not exist or has no data").
+    if (result.kind === "retry") {
+      parentPort!.postMessage({ event: "RETRY", retryAfterMs: result.retryAfterMs });
+    } else if (result.kind === "fatal") {
+      parentPort!.postMessage({ event: "ERROR", error: result.error });
+    }
+  } else {
+    await Promise.all(
+      stopTargets.map(async (job, unit) => {
         try {
           const { state } = await kit.jobs.get(address(job));
           if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
-        } catch (lookupError) {
-          if (
-            lookupError instanceof Error &&
-            lookupError.message === "Account does not exist or has no data"
-          ) {
-            return;
+
+          const instruction =
+            state === JobState.QUEUED
+              ? await kit.jobs.delist({ job: address(job) })
+              : await kit.jobs.end({ job: address(job) });
+          const { blob, lastValidBlockHeight } = await signTransactionToBlob(kit, instruction);
+
+          parentPort!.postMessage({ event: "SIGNED", unit, blob, lastValidBlockHeight, jobs: [job] });
+        } catch (error) {
+          // Benign if the job is already settled: still terminal on-chain, or its
+          // account has been closed (a delisted/ended job account gets cleaned up,
+          // so the re-fetch throws "Account does not exist or has no data").
+          try {
+            const { state } = await kit.jobs.get(address(job));
+            if ([JobState.COMPLETED, JobState.STOPPED].includes(state)) return;
+          } catch (lookupError) {
+            if (
+              lookupError instanceof Error &&
+              lookupError.message === "Account does not exist or has no data"
+            ) {
+              return;
+            }
           }
+          parentPort!.postMessage({ event: "ERROR", unit, error: workerErrorFormatter(error) });
         }
-        parentPort!.postMessage({ event: "ERROR", unit, error: workerErrorFormatter(error) });
-      }
-    })
-  );
+      })
+    );
+  }
 
   parentPort!.postMessage({ event: "DONE" });
 } catch (error) {

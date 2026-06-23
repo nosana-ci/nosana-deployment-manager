@@ -52,9 +52,12 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
           // FIRST, then persist the slot's CONFIRMED record so a reclaim skips
           // re-issuing it — ordering keeps "slot recorded" ⊆ "job recorded".
           const unit = msg.unit ?? 0;
+          // A terminal no-op confirmation carries no tx (nothing was sent on-chain);
+          // record it as "" so the slot still counts as done and is never re-issued.
+          const signature = msg.tx ?? "";
           const record: TxRecord = {
             unit,
-            signature: msg.tx,
+            signature,
             lastValidBlockHeight: 0,
             status: "CONFIRMED",
             jobs: msg.job ? [msg.job] : [],
@@ -62,9 +65,9 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
           };
           outcomes.push(
             (async () => {
-              await ctx.handlers.onConfirmed(unit, msg.tx, msg.job, msg.run);
+              await ctx.handlers.onConfirmed(unit, signature, msg.job, msg.run);
               await persistConfirmedRecord(ctx, record);
-              return { result: "CONFIRMED", signature: msg.tx };
+              return { result: "CONFIRMED", signature };
             })()
           );
         } else if (msg.event === "ERROR") {

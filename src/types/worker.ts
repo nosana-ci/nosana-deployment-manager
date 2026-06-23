@@ -44,7 +44,12 @@ export type ConfirmedUnitMessage = {
   unit?: number;
   job?: string;
   run?: string;
-  tx: string;
+  /**
+   * Confirming signature. Optional because a batch confirmation can be a terminal
+   * no-op (an EXTEND/STOP of an already-settled job did nothing on-chain), which
+   * carries no `tx`. A genuine LIST/EXTEND/STOP that landed always has one.
+   */
+  tx?: string;
 };
 
 export type ErrorUnitMessage = {
@@ -97,4 +102,10 @@ export type WorkerData = {
    * reclaim re-issues just the unconfirmed slots instead of every slot.
    */
   target?: number;
+  /**
+   * Frozen ordered set of job addresses a STOP task targets (from the task's
+   * `stop_targets`). The API batch path sends this exact set under one stable
+   * idempotency key; the self-custody path stops each in turn.
+   */
+  stopTargets?: string[];
 };

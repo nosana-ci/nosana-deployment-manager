@@ -1,5 +1,6 @@
 import { buildIdempotencyKey } from "./key.js";
 import { classifyApiError } from "./classify.js";
+import { messageOf, retryAfterMsOf } from "./errorInfo.js";
 
 /**
  * Outcome of driving one unit's API call to a terminal state across epochs.
@@ -12,24 +13,6 @@ export type IdempotentCallResult<T> =
   | { kind: "ok"; value: T }
   | { kind: "retry"; retryAfterMs?: number }
   | { kind: "fatal"; error: string };
-
-function messageOf(error: unknown): string {
-  if (error instanceof Error) return `${error.name} ${error.message}`;
-  return typeof error === "object" ? JSON.stringify(error) : String(error);
-}
-
-/**
- * The CM surfaces an `IN_PROGRESS` backoff hint on `err.retryAfter` (an HTTP
- * `Retry-After`, in seconds). Convert it to ms for the in-flight reschedule;
- * absent/malformed → undefined so the caller falls back to its default.
- */
-function retryAfterMsOf(error: unknown): number | undefined {
-  const value = typeof error === "object" && error !== null
-    ? (error as { retryAfter?: unknown }).retryAfter
-    : undefined;
-  const seconds = Number(value);
-  return value != null && Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : undefined;
-}
 
 /**
  * Drive a single unit's idempotent API call to a terminal {@link IdempotentCallResult}.

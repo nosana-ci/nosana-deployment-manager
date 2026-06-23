@@ -48,4 +48,11 @@ describe("onExtendConfirmed", () => {
     expect(scheduleTask).toHaveBeenCalledOnce();
     expect(insertOne).not.toHaveBeenCalled();
   });
+
+  it("a tx-less confirm (terminal-job no-op) ends the cycle: no reschedule, no log", async () => {
+    await onExtendConfirmed(events, task, db, "", "job-1");
+
+    expect(scheduleTask).not.toHaveBeenCalled();
+    expect(insertOne).not.toHaveBeenCalled();
+  });
 });

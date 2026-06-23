@@ -36,7 +36,7 @@ describe("runIdempotentCall", () => {
   });
 
   it("surfaces the CM Retry-After (seconds) as retryAfterMs on a retry", async () => {
-    const err = Object.assign(coded(IdempotencyCode.IN_PROGRESS), { retryAfter: "5" });
+    const err = Object.assign(coded(IdempotencyCode.IN_PROGRESS), { retryAfter: 5 });
     const attempt = vi.fn().mockRejectedValue(err);
     const result = await runIdempotentCall({ taskId: "t", unit: 0, maxEpoch: 3, attempt });
 

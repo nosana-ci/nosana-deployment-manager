@@ -5,7 +5,7 @@ import {
   prepareWorker,
   workerErrorFormatter,
 } from "../../../worker/Worker.js";
-import { runIdempotentCall, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
+import { runIdempotentBatch, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
 import { pendingSlots } from "./pendingSlots.js";
 import type { WorkerData } from "../../../types/index.js";
 
@@ -18,10 +18,13 @@ import type { WorkerData } from "../../../types/index.js";
  * bucket's jobs/runs). It does NOT broadcast — the parent persists each record
  * then sends/confirms, so a crash mid-send is recoverable.
  *
- * API-key path: submit one job per API call. Rather than `count`/`startUnit`, it
- * issues exactly the replica slots in `0..target-1` with no CONFIRMED record yet
- * ({@link pendingSlots}) — so a partial-success reclaim re-issues only the slots
- * that didn't land, keyed `taskId:slot:epoch` so any over-issue is CM-deduped.
+ * API-key path: ONE batch call lists every replica slot server-side, under a
+ * single per-epoch idempotency key (`taskId:list:epoch`) carrying the full target
+ * set — the stable payload that key requires. A lost in-flight response retried on
+ * reclaim replays the CM's frozen verdict, so a slot that secretly landed is never
+ * listed twice. {@link runIdempotentBatch} walks a fresh epoch over the expired
+ * tail; we emit CONFIRMED only for slots not yet recorded ({@link pendingSlots}),
+ * so each slot is recorded exactly once across reclaims.
  */
 try {
   const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0, target } =
@@ -45,43 +48,42 @@ try {
   }
 
   if (useNosanaApiKey) {
-    // API-key path: one job per API call, posted+confirmed server-side. Each call
-    // carries the deterministic `taskId:unit:epoch` idempotency key so a lost
-    // in-flight response, retried on reclaim, is de-duplicated by the CM instead
-    // of posting a second job. CONFIRMED on success; RETRY when in-flight / no
-    // definitive response (reclaim, same key); ERROR only on a definitive failure.
-    // Only slots without a CONFIRMED record are (re)issued — on a fresh run that's
-    // all of them; on a partial-success reclaim it's just the ones that didn't land.
-    const slots = pendingSlots(task.transactions, target ?? startUnit + count);
-    await Promise.all(
-      slots.map(async (unit) => {
-        const result = await runIdempotentCall({
-          taskId,
-          unit,
-          maxEpoch: MAX_IDEMPOTENCY_EPOCH,
-          attempt: (idempotencyKey) =>
-            kit.api!.jobs.list(
-              { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market },
-              { idempotencyKey }
-            ),
-        });
+    // The full target set is sent every epoch-0 (the stable payload the key needs);
+    // the expired tail is re-posted under fresh epochs. We emit CONFIRMED only for
+    // slots that have no CONFIRMED record yet — the walk re-collects every confirmed
+    // slot from epoch 0, so this keeps one TxRecord per slot across reclaims.
+    const slotCount = target ?? startUnit + count;
+    const units = Array.from({ length: slotCount }, (_, slot) => ({
+      id: slot,
+      body: { ipfsHash: ipfs_definition_hash, market, timeout: timeout * 60 },
+    }));
 
-        if (result.kind === "ok") {
-          parentPort!.postMessage({
-            event: "CONFIRMED",
-            unit,
-            job: result.value.job,
-            run: result.value.run,
-            tx: result.value.tx,
-          });
-        } else if (result.kind === "retry") {
-          parentPort!.postMessage({ event: "RETRY", unit, retryAfterMs: result.retryAfterMs });
-        } else {
-          console.log("Error preparing job:", result.error);
-          parentPort!.postMessage({ event: "ERROR", unit, error: result.error });
-        }
-      })
-    );
+    const result = await runIdempotentBatch({
+      taskId,
+      op: "list",
+      maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+      units,
+      post: (jobs, idempotencyKey) => kit.api!.jobs.listBatch({ jobs }, { idempotencyKey }),
+    });
+
+    const pending = new Set(pendingSlots(task.transactions, slotCount));
+    for (const confirmation of result.confirmed) {
+      if (!pending.has(confirmation.id)) continue; // already recorded on a prior run
+      parentPort!.postMessage({
+        event: "CONFIRMED",
+        unit: confirmation.id,
+        job: confirmation.job,
+        run: confirmation.run,
+        tx: confirmation.tx,
+      });
+    }
+
+    if (result.kind === "retry") {
+      parentPort!.postMessage({ event: "RETRY", retryAfterMs: result.retryAfterMs });
+    } else if (result.kind === "fatal") {
+      console.log("Error listing jobs:", result.error);
+      parentPort!.postMessage({ event: "ERROR", error: result.error });
+    }
   } else {
     // Self-custody: build `count` list instructions and let the kit pack + sign
     // them into the fewest txs (never sends). One SIGNED per packed bucket; the

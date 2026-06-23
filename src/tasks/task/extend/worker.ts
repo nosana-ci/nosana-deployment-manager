@@ -41,11 +41,15 @@ try {
 
       if (result.kind === "ok") {
         if (result.value) {
+          // A terminal job is a confirmed no-op with `tx: null` (the CM extends
+          // nothing, charges nothing). Forward it as a tx-less CONFIRMED so the
+          // cycle ends instead of erroring — onExtendConfirmed stops rescheduling
+          // when there is no tx.
           parentPort!.postMessage({
             event: "CONFIRMED",
             unit: startUnit,
             job: result.value.job,
-            tx: result.value.tx,
+            tx: result.value.tx ?? undefined,
           });
         }
       } else if (result.kind === "retry") {

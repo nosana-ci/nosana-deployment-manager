@@ -72,7 +72,28 @@ describe("sendUnit", () => {
     expect(sendTransaction).not.toHaveBeenCalled();
   });
 
-  it("returns ERROR when the broadcast throws", async () => {
+  it("returns ERROR when preflight rejects deterministically (insufficient funds)", async () => {
+    sendTransaction.mockReturnValue({
+      send: () =>
+        Promise.reject(new Error("Transaction simulation failed: Attempt to debit an account but found no record of a prior credit")),
+    });
+
+    const result = await sendUnit(record());
+
+    expect(result.result).toBe("ERROR");
+  });
+
+  it("returns EXPIRED (retry) when the broadcast throws a transient RPC error", async () => {
+    sendTransaction.mockReturnValue({
+      send: () => Promise.reject(new Error("failed to send transaction: Blockhash not found")),
+    });
+
+    const result = await sendUnit(record());
+
+    expect(result.result).toBe("EXPIRED");
+  });
+
+  it("returns ERROR for an unrecognized broadcast throw (default terminal)", async () => {
     sendTransaction.mockReturnValue({ send: () => Promise.reject(new Error("rpc down")) });
 
     const result = await sendUnit(record());

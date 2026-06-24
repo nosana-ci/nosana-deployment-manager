@@ -96,7 +96,8 @@ afterAll(async () => {
   for (const [id, deployment] of createdDeployments) {
     try {
       const { status } = await deployerClient.api.deployments.get(id);
-      if ([DeploymentStatus.STOPPED, DeploymentStatus.STOPPING, DeploymentStatus.STARTING].includes(status)) {
+      // DRAFT (never started) is not stoppable — stop() returns "incorrect state".
+      if ([DeploymentStatus.DRAFT, DeploymentStatus.STOPPED, DeploymentStatus.STOPPING, DeploymentStatus.STARTING].includes(status)) {
         console.log("Not stopping deployment:", id, status);
         // TODO: how to stop jobs that are in STARTING?
         //       for those stop() returns "deployment is in incorrect state"
@@ -105,8 +106,8 @@ afterAll(async () => {
         await deployment.stop();
       }
     } catch (error) {
-      console.error("Error checking deployment status:", id, (error as Error).message);
-      throw error;
+      // Best-effort cleanup: a teardown hiccup must not fail the suite.
+      console.error("Error cleaning up deployment:", id, (error as Error).message);
     }
   }
 });

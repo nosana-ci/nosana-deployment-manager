@@ -6,6 +6,7 @@ x-dm-env: &dm-env
   CONFIDENTIAL_BY_DEFAULT: "${CONFIDENTIAL_BY_DEFAULT:-true}"
   DEPLOYMENT_MANAGER_PORT: "${DEPLOYMENT_MANAGER_PORT:-3000}"
   SOLANA_NETWORK: "${SOLANA_NETWORK}"
+  SOLANA_WS_NETWORK: "${SOLANA_WS_NETWORK}"
   DOCDB_HOST: "${DOCDB_HOST:-host.docker.internal}"
   DOCDB_PORT: "${DOCDB_PORT:-27017}"
   DOCDB_USERNAME: "${DOCDB_USERNAME}"
@@ -97,7 +98,14 @@ services:
       <<: *dm-env
       APP_MODE: worker
     deploy:
-      replicas: 2
+      # Single replica (intentional, interim). The strategy/account listeners run
+      # in EVERY worker via MongoDB change streams, so with N replicas one
+      # deployment/job change fires each listener N times → duplicate task
+      # scheduling (LIST on deployment start, EXTEND on job running, …). LIST
+      # tasks carry no job id and aren't idempotent, so a unique index can't
+      # dedupe them; the real fix is to run the listeners on a single elected
+      # leader while keeping N task-consumers for HA. Until that lands: one worker.
+      replicas: 1
     # Two replicas can't share a fixed host port; publish container 3000 to an
     # ephemeral host port per replica so each worker's /health, /stats and
     # /metrics are reachable (find them with `docker compose port`).

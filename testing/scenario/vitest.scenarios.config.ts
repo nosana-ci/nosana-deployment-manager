@@ -36,7 +36,11 @@ export default () => {
       setupFiles: ['./testing/scenario/setup.ts'],
       env: {
         NETWORK: process.env.NETWORK ?? "devnet",
-        BACKEND_URL: process.env.BACKEND_URL ?? "https://dashboard.k8s.dev.nosana.com",
+        // Default to localnet (@nosana/localnet): local validator, no throttling
+        // or indexer lag. Set NOSANA_NETWORK=devnet to use the file-key path.
+        NOSANA_NETWORK: process.env.NOSANA_NETWORK ?? "localnet",
+        // The local DM API, reached through the /api-prefix-stripping proxy.
+        BACKEND_URL: process.env.BACKEND_URL ?? "http://localhost:3002",
         TEST_VAULT_ADDRESS: process.env.TEST_VAULT_ADDRESS,
         TEST_DEPLOYER_KEY_PATH: process.env.TEST_DEPLOYER_KEY_PATH ?? "~/.nosana/nosana_key.json",
         TEST_NODE_KEY_PATH: process.env.TEST_NODE_KEY_PATH ?? "~/.nosana/nosana_key.json",

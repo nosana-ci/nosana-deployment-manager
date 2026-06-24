@@ -1,3 +1,9 @@
+import { address } from "@nosana/kit";
+
+import { getKit } from "../../../../kit/index.js";
+import { convertJobState } from "../../../../listeners/accounts/helpers/index.js";
+import { guardAgainstDefaultNodeAddress } from "../../../../listeners/accounts/handlers/onJobUpdate.js";
+
 import {
   JobState,
   JobsCollection,
@@ -41,6 +47,34 @@ export async function onListConfirmed(
   );
 
   if (result.upsertedCount === 0) return; // already recorded — replay, no duplicate event
+
+  // Close the listen-vs-list race: a node can claim this job before the row above
+  // was inserted (the LIST confirm poll runs every ~2s, claims are near-instant on
+  // a fast chain). That single RUNNING monitor update no-ops against the missing
+  // row (`onJobUpdate` uses `upsert:false`) and is lost, stranding the job in
+  // QUEUED until the periodic reconcile. Now that the row exists, re-read the
+  // merged on-chain state (`get` defaults to `checkRun:true`, so a claimed job
+  // reads RUNNING) and apply it. Best-effort: the periodic reconcile is the
+  // backstop if this read fails.
+  try {
+    const onchain = await getKit().jobs.get(address(job));
+    const state = convertJobState(onchain.state);
+    if (state !== JobState.QUEUED) {
+      await jobs.updateOne(
+        { job, state: { $nin: [JobState.COMPLETED, JobState.STOPPED] } },
+        {
+          $set: {
+            state,
+            time_start: Number(onchain.timeStart),
+            node: guardAgainstDefaultNodeAddress(onchain.node),
+            updated_at: new Date(),
+          },
+        }
+      );
+    }
+  } catch {
+    /* best-effort reconcile; periodic reconcile catches a missed claim */
+  }
 
   await events.insertOne({
     deploymentId: task.deploymentId,

@@ -25,6 +25,9 @@ export const getKit = (): NosanaClient => {
   if (config.rpc_network) {
     kitOptions.solana = {
       rpcEndpoint: config.rpc_network,
+      // localnet only: the kit's profile hardcodes ws://127.0.0.1:8900; override
+      // it. Undefined elsewhere so the kit derives wss:// from the https rpc.
+      ...(config.ws_network && { wsEndpoint: config.ws_network }),
     };
   }
 

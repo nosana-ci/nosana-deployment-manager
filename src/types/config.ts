@@ -5,6 +5,14 @@ export type DeploymentsConfig = {
   network: NosanaNetwork;
   nos_address: string;
   rpc_network: string;
+  /**
+   * Explicit WebSocket (subscriptions) endpoint. Leave undefined for
+   * devnet/mainnet so the kit derives wss:// from the https rpc endpoint. Set it
+   * for localnet, where the kit's profile hardcodes ws://127.0.0.1:8900 — wrong
+   * from inside the worker container, which reaches the validator over
+   * host.docker.internal.
+   */
+  ws_network: string | undefined;
   frps_address: string;
   tasks_batch_size: number;
   confidential_ipfs_pin: string;

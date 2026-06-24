@@ -1,23 +1,24 @@
 import { Collection, ObjectId } from "mongodb";
 
-import { JobState, OutstandingTasksDocument, TaskDocument } from "../types/index.js";
+import { JobState, OutstandingTasksDocument, TaskDocument } from "../../../types/index.js";
 
-export async function getOutstandingTasks(
+/**
+ * Hydrate claimed tasks with their deployment, vault, jobs and revisions for
+ * the worker. A task whose deployment or vault no longer exists is dropped (it
+ * cannot be acted on); it stays PROCESSING until its lease lapses and is then
+ * reclaimed, eventually hitting the crash-loop cap.
+ */
+export async function enrichClaimedTasks(
   collection: Collection<TaskDocument>,
-  keys: ObjectId[],
-  batchSize: number
+  ids: ObjectId[]
 ): Promise<OutstandingTasksDocument[]> {
-  const results = await collection
+  if (ids.length === 0) return [];
+
+  const results = (await collection
     .aggregate()
     .match({
-      due_at: {
-        $lt: new Date(),
-      },
-      _id: {
-        $nin: keys,
-      },
+      _id: { $in: ids },
     })
-    .limit(batchSize - keys.length)
     .lookup({
       from: "deployments",
       localField: "deploymentId",
@@ -50,11 +51,11 @@ export async function getOutstandingTasks(
       path: "$deployment.vault",
       preserveNullAndEmptyArrays: false,
     })
-    .toArray() as OutstandingTasksDocument[];
+    .toArray()) as OutstandingTasksDocument[];
 
   // Filter jobs in memory after the aggregation
-  return results.map(doc => ({
+  return results.map((doc) => ({
     ...doc,
-    jobs: doc.jobs.filter(job => job.state === JobState.QUEUED || job.state === JobState.RUNNING),
+    jobs: doc.jobs.filter((job) => job.state === JobState.QUEUED || job.state === JobState.RUNNING),
   }));
 }

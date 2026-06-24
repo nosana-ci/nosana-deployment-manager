@@ -1,4 +1,4 @@
-import { Collections, DeploymentDocument, EventDocument, VaultDocument, JobsDocument, TaskDocument, RevisionDocument, JobResultsDocument } from "../types/index.js";
+import { Collections, DeploymentDocument, EventDocument, VaultDocument, JobsDocument, TaskDocument, DeploymentLockDocument, RevisionDocument, JobResultsDocument } from "../types/index.js";
 
 export const NosanaCollections = {
   DEPLOYMENTS: "deployments",
@@ -6,6 +6,7 @@ export const NosanaCollections = {
   VAULTS: "vaults",
   JOBS: "jobs",
   TASKS: "tasks",
+  TASK_LOCKS: "task_locks",
   REVISIONS: "revisions",
   RESULTS: "results"
 } as const;
@@ -21,6 +22,7 @@ export type CollectionsMap = {
   vaults: VaultDocument;
   jobs: JobsDocument;
   tasks: TaskDocument;
+  task_locks: DeploymentLockDocument;
   revisions: RevisionDocument;
   results: JobResultsDocument;
 };

@@ -1,4 +1,4 @@
-import { Db, WithId, ClientSession, MongoClient, Filter, FindOptions, MatchKeysAndValues, OptionalUnlessRequiredId, Document } from "mongodb";
+import { Collection, Db, WithId, ClientSession, MongoClient, Filter, FindOptions, MatchKeysAndValues, OptionalUnlessRequiredId, Document } from "mongodb";
 
 import { CollectionsMap, NosanaCollections } from "../definitions/collection.js";
 import {
@@ -64,6 +64,13 @@ export type FilterBuilders<T extends Document> = {
 export type WriteOptions = { session?: ClientSession };
 
 type Repository<T extends Document = Document> = {
+  /**
+   * The raw MongoDB collection. Escape hatch for custom/atomic operations not
+   * covered by the methods below (e.g. `$inc`/`$push`/`arrayFilters` updates,
+   * `findOneAndUpdate` with sort, aggregation). Obtained via the typed
+   * collection key, so the collection name can't be mistyped.
+   */
+  collection: Collection<T>;
   findOne: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T> | null>;
   findAll: (filter: Filter<T>, options?: FindOptions) => Promise<WithId<T>[]>;
   count: (filter: Filter<T>) => Promise<number>;
@@ -89,29 +96,31 @@ function createRepository<T extends Document = Document>(
   db: Db,
   collection: string
 ): Repository<T> {
+  const col = db.collection<T>(collection);
   return {
+    collection: col,
     findOne: async (filter: Filter<T>, options?: FindOptions): Promise<WithId<T> | null> => {
-      return db.collection<T>(collection).findOne(filter, options);
+      return col.findOne(filter, options);
     },
     findAll: async (filter: Filter<T>, options?: FindOptions): Promise<WithId<T>[]> => {
-      return db.collection<T>(collection).find(filter, options).toArray();
+      return col.find(filter, options).toArray();
     },
     count: async (filter: Filter<T>): Promise<number> => {
-      return db.collection<T>(collection).countDocuments(filter);
+      return col.countDocuments(filter);
     },
     create: async (doc: OptionalUnlessRequiredId<T>, options?: WriteOptions): Promise<WithId<T>> => {
-      const result = await db.collection<T>(collection).insertOne(doc, options);
+      const result = await col.insertOne(doc, options);
       return { ...doc, _id: result.insertedId } as WithId<T>;
     },
     update: async (filter: Filter<T>, update: Partial<T>, options?: WriteOptions): Promise<WithId<T> | null> => {
-      return db.collection<T>(collection).findOneAndUpdate(
+      return col.findOneAndUpdate(
         filter,
         { $set: update as MatchKeysAndValues<T> },
         { ...options, returnDocument: "after" },
       );
     },
     createOrUpdate: async (filter: Filter<T>, update: Partial<T>, options?: WriteOptions): Promise<WithId<T> | null> => {
-      return db.collection<T>(collection).findOneAndUpdate(
+      return col.findOneAndUpdate(
         filter,
         { $set: update as MatchKeysAndValues<T> },
         { ...options, upsert: true, returnDocument: "after" },
@@ -127,7 +136,7 @@ function createRepository<T extends Document = Document>(
       ) as Filter<T>;
 
       return executeKeysetPagination({
-        collection: db.collection<T>(collection),
+        collection: col,
         filters,
         sortField,
         sortOrder,

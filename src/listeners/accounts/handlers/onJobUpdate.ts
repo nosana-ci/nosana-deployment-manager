@@ -6,7 +6,7 @@ import { NosanaCollections } from "../../../definitions/collection.js";
 
 import { type JobsDocument, JobState } from "../../../types/index.js";
 
-function guardAgainstDefaultNodeAddress(node: string | null): string | null {
+export function guardAgainstDefaultNodeAddress(node: string | null): string | null {
   if (node === "11111111111111111111111111111111") {
     return null;
   }

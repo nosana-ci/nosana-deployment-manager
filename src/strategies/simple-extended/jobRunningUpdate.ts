@@ -14,13 +14,18 @@ export const simpleExtendedJobRunningUpdate: StrategyListener<JobsDocument> = [
   async ({ deployment: jobDeployment, job }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || deployment.strategy !== DeploymentStrategy["SIMPLE-EXTEND"]) return;
+    // Idempotent: a job's STATE can be written to RUNNING more than once (the kit
+    // monitor can emit the claim event repeatedly, and the LIST-confirm reconcile
+    // sets it too), and each write re-triggers this listener. Without this, every
+    // duplicate RUNNING would queue another EXTEND. At most one PENDING extend per
+    // (deployment, job) — matching the reschedule in onExtendConfirmed.
     scheduleTask(
       db,
       TaskType.EXTEND,
       deployment.id,
       deployment.status,
       getNextExtendTime(deployment.timeout),
-      { job }
+      { job, idempotent: true }
     );
   },
   {

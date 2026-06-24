@@ -1,21 +1,26 @@
 import type { Db } from "mongodb";
 
-import {
-  DeploymentCollection,
-  DeploymentDocument,
-  DeploymentStatus,
-  TaskDocument,
-  TasksCollection,
-  TaskType,
-} from "../types/index.js";
+import { getRepository } from "../repositories/index.js";
+import { DeploymentStatus, TaskStatus, TaskType } from "../types/index.js";
 
 type ScheduleTaskOptions = Partial<{
   active_revision?: number;
   limit?: number;
   job?: string;
+  /**
+   * Skip the insert when an identical PENDING task (same task/deployment/job)
+   * already exists. Makes a recurring re-schedule idempotent — e.g. the EXTEND
+   * chain, where a crash after confirm but before the source task is deleted
+   * would otherwise let a reclaim queue a duplicate cycle (a double-extend). The
+   * per-deployment task lock serialises this, so the check needs no unique index.
+   */
+  idempotent?: boolean;
 }>
 
+/** @returns whether a new task was created (false when an idempotent skip no-oped). */
 export async function scheduleTask(
+  // `db` is retained for the existing strategy callers; the collections now come
+  // from the repository singleton.
   db: Db,
   task: TaskType,
   deploymentId: string,
@@ -25,12 +30,14 @@ export async function scheduleTask(
     active_revision,
     limit,
     job,
+    idempotent,
   }: ScheduleTaskOptions = {}
-) {
-  const tasks: TasksCollection = db.collection<TaskDocument>("tasks");
-  const deployments: DeploymentCollection = db.collection<DeploymentDocument>("deployments");
+): Promise<boolean> {
+  void db;
+  const tasks = getRepository("tasks").collection;
+  const deployments = getRepository("deployments").collection;
 
-  const { acknowledged } = await tasks.insertOne({
+  const doc = {
     task,
     due_at,
     deploymentId,
@@ -39,15 +46,28 @@ export async function scheduleTask(
     limit,
     job,
     created_at: new Date(),
-  });
+    status: TaskStatus.PENDING,
+    attempts: 0,
+  };
 
-  if (!acknowledged) {
-    console.error(
-      `Failed to schedule ${task} task for deployment ${deploymentId}.`
+  let created = true;
+  if (idempotent) {
+    // At most one PENDING task per (task, deployment, job): a re-schedule while
+    // one is still queued is a no-op, so a reclaimed confirm can't double-queue.
+    const { upsertedCount } = await tasks.updateOne(
+      { task, deploymentId, status: TaskStatus.PENDING, ...(job !== undefined ? { job } : {}) },
+      { $setOnInsert: doc },
+      { upsert: true }
     );
+    created = upsertedCount === 1;
+  } else {
+    const { acknowledged } = await tasks.insertOne(doc);
+    if (!acknowledged) {
+      console.error(`Failed to schedule ${task} task for deployment ${deploymentId}.`);
+    }
   }
 
-  if (deploymentStatus === DeploymentStatus.STARTING) {
+  if (created && deploymentStatus === DeploymentStatus.STARTING) {
     await deployments.updateOne(
       { id: deploymentId },
       {
@@ -57,4 +77,6 @@ export async function scheduleTask(
       }
     );
   }
+
+  return created;
 }

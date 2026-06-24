@@ -1,22 +1,25 @@
-import { OnListEventParams } from "../spawner.js";
-
-import { DeploymentStatus } from "../../../../types/index.js";
+import {
+  DeploymentStatus,
+  EventsCollection,
+  OutstandingTasksDocument,
+} from "../../../../types/index.js";
+import { deploymentStatusFromError } from "../../deploymentStatusFromError.js";
 
 export function onListError(
-  tx: string | undefined,
-  error: string | undefined,
-  { collections: { events }, task, setDeploymentErrorStatus }: OnListEventParams
+  events: EventsCollection,
+  task: OutstandingTasksDocument,
+  error: string,
+  setDeploymentErrorStatus: (status: DeploymentStatus) => void,
+  tx?: string
 ) {
-  if (!error) return;
-
   events.insertOne({
     deploymentId: task.deploymentId,
     category: "Deployment",
     type: "JOB_LIST_ERROR",
-    tx,
     message: error,
+    tx,
     created_at: new Date(),
   });
 
-  setDeploymentErrorStatus(error.includes("InsufficientFundsForRent") ? DeploymentStatus.INSUFFICIENT_FUNDS : DeploymentStatus.ERROR);
+  setDeploymentErrorStatus(deploymentStatusFromError(error));
 }

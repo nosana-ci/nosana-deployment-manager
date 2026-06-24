@@ -57,7 +57,15 @@ export async function prepareWorker<
 
   const clientConfig: Partial<PartialClientConfig> = useNosanaApiKey
     ? { api: { apiKey: key } }
-    : { solana: { rpcEndpoint: config.rpc_network } };
+    : {
+        solana: {
+          rpcEndpoint: config.rpc_network,
+          // localnet only (see config.ws_network): the kit's profile hardcodes
+          // ws://127.0.0.1:8900, unreachable from this container. Undefined for
+          // devnet/mainnet so the kit derives wss:// from the https rpc.
+          ...(config.ws_network && { wsEndpoint: config.ws_network }),
+        },
+      };
   if (config.dashboard_backend_url || config.client_manager_url) {
     clientConfig.api = {
       ...clientConfig.api,
@@ -82,5 +90,22 @@ export async function prepareWorker<
     kit,
     useNosanaApiKey,
     ...workerData,
+  };
+}
+
+/**
+ * Build + sign an instruction into a serialized blob and capture its
+ * `lastValidBlockHeight`, without broadcasting. This is the per-unit half of the
+ * persist-before-send protocol shared by the LIST/STOP/EXTEND signer workers.
+ */
+export async function signTransactionToBlob(
+  kit: NosanaClient,
+  instruction: Parameters<NosanaClient["solana"]["buildTransaction"]>[0],
+): Promise<{ blob: string; lastValidBlockHeight: number }> {
+  const message = await kit.solana.buildTransaction(instruction);
+  const signed = await kit.solana.signTransaction(message);
+  return {
+    blob: kit.solana.serializeTransaction(signed),
+    lastValidBlockHeight: Number(message.lifetimeConstraint.lastValidBlockHeight),
   };
 }

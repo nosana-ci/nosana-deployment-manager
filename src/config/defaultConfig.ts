@@ -11,6 +11,7 @@ const commonConfig: Omit<
   | "network"
   | "nos_address"
   | "rpc_network"
+  | "ws_network"
   | "frps_address"
   | "dashboard_backend_url"
 > = {
@@ -44,6 +45,18 @@ const commonConfig: Omit<
   rapid_completion_threshold_minutes: process.env.RAPID_COMPLETION_THRESHOLD_MINUTES
     ? parseInt(process.env.RAPID_COMPLETION_THRESHOLD_MINUTES)
     : 5,
+  task_lease_ms: process.env.TASK_LEASE_MS
+    ? parseInt(process.env.TASK_LEASE_MS)
+    : 120_000,
+  task_max_attempts: process.env.TASK_MAX_ATTEMPTS
+    ? parseInt(process.env.TASK_MAX_ATTEMPTS)
+    : 5,
+  task_max_inflight_retries: process.env.TASK_MAX_INFLIGHT_RETRIES
+    ? parseInt(process.env.TASK_MAX_INFLIGHT_RETRIES)
+    : 60,
+  task_confirm_poll_interval_ms: process.env.TASK_CONFIRM_POLL_INTERVAL_MS
+    ? parseInt(process.env.TASK_CONFIRM_POLL_INTERVAL_MS)
+    : 2_000,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {
@@ -54,6 +67,7 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     rpc_network:
       process.env.SOLANA_NETWORK ??
       "https://rpc.ironforge.network/mainnet?apiKey=01J4RYMAWZC65B6CND9DTZZ5BK",
+    ws_network: process.env.SOLANA_WS_NETWORK || undefined,
     frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.prd.nos.ci",
     dashboard_backend_url:
       process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.prd.nos.ci",
@@ -64,10 +78,28 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     nos_address:
       process.env.NOS_ADDRESS ?? "devr1BGQndEW5k5zfvG5FsLyZv1Ap73vNgAHcQ9sUVP",
     rpc_network: process.env.SOLANA_NETWORK ?? "https://api.devnet.solana.com",
+    ws_network: process.env.SOLANA_WS_NETWORK || undefined,
     frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
     dashboard_backend_url:
       process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.dev.nos.ci",
 
+    ...commonConfig,
+  },
+  // Local Solana validator with Nosana programs pre-baked (@nosana/localnet).
+  // Reuses the devnet NOS mint + programs (the image prefetches them from devnet).
+  // The worker runs in a container, so rpc/ws default to host.docker.internal —
+  // override with SOLANA_NETWORK / SOLANA_WS_NETWORK as needed.
+  localnet: {
+    network: "localnet",
+    nos_address:
+      process.env.NOS_ADDRESS ?? "devr1BGQndEW5k5zfvG5FsLyZv1Ap73vNgAHcQ9sUVP",
+    // `||` not `??`: compose passes empty strings for unset vars, which must
+    // fall back to the container-reachable host.docker.internal defaults.
+    rpc_network:
+      process.env.SOLANA_NETWORK || "http://host.docker.internal:8899",
+    ws_network: process.env.SOLANA_WS_NETWORK || "ws://host.docker.internal:8900",
+    frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
+    dashboard_backend_url: process.env.DASHBOARD_BACKEND_URL || undefined,
     ...commonConfig,
   },
 };

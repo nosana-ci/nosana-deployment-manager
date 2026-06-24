@@ -5,6 +5,14 @@ export type DeploymentsConfig = {
   network: NosanaNetwork;
   nos_address: string;
   rpc_network: string;
+  /**
+   * Explicit WebSocket (subscriptions) endpoint. Leave undefined for
+   * devnet/mainnet so the kit derives wss:// from the https rpc endpoint. Set it
+   * for localnet, where the kit's profile hardcodes ws://127.0.0.1:8900 — wrong
+   * from inside the worker container, which reaches the validator over
+   * host.docker.internal.
+   */
+  ws_network: string | undefined;
   frps_address: string;
   tasks_batch_size: number;
   confidential_ipfs_pin: string;
@@ -33,6 +41,13 @@ export type DeploymentsConfig = {
   task_lease_ms: number;
   /** Crash-loop guard: claims beyond this are abandoned (Phase 1 = deleted). */
   task_max_attempts: number;
+  /**
+   * Bound on consecutive in-flight retries (API-path IN_PROGRESS / transient
+   * 5xx / lost response). These are legitimate waits, not crashes, so they do
+   * NOT count against `task_max_attempts`; this separate, more generous cap stops
+   * a stuck key or a CM outage from retrying forever.
+   */
+  task_max_inflight_retries: number;
   /** How often the parent polls a sent transaction's confirmation status. */
   task_confirm_poll_interval_ms: number;
 };

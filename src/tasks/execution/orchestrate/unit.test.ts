@@ -34,7 +34,7 @@ describe("tally", () => {
       { result: "ERROR", error: "x" },
       { result: "EXPIRED" },
     ];
-    expect(tally(outcomes, false)).toEqual({ confirmed: 2, errored: 1, aborted: false });
+    expect(tally(outcomes, false)).toEqual({ confirmed: 2, errored: 1, aborted: false, retry: false });
   });
 
   it("counts JOBS, not units: a bulked outcome adds its jobCount", () => {
@@ -43,13 +43,34 @@ describe("tally", () => {
       { result: "CONFIRMED", signature: "b" }, // no jobCount → 1 (e.g. API path)
       { result: "ERROR", error: "x" },
     ];
-    expect(tally(outcomes, false)).toEqual({ confirmed: 8, errored: 1, aborted: false });
+    expect(tally(outcomes, false)).toEqual({ confirmed: 8, errored: 1, aborted: false, retry: false });
   });
 
   it("reports aborted from an ABORTED outcome or the seed", () => {
     expect(tally([{ result: "ABORTED" }], false).aborted).toBe(true);
     expect(tally([], true).aborted).toBe(true);
     expect(tally([{ result: "CONFIRMED", signature: "a" }], false).aborted).toBe(false);
+  });
+
+  it("RETRY (API in-flight) is distinct from ABORTED: retry set, NOT a crash", () => {
+    const result = tally([{ result: "CONFIRMED", signature: "a" }, { result: "RETRY" }], false);
+    // confirmed counted; retry (not aborted) → consumer reschedules without burning the cap.
+    expect(result).toEqual({ confirmed: 1, errored: 0, aborted: false, retry: true, retryAfterMs: undefined });
+  });
+
+  it("RETRY carries the LONGEST Retry-After hint across in-flight units", () => {
+    const result = tally(
+      [{ result: "RETRY", retryAfterMs: 5000 }, { result: "RETRY", retryAfterMs: 12000 }],
+      false
+    );
+    expect(result.retry).toBe(true);
+    expect(result.retryAfterMs).toBe(12000);
+  });
+
+  it("a real lease abort still dominates a RETRY (counts as a crash-loop attempt)", () => {
+    // signal aborted seed true → aborted wins; the runner checks aborted before retry.
+    const result = tally([{ result: "RETRY" }], true);
+    expect(result.aborted).toBe(true);
   });
 });
 

@@ -1,5 +1,7 @@
 export {
   abandonOverCap,
+  abandonInflightExhausted,
+  rescheduleInflight,
   releaseTaskToPending,
   incrementAttempt,
   deleteCompletedTask,

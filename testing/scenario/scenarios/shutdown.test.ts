@@ -1,7 +1,21 @@
 import { execSync } from 'child_process';
-import { expect } from 'vitest';
+import { expect, describe, it } from 'vitest';
 
 import { createFlow } from '../utils/createFlow.js';
+
+// This flow drives a single combined `deployment_manager` service running in
+// `mode: all` (it `docker compose up`s that service and SIGTERMs PID 1). The
+// local compose splits the DM into `deployment_manager_api` + `_worker`, so the
+// flow only applies against a combined deployment. Skip unless opted in.
+const flow: typeof createFlow = process.env.RUN_SHUTDOWN_TEST === 'true'
+  ? createFlow
+  : (name) =>
+      describe.skip(
+        `${name} (needs a combined mode:all deployment_manager; set RUN_SHUTDOWN_TEST=true)`,
+        () => {
+          it('skipped', () => {});
+        }
+      );
 
 const COMPOSE_DIR = `${process.cwd()}`;
 const SERVICE = 'deployment_manager';
@@ -31,7 +45,7 @@ async function pollHealthy(maxAttempts = 30, intervalMs = 2000): Promise<void> {
   throw new Error(`deployment_manager did not become healthy at ${BASE_URL}/health`);
 }
 
-createFlow('Graceful shutdown', (step) => {
+flow('Graceful shutdown', (step) => {
   step('deployment_manager is healthy before shutdown', async () => {
     dc(`up -d ${SERVICE}`);
     await pollHealthy();

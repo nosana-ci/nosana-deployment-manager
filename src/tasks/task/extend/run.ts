@@ -50,6 +50,7 @@ export async function runExtendTask(
       new VaultWorker<WorkerData>("../tasks/task/extend/worker.js", {
         workerData: {
           task,
+          taskId: task._id.toHexString(),
           vault: task.deployment.vault.vault_key,
           confidential_ipfs_pin: getConfig().confidential_ipfs_pin,
           count,
@@ -58,6 +59,9 @@ export async function runExtendTask(
       }),
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
+  if (result.retry) {
+    return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: result.retryAfterMs };
+  }
 
   await onExtendExit(deploymentErrorStatus, deployments, task);
 

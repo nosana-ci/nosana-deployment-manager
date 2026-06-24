@@ -1,6 +1,7 @@
 import { getKit } from "../../../kit/index.js";
 import { workerErrorFormatter } from "../../../worker/Worker.js";
 import { trackSignature } from "../tracker/index.js";
+import { isTransientSendError } from "./classifySendError.js";
 import { UnitOutcome } from "./types.js";
 import { TxRecord } from "../../../types/index.js";
 
@@ -22,18 +23,31 @@ export async function sendUnit(record: TxRecord, signal?: AbortSignal): Promise<
   if (!record.blob) return { result: "EXPIRED", signature: record.signature || undefined };
 
   // Broadcast the exact signed bytes promptly (blobs are perishable, so we never
-  // queue them). skipPreflight because the tx is already signed/valid.
+  // queue them). Preflight runs (`skipPreflight: false`) so a deterministic
+  // failure — insufficient funds, a program error — is caught here in ms with a
+  // descriptive error, instead of silently never landing and only being declared
+  // dead after the full ~60s blockhash window. `preflightCommitment: "confirmed"`
+  // matches how recent blockhashes are fetched, so a freshly-signed tx isn't
+  // spuriously rejected with "blockhash not found".
   const rpc = getKit().solana.rpc;
   let signature: string;
   try {
     signature = await rpc
       .sendTransaction(record.blob as SendTxParams[0], {
         encoding: "base64",
-        skipPreflight: true,
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
         maxRetries: 0n,
       } as SendTxParams[1])
       .send();
   } catch (error) {
+    // A transient RPC condition (node behind, rate limited, a blockhash the
+    // preflight bank hasn't seen yet, a network blip) retries like a non-landing
+    // tx so a node hiccup never errors the deployment. A deterministic preflight
+    // failure (funds/program) is terminal — surfaced so the deployment reflects it.
+    if (isTransientSendError(error)) {
+      return { result: "EXPIRED", signature: record.signature || undefined };
+    }
     return {
       result: "ERROR",
       signature: record.signature || undefined,

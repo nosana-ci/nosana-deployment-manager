@@ -12,6 +12,9 @@ import { DeploymentDocument, TaskDocument, TaskStatus } from "../../../types/ind
 /** Re-queue delay applied when a task is handed back without running. */
 const REQUEUE_DELAY_MS = 1_000;
 
+/** Fallback in-flight retry delay when the CM gave no `Retry-After` hint. */
+const INFLIGHT_RETRY_DEFAULT_MS = 5_000;
+
 /**
  * Crash-loop guard: a task claimed beyond the attempts cap is removed and its
  * deployment flagged ERROR. Phase 1 keeps today's terminal-failure behaviour;
@@ -24,6 +27,52 @@ export async function abandonOverCap(
 ): Promise<void> {
   console.error(
     `[tasks] abandoning ${task.task} task ${task._id.toHexString()} for deployment ${task.deploymentId} after ${task.attempts} attempts`
+  );
+  await tasks.deleteOne({ _id: { $eq: task._id } });
+  await deployments
+    .updateOne({ id: task.deploymentId }, { $set: { status: "ERROR" } })
+    .catch((error) => console.error("[tasks] failed to flag deployment ERROR", error));
+}
+
+/**
+ * Reschedule a task that ended in-flight (API-path IN_PROGRESS / transient 5xx /
+ * lost response): make it claimable again after `retryAfterMs` (the CM's
+ * `Retry-After`, or a default). This is a legitimate wait, NOT a crash — so it
+ * undoes this dispatch's `attempts` increment and bumps the separate
+ * `inflight_retries` counter (bounded by `task_max_inflight_retries`) instead.
+ * Fenced on the lease holder so a consumer that lost its lease never reschedules
+ * another consumer's task.
+ */
+export async function rescheduleInflight(
+  tasks: Collection<TaskDocument>,
+  id: ObjectId,
+  consumerId: string,
+  retryAfterMs?: number
+): Promise<void> {
+  const delay = retryAfterMs ?? INFLIGHT_RETRY_DEFAULT_MS;
+  await tasks.updateOne(
+    { _id: id, claimed_by: consumerId },
+    {
+      $set: { status: TaskStatus.PENDING, due_at: new Date(Date.now() + delay) },
+      $unset: { claimed_by: "", lease_expires_at: "" },
+      $inc: { attempts: -1, inflight_retries: 1 },
+    }
+  );
+}
+
+/**
+ * In-flight-retry guard: a task whose CM call never reached a definitive answer
+ * within `task_max_inflight_retries` is removed and its deployment flagged ERROR
+ * — distinct from the crash-loop cap so a stuck key / CM outage can't retry
+ * forever. Mirrors {@link abandonOverCap}.
+ */
+export async function abandonInflightExhausted(
+  tasks: Collection<TaskDocument>,
+  deployments: Collection<DeploymentDocument>,
+  task: WithId<TaskDocument>
+): Promise<void> {
+  console.error(
+    `[tasks] abandoning ${task.task} task ${task._id.toHexString()} for deployment ${task.deploymentId} after ${task.inflight_retries} in-flight retries`
   );
   await tasks.deleteOne({ _id: { $eq: task._id } });
   await deployments

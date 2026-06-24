@@ -5,6 +5,8 @@ import {
   prepareWorker,
   workerErrorFormatter,
 } from "../../../worker/Worker.js";
+import { runIdempotentBatch, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
+import { pendingSlots } from "./pendingSlots.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
@@ -16,14 +18,16 @@ import type { WorkerData } from "../../../types/index.js";
  * bucket's jobs/runs). It does NOT broadcast — the parent persists each record
  * then sends/confirms, so a crash mid-send is recoverable.
  *
- * API-key path (unchanged): submit one job per API call and emit CONFIRMED/ERROR.
- *
- * `count` (jobs to create) / `startUnit` are decided by the parent (reconciled
- * against desired vs already-confirmed), so this worker produces exactly what it
- * is told and only packs how those jobs map onto txs.
+ * API-key path: ONE batch call lists every replica slot server-side, under a
+ * single per-epoch idempotency key (`taskId:list:epoch`) carrying the full target
+ * set — the stable payload that key requires. A lost in-flight response retried on
+ * reclaim replays the CM's frozen verdict, so a slot that secretly landed is never
+ * listed twice. {@link runIdempotentBatch} walks a fresh epoch over the expired
+ * tail; we emit CONFIRMED only for slots not yet recorded ({@link pendingSlots}),
+ * so each slot is recorded exactly once across reclaims.
  */
 try {
-  const { kit, useNosanaApiKey, task, count = 0, startUnit = 0 } =
+  const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0, target } =
     await prepareWorker<WorkerData>(workerData);
   const { active_revision, confidential, market, timeout } = task.deployment;
 
@@ -44,33 +48,42 @@ try {
   }
 
   if (useNosanaApiKey) {
-    // API-key path is unchanged: one job per API call, confirmed server-side.
-    await Promise.all(
-      Array.from({ length: count }, async (_unused, index) => {
-        const unit = startUnit + index;
-        try {
-          const res = await kit.api!.jobs.list({
-            ipfsHash: ipfs_definition_hash,
-            timeout: timeout * 60,
-            market,
-          });
-          parentPort!.postMessage({
-            event: "CONFIRMED",
-            unit,
-            job: res.job,
-            run: res.run,
-            tx: res.tx,
-          });
-        } catch (error) {
-          console.log("Error preparing job:", error);
-          parentPort!.postMessage({
-            event: "ERROR",
-            unit,
-            error: workerErrorFormatter(error),
-          });
-        }
-      })
-    );
+    // The full target set is sent every epoch-0 (the stable payload the key needs);
+    // the expired tail is re-posted under fresh epochs. We emit CONFIRMED only for
+    // slots that have no CONFIRMED record yet — the walk re-collects every confirmed
+    // slot from epoch 0, so this keeps one TxRecord per slot across reclaims.
+    const slotCount = target ?? startUnit + count;
+    const units = Array.from({ length: slotCount }, (_, slot) => ({
+      id: slot,
+      body: { ipfsHash: ipfs_definition_hash, market, timeout: timeout * 60 },
+    }));
+
+    const result = await runIdempotentBatch({
+      taskId,
+      op: "list",
+      maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+      units,
+      post: (jobs, idempotencyKey) => kit.api!.jobs.listBatch({ jobs }, { idempotencyKey }),
+    });
+
+    const pending = new Set(pendingSlots(task.transactions, slotCount));
+    for (const confirmation of result.confirmed) {
+      if (!pending.has(confirmation.id)) continue; // already recorded on a prior run
+      parentPort!.postMessage({
+        event: "CONFIRMED",
+        unit: confirmation.id,
+        job: confirmation.job,
+        run: confirmation.run,
+        tx: confirmation.tx,
+      });
+    }
+
+    if (result.kind === "retry") {
+      parentPort!.postMessage({ event: "RETRY", retryAfterMs: result.retryAfterMs });
+    } else if (result.kind === "fatal") {
+      console.log("Error listing jobs:", result.error);
+      parentPort!.postMessage({ event: "ERROR", error: result.error });
+    }
   } else {
     // Self-custody: build `count` list instructions and let the kit pack + sign
     // them into the fewest txs (never sends). One SIGNED per packed bucket; the

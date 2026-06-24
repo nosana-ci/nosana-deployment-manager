@@ -15,7 +15,8 @@ export function onStopConfirmed(
     deploymentId,
     category: "Deployment",
     type: "JOB_STOPPED_CONFIRMED",
-    message: `Successfully stopped job ${job}. TX ${tx}`,
+    // A batch no-op (the job was already settled when the stop ran) carries no tx.
+    message: tx ? `Successfully stopped job ${job}. TX ${tx}` : `Job ${job} was already settled`,
     tx,
     created_at: new Date(),
   });

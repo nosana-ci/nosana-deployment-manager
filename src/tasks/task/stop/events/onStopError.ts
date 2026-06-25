@@ -1,17 +1,16 @@
 import { Collection } from "mongodb";
 
 import {
-  DeploymentStatus,
   EventDocument,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
-import { deploymentStatusFromError } from "../../deploymentStatusFromError.js";
+import { classifyTaskError, RetrySignal } from "../../retry/index.js";
 
 export function onStopError(
   error: string,
   collection: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument,
-  deploymentErrorStatus: (status: DeploymentStatus) => void,
+  setRetrySignal: (signal: RetrySignal) => void,
   tx?: string
 ) {
   collection.insertOne({
@@ -23,5 +22,5 @@ export function onStopError(
     created_at: new Date(),
   });
 
-  deploymentErrorStatus(deploymentStatusFromError(error));
+  setRetrySignal(classifyTaskError(error));
 }

@@ -59,6 +59,8 @@ export const DeploymentDocumentFields: Record<
   STRATEGY: "strategy",
   SCHEDULE: "schedule",
   ROTATION_TIME: "rotation_time",
+  RAPID_STREAK: "rapid_streak",
+  NEXT_RETRY_AT: "next_retry_at",
 };
 
 export type DeploymentCollection = Collection<DeploymentDocument>;
@@ -77,6 +79,18 @@ export type DeploymentDocumentBase = {
   confidential: boolean;
   created_at: Date;
   updated_at: Date;
+  /**
+   * Consecutive rapid-completion rounds (INFINITE): each rapid round throttles
+   * the next LIST with an escalating cooldown; reset by a healthy job. At
+   * `rapid_completion_max_streak` the deployment is stopped to protect funds.
+   */
+  rapid_streak?: number;
+  /**
+   * When a transiently-failing task is next due to retry (a handled
+   * LIST/EXTEND/STOP error or a rapid-completion throttle). Soft, for UI/tracing
+   * only — the deployment stays RUNNING while it waits; cleared on success.
+   */
+  next_retry_at?: Date;
 };
 
 export type Endpoint = {

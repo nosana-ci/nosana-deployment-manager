@@ -1,15 +1,14 @@
 import {
-  DeploymentStatus,
   EventsCollection,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
-import { deploymentStatusFromError } from "../../deploymentStatusFromError.js";
+import { classifyTaskError, RetrySignal } from "../../retry/index.js";
 
 export function onListError(
   events: EventsCollection,
   task: OutstandingTasksDocument,
   error: string,
-  setDeploymentErrorStatus: (status: DeploymentStatus) => void,
+  setRetrySignal: (signal: RetrySignal) => void,
   tx?: string
 ) {
   events.insertOne({
@@ -21,5 +20,5 @@ export function onListError(
     created_at: new Date(),
   });
 
-  setDeploymentErrorStatus(deploymentStatusFromError(error));
+  setRetrySignal(classifyTaskError(error));
 }

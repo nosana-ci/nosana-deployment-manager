@@ -7,10 +7,16 @@ import { scheduleTask } from "../../scheduleTask.js";
 import { orchestrateUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
 import { selectJobsToStop } from "./selectJobsToStop.js";
 import { onStopConfirmed, onStopError, onStopExit } from "./events/index.js";
+import {
+  RetrySignal,
+  applyRetryState,
+  clearRetryState,
+  retryDelayMs,
+  shouldRetry,
+} from "../retry/index.js";
 
 import { JobState, TaskType } from "../../../types/index.js";
 import type {
-  DeploymentStatus,
   OutstandingTasksDocument,
   TaskRunResult,
   WorkerData,
@@ -37,7 +43,7 @@ export async function runStopTask(
   }
 
   const stoppedJobs: string[] = [];
-  let deploymentErrorStatus: DeploymentStatus | undefined;
+  let retrySignal: RetrySignal | undefined;
 
   const handlers: OrchestrateHandlers = {
     onConfirmed: (_unit, signature, job) => {
@@ -51,8 +57,8 @@ export async function runStopTask(
         error,
         events,
         task,
-        (status) => {
-          deploymentErrorStatus = status;
+        (signal) => {
+          retrySignal = signal;
         },
         signature
       ),
@@ -91,8 +97,13 @@ export async function runStopTask(
     handlers,
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: stoppedJobs.length };
-  if (result.retry) {
-    return { outcome: "RETRY", successCount: stoppedJobs.length, retryAfterMs: result.retryAfterMs };
+  // A handled stop error reschedules the STOP with an escalating cooldown — the
+  // deployment stays STOPPING and keeps retrying the stop, instead of getting
+  // stuck in ERROR mid-teardown.
+  if (shouldRetry(result, retrySignal)) {
+    const delayMs = retryDelayMs(task, result, retrySignal);
+    await applyRetryState(deployments, task.deploymentId, retrySignal, delayMs);
+    return { outcome: "RETRY", successCount: stoppedJobs.length, retryAfterMs: delayMs };
   }
 
   // Full-stop self-heal: a LIST already in flight when the stop began can list a
@@ -103,7 +114,7 @@ export async function runStopTask(
   // tasks, so stragglers come only from already-in-flight lists and drain.
   // Excluding the frozen targets avoids looping on just-stopped jobs whose DB
   // state still lags behind the on-chain settle.
-  if (!task.limit && !task.job && !deploymentErrorStatus) {
+  if (!task.limit && !task.job) {
     const stragglers = await jobsCollection.countDocuments({
       deployment: task.deploymentId,
       state: { $in: [JobState.QUEUED, JobState.RUNNING] },
@@ -116,10 +127,8 @@ export async function runStopTask(
     }
   }
 
-  await onStopExit(stoppedJobs, jobsCollection, task, deployments, deploymentErrorStatus);
+  await onStopExit(stoppedJobs, jobsCollection, task, deployments);
+  if ((task.inflight_retries ?? 0) > 0) await clearRetryState(deployments, task.deploymentId);
 
-  return {
-    outcome: result.errored > 0 ? "FAILED" : "COMPLETED",
-    successCount: stoppedJobs.length,
-  };
+  return { outcome: "COMPLETED", successCount: stoppedJobs.length };
 }

@@ -5,8 +5,7 @@ export async function onStopExit(
   stoppedJobs: string[],
   jobsCollection: JobsCollection,
   { active_revision, deploymentId }: OutstandingTasksDocument,
-  deployments: DeploymentCollection,
-  newDeploymentStatus: DeploymentStatus | undefined
+  deployments: DeploymentCollection
 ) {
   if (!active_revision) {
     jobsCollection.updateMany(
@@ -20,17 +19,6 @@ export async function onStopExit(
         },
       }
     );
-  }
-
-  if (newDeploymentStatus) {
-    deployments.updateOne({
-      id: deploymentId
-    }, {
-      $set: {
-        status: newDeploymentStatus
-      }
-    });
-    return;
   }
 
   // When the STOP task finishes without stopping any jobs (e.g. all jobs

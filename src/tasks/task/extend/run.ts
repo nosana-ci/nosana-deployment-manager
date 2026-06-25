@@ -4,10 +4,16 @@ import { getConfig } from "../../../config/index.js";
 import { VaultWorker } from "../../../worker/Worker.js";
 import { getRepository } from "../../../repositories/index.js";
 import { reconcileUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
-import { onExtendConfirmed, onExtendError, onExtendExit } from "./events/index.js";
+import { onExtendConfirmed, onExtendError } from "./events/index.js";
+import {
+  RetrySignal,
+  applyRetryState,
+  clearRetryState,
+  retryDelayMs,
+  shouldRetry,
+} from "../retry/index.js";
 
 import {
-  DeploymentStatus,
   OutstandingTasksDocument,
   TaskRunResult,
   WorkerData,
@@ -22,7 +28,7 @@ export async function runExtendTask(
   const events = getRepository("events").collection;
   const deployments = getRepository("deployments").collection;
 
-  let deploymentErrorStatus: DeploymentStatus | undefined;
+  let retrySignal: RetrySignal | undefined;
   const handlers: OrchestrateHandlers = {
     onConfirmed: (_unit, signature, job) =>
       job ? onExtendConfirmed(events, task, db, signature, job) : undefined,
@@ -31,8 +37,8 @@ export async function runExtendTask(
         error,
         events,
         task,
-        (status) => {
-          deploymentErrorStatus = status;
+        (signal) => {
+          retrySignal = signal;
         },
         signature
       ),
@@ -59,14 +65,13 @@ export async function runExtendTask(
       }),
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
-  if (result.retry) {
-    return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: result.retryAfterMs };
+  if (shouldRetry(result, retrySignal)) {
+    const delayMs = retryDelayMs(task, result, retrySignal);
+    await applyRetryState(deployments, task.deploymentId, retrySignal, delayMs);
+    return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: delayMs };
   }
 
-  await onExtendExit(deploymentErrorStatus, deployments, task);
+  if ((task.inflight_retries ?? 0) > 0) await clearRetryState(deployments, task.deploymentId);
 
-  return {
-    outcome: result.errored > 0 ? "FAILED" : "COMPLETED",
-    successCount: result.confirmed,
-  };
+  return { outcome: "COMPLETED", successCount: result.confirmed };
 }

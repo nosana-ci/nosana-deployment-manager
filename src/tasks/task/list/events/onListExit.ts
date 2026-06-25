@@ -2,7 +2,6 @@ import { getNextTaskTime } from "../../../utils/index.js";
 import { getRepository } from "../../../../repositories/index.js";
 
 import {
-  DeploymentStatus,
   DeploymentStrategy,
   OutstandingTasksDocument,
   TaskStatus,
@@ -10,26 +9,12 @@ import {
 } from "../../../../types/index.js";
 
 /**
- * Post-run side effects for a LIST task: apply any deployment error status, and
- * for SCHEDULED deployments enqueue the next firing.
+ * Post-run side effects for a successful LIST task: for SCHEDULED deployments,
+ * enqueue the next cron firing. (Errors no longer land here — a handled error
+ * reschedules the task with a cooldown before the runner reaches this point.)
  */
-export async function onListExit(
-  task: OutstandingTasksDocument,
-  newDeploymentStatus: DeploymentStatus | undefined
-) {
-  const deployments = getRepository("deployments").collection;
+export async function onListExit(task: OutstandingTasksDocument) {
   const tasks = getRepository("tasks").collection;
-
-  if (newDeploymentStatus) {
-    try {
-      await deployments.updateOne(
-        { id: task.deploymentId },
-        { $set: { status: newDeploymentStatus } }
-      );
-    } catch (error) {
-      console.error("Failed to update deployment status:", error);
-    }
-  }
 
   const { strategy, schedule } = task.deployment;
   if (strategy === DeploymentStrategy.SCHEDULED && schedule) {

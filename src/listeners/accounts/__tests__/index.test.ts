@@ -33,7 +33,20 @@ describe('listeners/accounts/index', () => {
   const TX_1 = 'tx-1';
   const TX_2 = 'tx-2';
   const NOW = new Date('2025-01-01T00:00:00Z');
-  const JOB_NOT_FOUND_ERROR = 'Account does not exist or has no data';
+
+  /**
+   * A faithful `kit.jobs.get` rejection for an account that isn't on-chain: a
+   * SolanaError carrying `context.__code` 3230000
+   * (SOLANA_ERROR__ACCOUNTS__ACCOUNT_NOT_FOUND), as @solana/accounts throws.
+   */
+  const accountNotFoundError = (addr: string) => {
+    const error = new Error(`Account not found at address: ${addr}`) as Error & {
+      context: { __code: number; address: string };
+    };
+    error.name = 'SolanaError';
+    error.context = { __code: 3230000, address: addr };
+    return error;
+  };
 
   const mockJobsGet = vi.fn();
   const mockKit = {
@@ -163,7 +176,7 @@ describe('listeners/accounts/index', () => {
         createQueuedJob(JOB_2, DEPLOYMENT_1, TX_2)
       ];
       const marketAccount = setupMarketUpdate(queuedJobs, [JOB_1]);
-      mockJobsGet.mockRejectedValueOnce(new Error(JOB_NOT_FOUND_ERROR));
+      mockJobsGet.mockRejectedValueOnce(accountNotFoundError(JOB_2));
 
       await onMarketUpdate(mockDb, marketAccount);
 
@@ -191,7 +204,7 @@ describe('listeners/accounts/index', () => {
       ];
       const marketAccount = setupMarketUpdate(queuedJobs, []);
       mockJobsGet
-        .mockRejectedValueOnce(new Error(JOB_NOT_FOUND_ERROR))
+        .mockRejectedValueOnce(accountNotFoundError(JOB_1))
         .mockResolvedValueOnce({ address: address(JOB_2) } as Job);
 
       await onMarketUpdate(mockDb, marketAccount);
@@ -209,7 +222,7 @@ describe('listeners/accounts/index', () => {
       ];
       const marketAccount = setupMarketUpdate(queuedJobs, [], MarketQueueType.NODE_QUEUE);
       mockJobsGet
-        .mockRejectedValueOnce(new Error(JOB_NOT_FOUND_ERROR))
+        .mockRejectedValueOnce(accountNotFoundError(JOB_1))
         .mockResolvedValueOnce({ address: address(JOB_2) } as Job);
 
       await onMarketUpdate(mockDb, marketAccount);

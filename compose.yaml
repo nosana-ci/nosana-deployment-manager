@@ -3,6 +3,16 @@ x-dm-env: &dm-env
   NETWORK: "${NETWORK:-devnet}"
   VAULT_KEY: "${VAULT_KEY:-change_me}"
   TASKS_BATCH_SIZE: "${TASKS_BATCH_SIZE:-10}"
+  # Transient-failure retry cooldown (ms). Override low (e.g. 2000) for fast
+  # targeted error-scenario runs. `0` for TASK_MAX_INFLIGHT_RETRIES = retry forever.
+  RETRY_COOLDOWN_BASE_MS: "${RETRY_COOLDOWN_BASE_MS:-30000}"
+  TASK_MAX_INFLIGHT_RETRIES: "${TASK_MAX_INFLIGHT_RETRIES:-60}"
+  # Rapid-completion throttle/ceiling. The rapid-completion scenario tests set
+  # JOB_COUNT=1 (throttle on a single fast job) and MAX_STREAK=1 (ceiling-stop on
+  # the first round) so they need only one finish cycle. `0` MAX_STREAK = never stop.
+  RAPID_COMPLETION_JOB_COUNT: "${RAPID_COMPLETION_JOB_COUNT:-3}"
+  RAPID_COMPLETION_MAX_STREAK: "${RAPID_COMPLETION_MAX_STREAK:-8}"
+  RAPID_COMPLETION_COOLDOWN_BASE_MS: "${RAPID_COMPLETION_COOLDOWN_BASE_MS:-60000}"
   CONFIDENTIAL_BY_DEFAULT: "${CONFIDENTIAL_BY_DEFAULT:-true}"
   DEPLOYMENT_MANAGER_PORT: "${DEPLOYMENT_MANAGER_PORT:-3000}"
   SOLANA_NETWORK: "${SOLANA_NETWORK}"

@@ -5,7 +5,7 @@ vi.mock('../../../tasks/scheduleTask.js', () => ({
 }));
 
 vi.mock('../../../repositories/index.js', () => ({
-  DeploymentsRepository: { update: vi.fn() },
+  DeploymentsRepository: { update: vi.fn(), collection: { updateOne: vi.fn() } },
   EventsRepository: { create: vi.fn() },
   JobsRepository: { findAll: vi.fn(), count: vi.fn() },
   withTransaction: vi.fn(async (fn: (session: unknown) => Promise<unknown>) => fn({ __fakeSession: true })),
@@ -259,12 +259,84 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       });
     });
 
-    it('should stop deployment when last 3 jobs all completed in under 5 minutes', async () => {
-      mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, FIVE_MINUTES - 1000),
-        makeRapidJob(1, FIVE_MINUTES - 1000),
-        makeRapidJob(2, FIVE_MINUTES - 1000),
-      ]);
+    const threeRapidJobs = () => [
+      makeRapidJob(0, 60_000),
+      makeRapidJob(1, 60_000),
+      makeRapidJob(2, 60_000),
+    ];
+
+    it('throttles the next round (instead of stopping) on the first rapid round', async () => {
+      vi.mocked(scheduleTask).mockResolvedValue(true);
+      mockedJobsFindAll.mockResolvedValue(threeRapidJobs());
+
+      await handler(mockJobDocument, mockDb);
+
+      // base cooldown = 60_000ms -> due = mockNow + 60s
+      const due = new Date(mockNow.getTime() + 60_000);
+      expect(scheduleTask).toHaveBeenCalledWith(
+        mockDb,
+        TaskType.LIST,
+        testDeployment,
+        DeploymentStatus.RUNNING,
+        due,
+        { limit: 1, idempotent: true },
+      );
+      expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
+        { id: testDeployment },
+        { rapid_streak: 1, next_retry_at: due },
+      );
+      expect(mockedEventsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'RAPID_COMPLETION_THROTTLE' }),
+      );
+      // Did NOT stop the deployment.
+      expect(mockedWithTransaction).not.toHaveBeenCalled();
+    });
+
+    it('escalates the cooldown with the rapid streak', async () => {
+      vi.mocked(scheduleTask).mockResolvedValue(true);
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        rapid_streak: 2,
+      });
+      mockedJobsFindAll.mockResolvedValue(threeRapidJobs());
+
+      await handler(mockJobDocument, mockDb);
+
+      // streak 2 -> cooldown = 60_000 * 2^2 = 240_000ms
+      const due = new Date(mockNow.getTime() + 240_000);
+      expect(scheduleTask).toHaveBeenCalledWith(
+        mockDb,
+        TaskType.LIST,
+        testDeployment,
+        DeploymentStatus.RUNNING,
+        due,
+        { limit: 1, idempotent: true },
+      );
+      expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
+        { id: testDeployment },
+        { rapid_streak: 3, next_retry_at: due },
+      );
+    });
+
+    it('does not bump the streak or emit when the throttled round is already pending', async () => {
+      vi.mocked(scheduleTask).mockResolvedValue(false); // idempotent skip
+      mockedJobsFindAll.mockResolvedValue(threeRapidJobs());
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(mockedDeploymentsUpdate).not.toHaveBeenCalled();
+      expect(mockedEventsCreate).not.toHaveBeenCalled();
+    });
+
+    it('stops the deployment at the streak ceiling to protect funds', async () => {
+      // max_streak default 8 -> stop when streak + 1 >= 8, i.e. streak >= 7
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        rapid_streak: 7,
+      });
+      mockedJobsFindAll.mockResolvedValue(threeRapidJobs());
 
       await handler(mockJobDocument, mockDb);
 
@@ -274,17 +346,6 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         { status: DeploymentStatus.STOPPING },
         expect.objectContaining({ session: expect.anything() }),
       );
-    });
-
-    it('should emit a RAPID_COMPLETION_FAIL_SAFE event', async () => {
-      mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, 60_000),
-        makeRapidJob(1, 60_000),
-        makeRapidJob(2, 60_000),
-      ]);
-
-      await handler(mockJobDocument, mockDb);
-
       expect(mockedEventsCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           category: EventType.DEPLOYMENT,
@@ -293,14 +354,17 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         }),
         expect.objectContaining({ session: expect.anything() }),
       );
+      // At the ceiling we stop, not throttle — no replacement LIST scheduled.
+      expect(scheduleTask).not.toHaveBeenCalled();
     });
 
-    it('should NOT emit event when deployment update returns null (race lost)', async () => {
-      mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, 60_000),
-        makeRapidJob(1, 60_000),
-        makeRapidJob(2, 60_000),
-      ]);
+    it('does not emit the stop event when the ceiling CAS loses the race', async () => {
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        rapid_streak: 7,
+      });
+      mockedJobsFindAll.mockResolvedValue(threeRapidJobs());
       mockedDeploymentsUpdate.mockResolvedValue(null);
 
       await handler(mockJobDocument, mockDb);
@@ -309,16 +373,25 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       expect(mockedEventsCreate).not.toHaveBeenCalled();
     });
 
-    it('should NOT schedule a replacement job when fail-safe triggers', async () => {
+    it('resets the rapid streak on a healthy completion', async () => {
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        rapid_streak: 3,
+      });
       mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, 60_000),
+        makeRapidJob(0, FIVE_MINUTES + 1000), // one long job -> not all rapid
         makeRapidJob(1, 60_000),
         makeRapidJob(2, 60_000),
       ]);
+      mockedJobsCount.mockResolvedValue(3);
 
       await handler(mockJobDocument, mockDb);
 
-      expect(scheduleTask).not.toHaveBeenCalled();
+      expect(vi.mocked(DeploymentsRepository.collection.updateOne)).toHaveBeenCalledWith(
+        { id: testDeployment },
+        { $set: { rapid_streak: 0 }, $unset: { next_retry_at: '' } },
+      );
     });
 
     it('should NOT trigger when one job ran longer than 5 minutes', async () => {

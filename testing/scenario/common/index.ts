@@ -6,6 +6,8 @@ export * from "./deployment/checkEventsPagination.js";
 export * from "./deployment/checkRevisionsPagination.js";
 export * from "./deployment/waitForDeploymentEvent.js";
 export * from "./deployment/waitForDeploymentHasNoTasks.js";
+export * from "./deployment/waitForDeploymentHasTask.js";
+export * from "./deployment/checkDeploymentStatusNot.js";
 export * from "./deployment/checkAllJobsStopped.js";
 export * from "./deployment/checkDeploymentExtendTask.js"
 export * from "./deployment/checkNoDeploymentExtendTask.js";

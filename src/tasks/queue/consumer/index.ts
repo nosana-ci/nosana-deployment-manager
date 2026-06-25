@@ -130,9 +130,11 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
         await abandonOverCap(collection, deployments, task);
         continue;
       }
-      // Separate, more generous bound on legitimate in-flight retries (which don't
-      // touch `attempts`): stops a stuck key / CM outage from retrying forever.
-      if ((task.inflight_retries ?? 0) >= task_max_inflight_retries) {
+      // Separate, more generous bound on legitimate in-flight retries / retryable
+      // task errors (which don't touch `attempts`): exhausting a *finite* cap
+      // abandons the deployment to ERROR. `0` disables the cap — retry forever at
+      // the capped cooldown.
+      if (task_max_inflight_retries > 0 && (task.inflight_retries ?? 0) >= task_max_inflight_retries) {
         await abandonInflightExhausted(collection, deployments, task);
         continue;
       }

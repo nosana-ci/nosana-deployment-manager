@@ -57,6 +57,36 @@ const commonConfig: Omit<
   task_confirm_poll_interval_ms: process.env.TASK_CONFIRM_POLL_INTERVAL_MS
     ? parseInt(process.env.TASK_CONFIRM_POLL_INTERVAL_MS)
     : 2_000,
+  retry_cooldown_base_ms: process.env.RETRY_COOLDOWN_BASE_MS
+    ? parseInt(process.env.RETRY_COOLDOWN_BASE_MS)
+    : 30_000,
+  retry_cooldown_max_ms: process.env.RETRY_COOLDOWN_MAX_MS
+    ? parseInt(process.env.RETRY_COOLDOWN_MAX_MS)
+    : 600_000,
+  retry_cooldown_multiplier: process.env.RETRY_COOLDOWN_MULTIPLIER
+    ? parseFloat(process.env.RETRY_COOLDOWN_MULTIPLIER)
+    : 2,
+  insufficient_funds_cooldown_base_ms: process.env.INSUFFICIENT_FUNDS_COOLDOWN_BASE_MS
+    ? parseInt(process.env.INSUFFICIENT_FUNDS_COOLDOWN_BASE_MS)
+    : 600_000,
+  insufficient_funds_cooldown_max_ms: process.env.INSUFFICIENT_FUNDS_COOLDOWN_MAX_MS
+    ? parseInt(process.env.INSUFFICIENT_FUNDS_COOLDOWN_MAX_MS)
+    : 21_600_000,
+  insufficient_funds_cooldown_multiplier: process.env.INSUFFICIENT_FUNDS_COOLDOWN_MULTIPLIER
+    ? parseFloat(process.env.INSUFFICIENT_FUNDS_COOLDOWN_MULTIPLIER)
+    : 2,
+  rapid_completion_cooldown_base_ms: process.env.RAPID_COMPLETION_COOLDOWN_BASE_MS
+    ? parseInt(process.env.RAPID_COMPLETION_COOLDOWN_BASE_MS)
+    : 60_000,
+  rapid_completion_cooldown_max_ms: process.env.RAPID_COMPLETION_COOLDOWN_MAX_MS
+    ? parseInt(process.env.RAPID_COMPLETION_COOLDOWN_MAX_MS)
+    : 3_600_000,
+  rapid_completion_cooldown_multiplier: process.env.RAPID_COMPLETION_COOLDOWN_MULTIPLIER
+    ? parseFloat(process.env.RAPID_COMPLETION_COOLDOWN_MULTIPLIER)
+    : 2,
+  rapid_completion_max_streak: process.env.RAPID_COMPLETION_MAX_STREAK
+    ? parseInt(process.env.RAPID_COMPLETION_MAX_STREAK)
+    : 8,
 };
 
 export const defaultConfig: { [key: string]: DeploymentsConfig } = {

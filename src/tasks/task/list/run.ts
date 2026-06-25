@@ -3,9 +3,15 @@ import { getConfig } from "../../../config/index.js";
 import { getRepository } from "../../../repositories/index.js";
 import { reconcileUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
+import {
+  RetrySignal,
+  applyRetryState,
+  clearRetryState,
+  retryDelayMs,
+  shouldRetry,
+} from "../retry/index.js";
 
 import {
-  DeploymentStatus,
   DeploymentStrategy,
   OutstandingTasksDocument,
   TaskRunResult,
@@ -29,8 +35,9 @@ export async function runListTask(
   const tasks = getRepository("tasks").collection;
   const jobs = getRepository("jobs").collection;
   const events = getRepository("events").collection;
+  const deployments = getRepository("deployments").collection;
 
-  let deploymentErrorStatus: DeploymentStatus | undefined;
+  let retrySignal: RetrySignal | undefined;
   const handlers: OrchestrateHandlers = {
     onConfirmed: (_unit, signature, job) =>
       job ? onListConfirmed(jobs, events, task, signature, job) : undefined,
@@ -39,8 +46,8 @@ export async function runListTask(
         events,
         task,
         error,
-        (status) => {
-          deploymentErrorStatus = status;
+        (signal) => {
+          retrySignal = signal;
         },
         signature
       ),
@@ -75,14 +82,17 @@ export async function runListTask(
       }),
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
-  if (result.retry) {
-    return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: result.retryAfterMs };
+  // A handled error (or an in-flight wait) reschedules the task with an escalating
+  // cooldown instead of flipping the deployment to terminal ERROR — it stays
+  // RUNNING while it retries. The errored unit re-signs via reconcile top-up.
+  if (shouldRetry(result, retrySignal)) {
+    const delayMs = retryDelayMs(task, result, retrySignal);
+    await applyRetryState(deployments, task.deploymentId, retrySignal, delayMs);
+    return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: delayMs };
   }
 
-  await onListExit(task, deploymentErrorStatus);
+  await onListExit(task);
+  if ((task.inflight_retries ?? 0) > 0) await clearRetryState(deployments, task.deploymentId);
 
-  return {
-    outcome: result.errored > 0 ? "FAILED" : "COMPLETED",
-    successCount: result.confirmed,
-  };
+  return { outcome: "COMPLETED", successCount: result.confirmed };
 }

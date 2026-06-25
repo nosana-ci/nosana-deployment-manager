@@ -17,7 +17,13 @@ vi.mock("../../../repositories/index.js", () => ({
 vi.mock("../../../worker/Worker.js", () => ({ VaultWorker: vi.fn() }));
 vi.mock("./events/index.js", () => ({
   onListConfirmed: vi.fn(),
-  onListError: vi.fn(),
+  // Mirror the real handler's relevant behaviour: flag the run as retryable.
+  onListError: (
+    _events: unknown,
+    _task: unknown,
+    error: string,
+    setRetrySignal: (signal: { insufficientFunds: boolean }) => void
+  ) => setRetrySignal({ insufficientFunds: String(error).includes("InsufficientFundsForRent") }),
   onListExit: (...a: unknown[]) => onListExit(...a),
 }));
 
@@ -69,5 +75,29 @@ describe("runListTask target", () => {
 
     expect(tasksUpdateOne).toHaveBeenCalledWith({ _id: task._id }, { $set: { target_count: 8 } });
     expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 8 }));
+  });
+
+  it("reschedules (RETRY) instead of failing terminally on a handled error", async () => {
+    reconcileUnits.mockImplementation(async ({ handlers }: { handlers: { onError: (u: number, e: string) => void } }) => {
+      await handlers.onError(0, "Transaction simulation failed");
+      return { confirmed: 0, errored: 1, aborted: false, retry: false };
+    });
+    const task = makeTask({ target_count: 1, replicas: 1 });
+
+    const result = await runListTask(task, new AbortController().signal);
+
+    expect(result.outcome).toBe("RETRY");
+    expect(result.retryAfterMs).toBeGreaterThan(0);
+    expect(onListExit).not.toHaveBeenCalled(); // no terminal side effects on a retry
+  });
+
+  it("applies the escalating cooldown floor to an in-flight RETRY", async () => {
+    reconcileUnits.mockResolvedValue({ confirmed: 0, errored: 0, aborted: false, retry: true, retryAfterMs: 1 });
+    const task = makeTask({ target_count: 1, replicas: 1 });
+
+    const result = await runListTask(task, new AbortController().signal);
+
+    expect(result.outcome).toBe("RETRY");
+    expect(result.retryAfterMs).toBeGreaterThan(1); // tiny CM hint floored by the ladder
   });
 });

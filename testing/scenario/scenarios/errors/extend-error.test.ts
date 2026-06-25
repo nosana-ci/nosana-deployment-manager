@@ -1,8 +1,11 @@
 import { Deployment, DeploymentStatus, DeploymentStrategy, JobState } from "@nosana/kit";
 
 import { createFlow, createState } from "../../utils/index.js";
-import { createDeployment, startDeployment, waitForDeploymentStatus, checkDeploymentJobs, withdrawFundsFromVault, joinMarketQueue, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, waitForDeploymentEvent, waitForDeploymentHasNoTasks } from "../../common/index.js";;
+import { createDeployment, startDeployment, checkDeploymentJobs, withdrawFundsFromVault, joinMarketQueue, waitForJobState, checkDeploymentExtendTask, waitForTaskComplete, waitForDeploymentEvent, checkDeploymentStatusNot, topupVault } from "../../common/index.js";
+import { topup_balance } from "../../setup.js";
 
+// A failed EXTEND now retries instead of abandoning the deployment to ERROR.
+//   npm run test:scenarios -- errors extend-error
 createFlow('Extend Error', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
@@ -12,6 +15,10 @@ createFlow('Extend Error', (step) => {
     strategy: DeploymentStrategy["SIMPLE-EXTEND"],
     timeout: 1.5
   }))
+
+  // Self-sufficient under the `errors` aggregator: an earlier flow may have
+  // drained the shared vault, so ensure there are funds to post a job.
+  step("ensure vault is funded", topupVault(topup_balance));
 
   step('join market queue before starting deployment', joinMarketQueue(() => deployment.get().market));
 
@@ -31,11 +38,12 @@ createFlow('Extend Error', (step) => {
 
   step('wait for extend task to execute (<= 2 minutes)', waitForTaskComplete(deployment));
 
-  step("wait for deployment JOB_LIST_ERROR event", waitForDeploymentEvent(deployment, {
+  step("wait for deployment JOB_EXTEND_ERROR event", waitForDeploymentEvent(deployment, {
     type: "JOB_EXTEND_ERROR"
   }));
 
-  step("wait for deployment to be in ERROR status", waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.ERROR }));
-
-  step("deployment should not have any tasks", waitForDeploymentHasNoTasks(deployment));
+  // New behaviour: the failed EXTEND retries with a cooldown; the deployment is
+  // NOT abandoned to terminal ERROR. (It keeps running until the job naturally
+  // ends, since the extends can't land while the vault is empty.)
+  step("deployment is not abandoned to ERROR", checkDeploymentStatusNot(deployment, [DeploymentStatus.ERROR]));
 })

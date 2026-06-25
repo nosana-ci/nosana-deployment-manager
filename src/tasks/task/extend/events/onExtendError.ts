@@ -1,17 +1,16 @@
 import { Collection } from "mongodb";
 
 import {
-  DeploymentStatus,
   EventDocument,
   OutstandingTasksDocument,
 } from "../../../../types/index.js";
-import { deploymentStatusFromError } from "../../deploymentStatusFromError.js";
+import { classifyTaskError, RetrySignal } from "../../retry/index.js";
 
 export function onExtendError(
   error: string,
   events: Collection<EventDocument>,
   { deploymentId }: OutstandingTasksDocument,
-  setError: (status: DeploymentStatus) => void,
+  setRetrySignal: (signal: RetrySignal) => void,
   tx?: string
 ) {
   events.insertOne({
@@ -23,5 +22,5 @@ export function onExtendError(
     created_at: new Date(),
   });
 
-  setError(deploymentStatusFromError(error));
+  setRetrySignal(classifyTaskError(error));
 }

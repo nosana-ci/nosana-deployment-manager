@@ -40,21 +40,31 @@ describe("shouldRetry", () => {
 });
 
 describe("retryDelayMs", () => {
-  it("escalates with inflight_retries", () => {
+  it("escalates a handled error with inflight_retries", () => {
     const first = retryDelayMs(task(0), {}, { insufficientFunds: false });
     const later = retryDelayMs(task(3), {}, { insufficientFunds: false });
     expect(later).toBeGreaterThan(first);
   });
 
-  it("honours the CM Retry-After hint as a floor", () => {
+  it("honours the CM Retry-After as a floor for a handled error", () => {
     const hugeHint = 999_999_999;
-    expect(retryDelayMs(task(0), { retryAfterMs: hugeHint }, undefined)).toBe(hugeHint);
+    expect(retryDelayMs(task(0), { retryAfterMs: hugeHint }, { insufficientFunds: false })).toBe(hugeHint);
   });
 
-  it("uses the slower funds ladder when the error is insufficient funds", () => {
+  it("uses the slower funds ladder for an insufficient-funds error", () => {
     const standard = retryDelayMs(task(0), {}, { insufficientFunds: false });
     const funds = retryDelayMs(task(0), {}, { insufficientFunds: true });
     expect(funds).toBeGreaterThan(standard);
+  });
+
+  it("does NOT escalate an in-flight wait — polls at the CM cadence", () => {
+    // No signal = CM IN_PROGRESS / in-flight: honour the hint exactly...
+    expect(retryDelayMs(task(50), { retryAfterMs: 2_000 }, undefined)).toBe(2_000);
+    // ...and a high inflight_retries must NOT inflate the in-flight delay the way
+    // a handled error would.
+    const inflight = retryDelayMs(task(50), {}, undefined);
+    const errored = retryDelayMs(task(50), {}, { insufficientFunds: false });
+    expect(inflight).toBeLessThan(errored);
   });
 });
 

@@ -28,17 +28,31 @@ export function shouldRetry(
   return !result.aborted && (result.retry || signal !== undefined);
 }
 
+/** Re-poll delay for an in-flight wait when the CM gave no `Retry-After` hint. */
+const INFLIGHT_RETRY_DEFAULT_MS = 5_000;
+
 /**
- * Escalating reschedule delay, keyed off `inflight_retries` (the count of prior
- * non-crash retries). Honours the CM `Retry-After` hint as a floor.
+ * How long to wait before re-running a rescheduled task. Two distinct kinds:
+ *
+ *  - **Handled error** (`signal` set): a real failure, so back off on the
+ *    escalating cooldown (honouring the CM `Retry-After` as a floor) — the
+ *    deployment stays put and retries until the cap.
+ *  - **In-flight wait** (`signal` undefined, i.e. CM `IN_PROGRESS` / a lost
+ *    response): a legitimate "still working, retry shortly" — poll at the CM's
+ *    suggested cadence (or a short default), NOT the escalating error backoff.
+ *    Escalating here would re-poll so slowly that e.g. a stop of a running job
+ *    never confirms before the job times out on its own.
  */
 export function retryDelayMs(
   task: OutstandingTasksDocument,
   result: { retryAfterMs?: number },
   signal: RetrySignal | undefined
 ): number {
-  const escalating = retryCooldownMs(task.inflight_retries ?? 0, signal?.insufficientFunds ?? false);
-  return Math.max(result.retryAfterMs ?? 0, escalating);
+  if (signal) {
+    const escalating = retryCooldownMs(task.inflight_retries ?? 0, signal.insufficientFunds);
+    return Math.max(result.retryAfterMs ?? 0, escalating);
+  }
+  return result.retryAfterMs ?? INFLIGHT_RETRY_DEFAULT_MS;
 }
 
 /**

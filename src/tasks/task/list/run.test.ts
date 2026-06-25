@@ -91,13 +91,13 @@ describe("runListTask target", () => {
     expect(onListExit).not.toHaveBeenCalled(); // no terminal side effects on a retry
   });
 
-  it("applies the escalating cooldown floor to an in-flight RETRY", async () => {
-    reconcileUnits.mockResolvedValue({ confirmed: 0, errored: 0, aborted: false, retry: true, retryAfterMs: 1 });
+  it("honours the CM Retry-After cadence for an in-flight RETRY (no escalation)", async () => {
+    reconcileUnits.mockResolvedValue({ confirmed: 0, errored: 0, aborted: false, retry: true, retryAfterMs: 2000 });
     const task = makeTask({ target_count: 1, replicas: 1 });
 
     const result = await runListTask(task, new AbortController().signal);
 
     expect(result.outcome).toBe("RETRY");
-    expect(result.retryAfterMs).toBeGreaterThan(1); // tiny CM hint floored by the ladder
+    expect(result.retryAfterMs).toBe(2000); // CM cadence honoured, not floored to the error ladder
   });
 });

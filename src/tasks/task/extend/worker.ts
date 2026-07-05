@@ -21,11 +21,16 @@ try {
   const {
     deployment: { timeout },
     job,
+    extend_seconds,
   } = task;
 
   if (!job) {
     throw new Error("No job specified for extension.");
   }
+
+  // One-shot re-alignment extends by an explicit delta; the recurring chain
+  // extends by the full deployment timeout.
+  const seconds = extend_seconds ?? timeout * 60;
 
   try {
     if (useNosanaApiKey) {
@@ -36,7 +41,7 @@ try {
         unit: startUnit,
         maxEpoch: MAX_IDEMPOTENCY_EPOCH,
         attempt: (idempotencyKey) =>
-          kit.api!.jobs.extend({ address: job, seconds: timeout * 60 }, { idempotencyKey }),
+          kit.api!.jobs.extend({ address: job, seconds }, { idempotencyKey }),
       });
 
       if (result.kind === "ok") {
@@ -58,7 +63,7 @@ try {
         parentPort!.postMessage({ event: "ERROR", unit: startUnit, error: result.error });
       }
     } else {
-      const instruction = await kit.jobs.extend({ job: address(job), timeout: timeout * 60 });
+      const instruction = await kit.jobs.extend({ job: address(job), timeout: seconds });
       const { blob, lastValidBlockHeight } = await signTransactionToBlob(kit, instruction);
 
       parentPort!.postMessage({

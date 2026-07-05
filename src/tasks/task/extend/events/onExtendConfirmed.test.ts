@@ -55,4 +55,17 @@ describe("onExtendConfirmed", () => {
     expect(scheduleTask).not.toHaveBeenCalled();
     expect(insertOne).not.toHaveBeenCalled();
   });
+
+  it("a one-shot re-alignment extend (extend_seconds set) logs success but does NOT reschedule", async () => {
+    const oneShot = {
+      deploymentId: "dep-1",
+      deployment: { status: "RUNNING", timeout: 3600 },
+      extend_seconds: 1800,
+    } as unknown as OutstandingTasksDocument;
+
+    await onExtendConfirmed(events, oneShot, db, "sig-1", "job-1");
+
+    expect(scheduleTask).not.toHaveBeenCalled();
+    expect(insertOne).toHaveBeenCalledOnce();
+  });
 });

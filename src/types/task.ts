@@ -81,6 +81,14 @@ export type TaskDocument = {
   active_revision?: number;
   limit?: number;
   job?: string;
+  /**
+   * One-shot EXTEND: when present the worker extends the job by exactly this many
+   * seconds (instead of `deployment.timeout * 60`) and `onExtendConfirmed` does
+   * NOT reschedule a follow-up cycle. Used to re-align a running job to an
+   * increased deployment timeout (see `applyTimeoutIncrease`) without starting an
+   * extend chain on strategies that don't have one (INFINITE).
+   */
+  extend_seconds?: number;
   created_at: Date;
   // --- state machine (Phase 1) ---
   status: TaskStatus;

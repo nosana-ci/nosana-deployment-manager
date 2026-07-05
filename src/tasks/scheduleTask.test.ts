@@ -50,9 +50,30 @@ describe("scheduleTask", () => {
     expect(created).toBe(true);
     expect(insertOne).not.toHaveBeenCalled();
     expect(updateOne).toHaveBeenCalledWith(
-      { task: TaskType.EXTEND, deploymentId: "dep-1", status: "PENDING", job: "job-1" },
+      {
+        task: TaskType.EXTEND,
+        deploymentId: "dep-1",
+        status: "PENDING",
+        extend_seconds: { $exists: false },
+        job: "job-1",
+      },
       { $setOnInsert: expect.objectContaining({ task: TaskType.EXTEND, job: "job-1" }) },
       { upsert: true }
+    );
+  });
+
+  it("idempotent match excludes one-shot delta extends so the chain isn't blocked by a re-alignment extend", async () => {
+    updateOne.mockResolvedValueOnce({ upsertedCount: 1 });
+
+    await scheduleTask(db, TaskType.EXTEND, "dep-1", DeploymentStatus.RUNNING, new Date(0), {
+      job: "job-1",
+      idempotent: true,
+    });
+
+    expect(updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({ extend_seconds: { $exists: false } }),
+      expect.anything(),
+      expect.anything()
     );
   });
 

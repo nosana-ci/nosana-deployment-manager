@@ -8,6 +8,12 @@ type ScheduleTaskOptions = Partial<{
   limit?: number;
   job?: string;
   /**
+   * One-shot EXTEND amount in seconds (see `TaskDocument.extend_seconds`). Set by
+   * deploymentTimeoutUpdate to bump a running job to an increased timeout without
+   * kicking off / continuing an extend chain.
+   */
+  extend_seconds?: number;
+  /**
    * Skip the insert when an identical PENDING task (same task/deployment/job)
    * already exists. Makes a recurring re-schedule idempotent — e.g. the EXTEND
    * chain, where a crash after confirm but before the source task is deleted
@@ -30,6 +36,7 @@ export async function scheduleTask(
     active_revision,
     limit,
     job,
+    extend_seconds,
     idempotent,
   }: ScheduleTaskOptions = {}
 ): Promise<boolean> {
@@ -45,6 +52,7 @@ export async function scheduleTask(
     active_revision,
     limit,
     job,
+    extend_seconds,
     created_at: new Date(),
     status: TaskStatus.PENDING,
     attempts: 0,
@@ -54,8 +62,17 @@ export async function scheduleTask(
   if (idempotent) {
     // At most one PENDING task per (task, deployment, job): a re-schedule while
     // one is still queued is a no-op, so a reclaimed confirm can't double-queue.
+    // Exclude one-shot delta extends (`extend_seconds` set) from the match so a
+    // pending re-alignment extend never dedups against — or blocks — the regular
+    // EXTEND chain for the same (deployment, job).
     const { upsertedCount } = await tasks.updateOne(
-      { task, deploymentId, status: TaskStatus.PENDING, ...(job !== undefined ? { job } : {}) },
+      {
+        task,
+        deploymentId,
+        status: TaskStatus.PENDING,
+        extend_seconds: { $exists: false },
+        ...(job !== undefined ? { job } : {}),
+      },
       { $setOnInsert: doc },
       { upsert: true }
     );

@@ -20,6 +20,21 @@ export async function onExtendConfirmed(
   // also stopped the cycle.)
   if (!signature) return;
 
+  // A one-shot re-alignment extend (delta bump for a changed deployment timeout)
+  // must not reschedule — it would start an extend chain on a strategy that has
+  // none (INFINITE) or double-chain SIMPLE-EXTEND. Log the success and stop.
+  if (task.extend_seconds != null) {
+    await events.insertOne({
+      deploymentId: task.deploymentId,
+      category: "Deployment",
+      type: "JOB_EXTEND_SUCCESSFUL",
+      message: `Successfully extended job - TX ${signature}`,
+      tx: signature,
+      created_at: new Date(),
+    });
+    return;
+  }
+
   // Schedule the next cycle idempotently FIRST: if a crash hit after a prior
   // confirm but before this task was deleted, the reclaim re-runs this handler
   // against a CM replay — `idempotent` makes the re-schedule a no-op so we never

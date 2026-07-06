@@ -6,15 +6,20 @@ import { retryCooldownMs } from "../../utils/cooldown.js";
  * What a handled task error tells us about how to retry it. A transient failure
  * no longer flips the deployment to terminal ERROR — instead the task is
  * rescheduled with an escalating cooldown and the deployment keeps doing what it
- * was doing (RUNNING / STOPPING). `InsufficientFundsForRent` is the one exception
- * we keep visible (it's actionable — top up the vault) and retry more slowly.
+ * was doing (RUNNING / STOPPING). A funds shortfall is the one exception we keep
+ * visible (it's actionable — top up the vault / credits) and retry more slowly:
+ * both the on-chain rent error (`InsufficientFundsForRent`) and the client
+ * manager's credit-exhaustion error (`Insufficient credits`) qualify.
  */
 export type RetrySignal = {
   insufficientFunds: boolean;
 };
 
+/** Substrings marking a funds/credit shortfall — retried on the slow funds ladder. */
+const FUNDS_ERROR_MARKERS = ["InsufficientFundsForRent", "Insufficient credits"];
+
 export function classifyTaskError(error: string): RetrySignal {
-  return { insufficientFunds: error.includes("InsufficientFundsForRent") };
+  return { insufficientFunds: FUNDS_ERROR_MARKERS.some((marker) => error.includes(marker)) };
 }
 
 /**

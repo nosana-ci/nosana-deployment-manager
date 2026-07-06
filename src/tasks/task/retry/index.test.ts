@@ -19,6 +19,14 @@ describe("classifyTaskError", () => {
     expect(classifyTaskError("Error: InsufficientFundsForRent at ...").insufficientFunds).toBe(true);
   });
 
+  it("flags the client manager's credit-exhaustion error", () => {
+    expect(
+      classifyTaskError(
+        "Error Failed to list job batch: Insufficient credits. Available: $0.000, Required: $1.047"
+      ).insufficientFunds
+    ).toBe(true);
+  });
+
   it("treats any other error as a standard retry", () => {
     expect(classifyTaskError("Transaction simulation failed").insufficientFunds).toBe(false);
   });

@@ -137,7 +137,7 @@ describe("startTaskCollectionListener", () => {
 
     expect(deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
     expect(deploymentsUpdateOne).toHaveBeenCalledWith(
-      { id: task.deploymentId },
+      { id: task.deploymentId, status: { $ne: "ARCHIVED" } },
       { $set: { status: "ERROR" } }
     );
     expect(runListTask).not.toHaveBeenCalled();
@@ -176,7 +176,7 @@ describe("startTaskCollectionListener", () => {
 
     expect(deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
     expect(deploymentsUpdateOne).toHaveBeenCalledWith(
-      { id: task.deploymentId },
+      { id: task.deploymentId, status: { $ne: "ARCHIVED" } },
       { $set: { status: "ERROR" } }
     );
     expect(runListTask).not.toHaveBeenCalled();

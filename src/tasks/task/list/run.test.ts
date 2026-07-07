@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ObjectId } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 
 import { DeploymentStrategy } from "../../../types/index.js";
 import type { OutstandingTasksDocument } from "../../../types/index.js";
@@ -28,6 +28,9 @@ vi.mock("./events/index.js", () => ({
 }));
 
 import { runListTask } from "./run.js";
+
+// These cases never hit the negative-balance path, so `db` is only a placeholder.
+const db = {} as Db;
 
 function makeTask(over: {
   target_count?: number;
@@ -62,7 +65,7 @@ describe("runListTask target", () => {
     // target_count frozen at 5, but the (reloaded) deployment now says 20 replicas.
     const task = makeTask({ target_count: 5, replicas: 20 });
 
-    await runListTask(task, new AbortController().signal);
+    await runListTask(db, task, new AbortController().signal);
 
     expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 5 }));
     expect(tasksUpdateOne).not.toHaveBeenCalled(); // already frozen — no re-persist
@@ -71,7 +74,7 @@ describe("runListTask target", () => {
   it("computes and persists target_count from replicas on the first attempt", async () => {
     const task = makeTask({ replicas: 8, strategy: DeploymentStrategy.SIMPLE, jobs: [] });
 
-    await runListTask(task, new AbortController().signal);
+    await runListTask(db, task, new AbortController().signal);
 
     expect(tasksUpdateOne).toHaveBeenCalledWith({ _id: task._id }, { $set: { target_count: 8 } });
     expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 8 }));
@@ -84,7 +87,7 @@ describe("runListTask target", () => {
     });
     const task = makeTask({ target_count: 1, replicas: 1 });
 
-    const result = await runListTask(task, new AbortController().signal);
+    const result = await runListTask(db, task, new AbortController().signal);
 
     expect(result.outcome).toBe("RETRY");
     expect(result.retryAfterMs).toBeGreaterThan(0);
@@ -95,7 +98,7 @@ describe("runListTask target", () => {
     reconcileUnits.mockResolvedValue({ confirmed: 0, errored: 0, aborted: false, retry: true, retryAfterMs: 2000 });
     const task = makeTask({ target_count: 1, replicas: 1 });
 
-    const result = await runListTask(task, new AbortController().signal);
+    const result = await runListTask(db, task, new AbortController().signal);
 
     expect(result.outcome).toBe("RETRY");
     expect(result.retryAfterMs).toBe(2000); // CM cadence honoured, not floored to the error ladder

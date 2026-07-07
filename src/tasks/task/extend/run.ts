@@ -8,6 +8,7 @@ import { onExtendConfirmed, onExtendError } from "./events/index.js";
 import {
   RetrySignal,
   applyRetryState,
+  archiveBannedOwner,
   clearRetryState,
   retryDelayMs,
   shouldRetry,
@@ -65,6 +66,11 @@ export async function runExtendTask(
       }),
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
+  // Negative CM balance = foul-play claw-back: archive the whole owner, don't retry.
+  if (retrySignal?.negativeBalance) {
+    await archiveBannedOwner(db, task.deployment.owner);
+    return { outcome: "FAILED", successCount: result.confirmed };
+  }
   if (shouldRetry(result, retrySignal)) {
     const delayMs = retryDelayMs(task, result, retrySignal);
     await applyRetryState(deployments, task.deploymentId, retrySignal, delayMs);

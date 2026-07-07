@@ -36,7 +36,10 @@ describe("task transitions", () => {
     await abandonOverCap(tasks.collection, deployments, task);
 
     expect(tasks.deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
-    expect(depUpdateOne).toHaveBeenCalledWith({ id: "dep-1" }, { $set: { status: "ERROR" } });
+    expect(depUpdateOne).toHaveBeenCalledWith(
+      { id: "dep-1", status: { $ne: "ARCHIVED" } },
+      { $set: { status: "ERROR" } }
+    );
   });
 
   it("releaseTaskToPending returns the task to PENDING and clears the lease", async () => {
@@ -114,6 +117,9 @@ describe("task transitions", () => {
     await abandonInflightExhausted(tasks.collection, deployments, task);
 
     expect(tasks.deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
-    expect(depUpdateOne).toHaveBeenCalledWith({ id: "dep-1" }, { $set: { status: "ERROR" } });
+    expect(depUpdateOne).toHaveBeenCalledWith(
+      { id: "dep-1", status: { $ne: "ARCHIVED" } },
+      { $set: { status: "ERROR" } }
+    );
   });
 });

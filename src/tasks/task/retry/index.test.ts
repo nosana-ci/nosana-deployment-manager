@@ -30,6 +30,29 @@ describe("classifyTaskError", () => {
   it("treats any other error as a standard retry", () => {
     expect(classifyTaskError("Transaction simulation failed").insufficientFunds).toBe(false);
   });
+
+  it("does NOT flag negativeBalance for a zero (top-up-able) shortfall", () => {
+    const signal = classifyTaskError(
+      "Error Failed to list job batch: Insufficient credits. Available: $0.000, Required: $1.047"
+    );
+    expect(signal.insufficientFunds).toBe(true);
+    expect(signal.negativeBalance).toBe(false);
+  });
+
+  it("flags negativeBalance when the CM reports a balance below zero (foul-play claw-back)", () => {
+    for (const msg of [
+      "Error Failed to list job batch: Insufficient credits. Available: $-5.000, Required: $1.047",
+      "Error Failed to list job batch: Insufficient credits. Available: -$5.000, Required: $1.047",
+    ]) {
+      const signal = classifyTaskError(msg);
+      expect(signal.insufficientFunds).toBe(true);
+      expect(signal.negativeBalance).toBe(true);
+    }
+  });
+
+  it("never flags negativeBalance on a non-credits error, even with a stray minus", () => {
+    expect(classifyTaskError("Transaction simulation failed -5").negativeBalance).toBe(false);
+  });
 });
 
 describe("shouldRetry", () => {

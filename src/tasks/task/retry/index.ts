@@ -2,6 +2,8 @@ import { DeploymentStatus } from "../../../types/index.js";
 import type { DeploymentCollection, OutstandingTasksDocument } from "../../../types/index.js";
 import { retryCooldownMs } from "../../utils/cooldown.js";
 
+export { archiveBannedOwner } from "./archiveBannedOwner.js";
+
 /**
  * What a handled task error tells us about how to retry it. A transient failure
  * no longer flips the deployment to terminal ERROR — instead the task is
@@ -13,13 +15,43 @@ import { retryCooldownMs } from "../../utils/cooldown.js";
  */
 export type RetrySignal = {
   insufficientFunds: boolean;
+  /**
+   * The CM reported a NEGATIVE credit balance. A balance can only go below zero
+   * when we've clawed an owner's credits back for foul play, so it condemns the
+   * whole ACCOUNT — the runner archives every one of the owner's deployments
+   * ({@link archiveBannedOwner}) instead of retrying. Never set for a zero or
+   * positive balance (an ordinary shortfall the user can still top up).
+   */
+  negativeBalance?: boolean;
 };
 
 /** Substrings marking a funds/credit shortfall — retried on the slow funds ladder. */
 const FUNDS_ERROR_MARKERS = ["InsufficientFundsForRent", "Insufficient credits"];
 
+/**
+ * Pull the signed `Available: $X` balance out of a CM credits error, tolerating
+ * both `$-5.00` and `-$5.00`. Returns null when no balance is present, so a
+ * non-credits error can never be read as negative.
+ *
+ * NOTE: production has only ever shown `Available: $0.000` (clamped) — validate
+ * this against a real negative-balance event before trusting the sign.
+ */
+export function parseAvailableBalance(error: string): number | null {
+  const m = error.match(/Available:\s*(-?)\$(-?)(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const value = Number(m[3]);
+  if (!Number.isFinite(value)) return null;
+  return m[1] === "-" || m[2] === "-" ? -value : value;
+}
+
 export function classifyTaskError(error: string): RetrySignal {
-  return { insufficientFunds: FUNDS_ERROR_MARKERS.some((marker) => error.includes(marker)) };
+  const insufficientFunds = FUNDS_ERROR_MARKERS.some((marker) => error.includes(marker));
+  const available = parseAvailableBalance(error);
+  return {
+    insufficientFunds,
+    // Strictly `< 0`: a $0.000 shortfall is an ordinary top-up-able state, NOT a ban.
+    negativeBalance: insufficientFunds && available !== null && available < 0,
+  };
 }
 
 /**

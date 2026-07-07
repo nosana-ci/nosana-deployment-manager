@@ -35,7 +35,9 @@ export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
       const { acknowledged } = await db.collection<DeploymentDocument>(NosanaCollections.DEPLOYMENTS).updateOne(
         {
           id: jobDeployment,
-          status: { $nin: [DeploymentStatus.ERROR, DeploymentStatus.INSUFFICIENT_FUNDS] }
+          // ARCHIVED is terminal (foul-play teardown) — never revive it to STOPPED
+          // when its last delisted job settles.
+          status: { $nin: [DeploymentStatus.ERROR, DeploymentStatus.INSUFFICIENT_FUNDS, DeploymentStatus.ARCHIVED] }
         },
         { $set: { status: DeploymentStatus.STOPPED } }
       );

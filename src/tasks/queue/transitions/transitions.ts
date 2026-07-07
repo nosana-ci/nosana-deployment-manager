@@ -30,7 +30,8 @@ export async function abandonOverCap(
   );
   await tasks.deleteOne({ _id: { $eq: task._id } });
   await deployments
-    .updateOne({ id: task.deploymentId }, { $set: { status: "ERROR" } })
+    // Don't clobber a terminal ARCHIVED (foul-play teardown) back to ERROR.
+    .updateOne({ id: task.deploymentId, status: { $ne: "ARCHIVED" } }, { $set: { status: "ERROR" } })
     .catch((error) => console.error("[tasks] failed to flag deployment ERROR", error));
 }
 
@@ -76,7 +77,8 @@ export async function abandonInflightExhausted(
   );
   await tasks.deleteOne({ _id: { $eq: task._id } });
   await deployments
-    .updateOne({ id: task.deploymentId }, { $set: { status: "ERROR" } })
+    // Don't clobber a terminal ARCHIVED (foul-play teardown) back to ERROR.
+    .updateOne({ id: task.deploymentId, status: { $ne: "ARCHIVED" } }, { $set: { status: "ERROR" } })
     .catch((error) => console.error("[tasks] failed to flag deployment ERROR", error));
 }
 

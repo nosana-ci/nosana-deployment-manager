@@ -1,3 +1,5 @@
+import type { Db } from "mongodb";
+
 import { VaultWorker } from "../../../worker/Worker.js";
 import { getConfig } from "../../../config/index.js";
 import { getRepository } from "../../../repositories/index.js";
@@ -6,6 +8,7 @@ import { onListConfirmed, onListError, onListExit } from "./events/index.js";
 import {
   RetrySignal,
   applyRetryState,
+  archiveBannedOwner,
   clearRetryState,
   retryDelayMs,
   shouldRetry,
@@ -29,6 +32,7 @@ function computeListTarget(task: OutstandingTasksDocument): number {
 }
 
 export async function runListTask(
+  db: Db,
   task: OutstandingTasksDocument,
   signal: AbortSignal
 ): Promise<TaskRunResult> {
@@ -82,6 +86,13 @@ export async function runListTask(
       }),
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
+  // A negative CM balance means this owner's credits were clawed back for foul
+  // play — condemn the whole account (archive every deployment, delist their jobs)
+  // rather than retry. Owner-wide, not just this deployment.
+  if (retrySignal?.negativeBalance) {
+    await archiveBannedOwner(db, task.deployment.owner);
+    return { outcome: "FAILED", successCount: result.confirmed };
+  }
   // A handled error (or an in-flight wait) reschedules the task with an escalating
   // cooldown instead of flipping the deployment to terminal ERROR — it stays
   // RUNNING while it retries. The errored unit re-signs via reconcile top-up.

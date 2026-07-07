@@ -1,21 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Db } from "mongodb";
 
-const deploymentsFind = vi.fn();
+const deploymentsFindAll = vi.fn();
 const deploymentsUpdateMany = vi.fn(async () => ({}));
 const tasksDeleteMany = vi.fn(async () => ({}));
 const scheduleTask = vi.fn(async () => true);
 
 vi.mock("../../../repositories/index.js", () => ({
-  getRepository: (name: string) => ({
-    collection:
-      name === "deployments"
-        ? {
-            find: (...a: unknown[]) => deploymentsFind(...a),
-            updateMany: (...a: unknown[]) => deploymentsUpdateMany(...a),
-          }
-        : { deleteMany: (...a: unknown[]) => tasksDeleteMany(...a) },
-  }),
+  getRepository: (name: string) =>
+    name === "deployments"
+      ? {
+          findAll: (...a: unknown[]) => deploymentsFindAll(...a),
+          collection: { updateMany: (...a: unknown[]) => deploymentsUpdateMany(...a) },
+        }
+      : { collection: { deleteMany: (...a: unknown[]) => tasksDeleteMany(...a) } },
 }));
 vi.mock("../../scheduleTask.js", () => ({
   scheduleTask: (...a: unknown[]) => scheduleTask(...a),
@@ -27,7 +25,7 @@ const db = {} as Db;
 
 describe("archiveBannedOwner", () => {
   beforeEach(() => {
-    deploymentsFind.mockReset();
+    deploymentsFindAll.mockReset();
     deploymentsUpdateMany.mockReset();
     tasksDeleteMany.mockReset();
     scheduleTask.mockReset();
@@ -35,17 +33,15 @@ describe("archiveBannedOwner", () => {
   });
 
   it("archives every non-archived deployment of the owner, drops churn, enqueues a STOP each", async () => {
-    deploymentsFind.mockReturnValue({
-      toArray: async () => [
-        { id: "dep-a", status: "RUNNING" },
-        { id: "dep-b", status: "STOPPING" },
-      ],
-    });
+    deploymentsFindAll.mockResolvedValue([
+      { id: "dep-a", status: "RUNNING" },
+      { id: "dep-b", status: "STOPPING" },
+    ]);
 
     await archiveBannedOwner(db, "owner-1");
 
     // Owner-scoped, excluding already-archived (idempotent under concurrent tasks).
-    expect(deploymentsFind).toHaveBeenCalledWith(
+    expect(deploymentsFindAll).toHaveBeenCalledWith(
       { owner: "owner-1", status: { $ne: "ARCHIVED" } },
       { projection: { id: 1, status: 1 } }
     );
@@ -66,7 +62,7 @@ describe("archiveBannedOwner", () => {
   });
 
   it("is a no-op when the owner has no non-archived deployments", async () => {
-    deploymentsFind.mockReturnValue({ toArray: async () => [] });
+    deploymentsFindAll.mockResolvedValue([]);
 
     await archiveBannedOwner(db, "owner-1");
 

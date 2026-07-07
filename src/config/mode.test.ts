@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
-import { getAppMode, shouldRunApi, shouldRunWorker } from "./mode.js";
+import {
+  getAppMode,
+  shouldRunApi,
+  shouldRunWorker,
+  shouldRunListeners,
+  shouldRunConsumer,
+} from "./mode.js";
 
 describe("getAppMode", () => {
   const originalAppMode = process.env.APP_MODE;
@@ -21,7 +27,7 @@ describe("getAppMode", () => {
     expect(getAppMode()).toBe("all");
   });
 
-  it.each(["all", "api", "worker"] as const)(
+  it.each(["all", "api", "worker", "listeners", "consumer"] as const)(
     "returns '%s' when APP_MODE is set to '%s'",
     (mode) => {
       process.env.APP_MODE = mode;
@@ -46,29 +52,49 @@ describe("getAppMode", () => {
 });
 
 describe("shouldRunApi", () => {
-  it("returns true for 'all'", () => {
-    expect(shouldRunApi("all")).toBe(true);
+  it.each([
+    ["all", true],
+    ["api", true],
+    ["worker", false],
+    ["listeners", false],
+    ["consumer", false],
+  ] as const)("returns %s for '%s'", (mode, expected) => {
+    expect(shouldRunApi(mode)).toBe(expected);
   });
+});
 
-  it("returns true for 'api'", () => {
-    expect(shouldRunApi("api")).toBe(true);
+describe("shouldRunListeners", () => {
+  it.each([
+    ["all", true],
+    ["worker", true],
+    ["listeners", true],
+    ["consumer", false],
+    ["api", false],
+  ] as const)("returns %s for '%s'", (mode, expected) => {
+    expect(shouldRunListeners(mode)).toBe(expected);
   });
+});
 
-  it("returns false for 'worker'", () => {
-    expect(shouldRunApi("worker")).toBe(false);
+describe("shouldRunConsumer", () => {
+  it.each([
+    ["all", true],
+    ["worker", true],
+    ["consumer", true],
+    ["listeners", false],
+    ["api", false],
+  ] as const)("returns %s for '%s'", (mode, expected) => {
+    expect(shouldRunConsumer(mode)).toBe(expected);
   });
 });
 
 describe("shouldRunWorker", () => {
-  it("returns true for 'all'", () => {
-    expect(shouldRunWorker("all")).toBe(true);
-  });
-
-  it("returns true for 'worker'", () => {
-    expect(shouldRunWorker("worker")).toBe(true);
-  });
-
-  it("returns false for 'api'", () => {
-    expect(shouldRunWorker("api")).toBe(false);
+  it.each([
+    ["all", true],
+    ["worker", true],
+    ["listeners", true],
+    ["consumer", true],
+    ["api", false],
+  ] as const)("returns %s for '%s'", (mode, expected) => {
+    expect(shouldRunWorker(mode)).toBe(expected);
   });
 });

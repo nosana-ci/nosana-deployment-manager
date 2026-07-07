@@ -15,8 +15,18 @@ import {
   startDeploymentManagerListeners,
   type DeploymentManagerListenersHandle,
 } from "./listeners/index.js";
+import {
+  startTaskCollectionListener,
+  type TaskCollectionListenerHandle,
+} from "./tasks/index.js";
 import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
-import { getAppMode, shouldRunApi, shouldRunWorker } from "./config/mode.js";
+import {
+  getAppMode,
+  shouldRunApi,
+  shouldRunWorker,
+  shouldRunListeners,
+  shouldRunConsumer,
+} from "./config/mode.js";
 import { createMetrics } from "./metrics/index.js";
 
 const SHUTDOWN_TIMEOUT_MS = 130_000; // 120s task drain + 10s margin
@@ -43,11 +53,16 @@ if (!dbClient) {
 }
 
 let listenersHandle: DeploymentManagerListenersHandle | null = null;
+let consumerHandle: TaskCollectionListenerHandle | null = null;
 let apiServer: FastifyInstance | null = null;
 let healthServer: FastifyInstance | null = null;
 
-if (shouldRunWorker(mode)) {
+if (shouldRunListeners(mode)) {
   listenersHandle = await startDeploymentManagerListeners(dbClient);
+}
+
+if (shouldRunConsumer(mode)) {
+  consumerHandle = startTaskCollectionListener(dbClient);
 }
 
 if (shouldRunApi(mode)) {
@@ -83,11 +98,15 @@ const shutdown = async (signal: NodeJS.Signals) => {
       console.log("[deployment-manager] stopped health server");
     }
 
-    // 2. Stop the worker subsystems: tasks polling + worker_threads drain,
-    //    then change streams + Solana monitor.
+    // 2. Stop the worker subsystems: drain the task consumer (in-flight
+    //    worker_threads + on-chain work) first, then the change-stream
+    //    listeners + Solana monitor that feed it.
+    if (consumerHandle) {
+      await consumerHandle.stop();
+      console.log("[deployment-manager] stopped task consumer");
+    }
     if (listenersHandle) {
       await listenersHandle.stop();
-      console.log("[deployment-manager] stopped task scheduling");
       console.log("[deployment-manager] closed change streams");
     }
 

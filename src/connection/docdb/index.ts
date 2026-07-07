@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 import { Db } from "mongodb";
 
 import { createCollections } from "./collections/index.js";
-import { shouldRunWorker, type AppMode } from "../../config/mode.js";
+import { shouldRunListeners, type AppMode } from "../../config/mode.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -83,7 +83,10 @@ export async function awaitMigrationsApplied(
 export async function init_db(db: Db, mode: AppMode): Promise<void> {
   await createCollections(db);
 
-  if (shouldRunWorker(mode)) {
+  // Only the singleton listeners role runs migrations; the api and the
+  // scaled-out consumer wait for them. `runPendingMigrations` is check-then-act
+  // with no lock, so it must not be run by N racing consumer pods.
+  if (shouldRunListeners(mode)) {
     await runPendingMigrations(db);
   } else {
     await awaitMigrationsApplied(db);

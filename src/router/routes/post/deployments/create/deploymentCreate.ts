@@ -1,6 +1,6 @@
 import typia from "typia";
 import { RouteHandler } from "fastify";
-import { DeploymentStrategy } from "@nosana/kit";
+import { DeploymentStatus, DeploymentStrategy } from "@nosana/kit";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
 import { encryptWithKey } from "../../../../../vault/encrypt.js";
@@ -98,6 +98,16 @@ export const deploymentCreateHandler: RouteHandler<{
     if (!acknowledged) {
       res.status(500).send({ error: ErrorMessages.deployments.FAILED_TO_CREATE });
       return;
+    }
+
+    // Auto-start: move DRAFT -> STARTING via an update so the change-stream
+    // listener schedules the first LIST task (listeners only react to updates).
+    if (req.body.autostart) {
+      await db.deployments.updateOne(
+        { id: deployment.id, owner: userId },
+        { $set: { status: DeploymentStatus.STARTING, updated_at: created_at } }
+      );
+      deployment.status = DeploymentStatus.STARTING;
     }
 
     res.status(200);

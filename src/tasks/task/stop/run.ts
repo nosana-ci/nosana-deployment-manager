@@ -10,6 +10,7 @@ import { onStopConfirmed, onStopError, onStopExit } from "./events/index.js";
 import {
   RetrySignal,
   applyRetryState,
+  archiveBannedOwner,
   clearRetryState,
   retryDelayMs,
   shouldRetry,
@@ -97,6 +98,11 @@ export async function runStopTask(
     handlers,
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: stoppedJobs.length };
+  // Negative CM balance = foul-play claw-back: archive the whole owner, don't retry.
+  if (retrySignal?.negativeBalance) {
+    await archiveBannedOwner(db, task.deployment.owner);
+    return { outcome: "FAILED", successCount: stoppedJobs.length };
+  }
   // A handled stop error reschedules the STOP with an escalating cooldown — the
   // deployment stays STOPPING and keeps retrying the stop, instead of getting
   // stuck in ERROR mid-teardown.

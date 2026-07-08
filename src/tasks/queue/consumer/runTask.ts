@@ -6,10 +6,9 @@ import { runExtendTask } from "../../task/extend/run.js";
 import { OutstandingTasksDocument, TaskRunResult, TaskType } from "../../../types/index.js";
 
 /**
- * Route a claimed task to the runner for its type. `db` is threaded to the EXTEND
- * and STOP runners, whose reschedules go through `scheduleTask(db, …)` (EXTEND's
- * confirm cycle; STOP's full-stop straggler self-heal); LIST reads its collections
- * from the repository singleton.
+ * Route a claimed task to the runner for its type. `db` is threaded to every
+ * runner: EXTEND/STOP reschedule through `scheduleTask(db, …)`, and all three can
+ * archive a banned owner (which enqueues STOP tasks) on a negative-balance error.
  */
 export function runTask(
   db: Db,
@@ -18,7 +17,7 @@ export function runTask(
 ): Promise<TaskRunResult> {
   switch (task.task) {
     case TaskType.LIST:
-      return runListTask(task, signal);
+      return runListTask(db, task, signal);
     case TaskType.STOP:
       return runStopTask(db, task, signal);
     case TaskType.EXTEND:

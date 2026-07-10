@@ -14,6 +14,9 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     vault: Type.Optional(PublicKeySchema),
     confidential: Type.Optional(Type.Boolean()),
+    autostart: Type.Optional(Type.Boolean({
+      description: "If true, the deployment is started immediately after creation instead of being left as a DRAFT.",
+    })),
     job_definition: Type.Ref("JobDefinition")
   }),
   Type.Union([

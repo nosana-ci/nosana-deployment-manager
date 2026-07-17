@@ -5,7 +5,7 @@ import { DeploymentStatus, DeploymentStrategy } from "@nosana/kit";
 import { ErrorMessages } from "../../../../../errors/index.js";
 import { encryptWithKey } from "../../../../../vault/encrypt.js";
 import { getExtractApiKeyFromHeader } from "../../../../helper/doesHeaderContainKey.js";
-import { createAndStoreSharedVault, storeVaultDocument } from "../../vaults/createSharedVault/createSharedVaultFactory.js";
+import { getOrCreateVault, storeVaultDocument, VaultNotFoundError } from "../../vaults/createSharedVault/createSharedVaultFactory.js";
 
 import {
   createDeployment,
@@ -50,20 +50,20 @@ export const deploymentCreateHandler: RouteHandler<{
     let vault = req.body.vault
 
     if (!apiKey) {
-      if (vault) {
-        const existingVault = await db.vaults.findOne({ owner: userId, vault });
-
-        if (!existingVault) {
+      try {
+        const resolved = await getOrCreateVault({
+          owner: userId,
+          targetVault: vault,
+          createNew: req.body.new_vault,
+        });
+        vault = resolved.vault;
+      } catch (error) {
+        if (error instanceof VaultNotFoundError) {
           res.status(404).send({ error: ErrorMessages.vaults.NOT_FOUND });
           return;
         }
-      } else {
-        const { vault: sharedVault, acknowledged } = await createAndStoreSharedVault(db.vaults, userId, new Date());
-        if (!acknowledged) {
-          res.status(500).send({ error: ErrorMessages.vaults.FAILED_TO_CREATE });
-          return;
-        }
-        vault = sharedVault.vault;
+        res.status(500).send({ error: ErrorMessages.vaults.FAILED_TO_CREATE });
+        return;
       }
     } else {
       vault = userId;

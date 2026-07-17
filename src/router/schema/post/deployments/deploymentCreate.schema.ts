@@ -12,13 +12,28 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     market: Type.String(),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
-    vault: Type.Optional(PublicKeySchema),
     confidential: Type.Optional(Type.Boolean()),
     autostart: Type.Optional(Type.Boolean({
       description: "If true, the deployment is started immediately after creation instead of being left as a DRAFT.",
     })),
     job_definition: Type.Ref("JobDefinition")
   }),
+  // A deployment funds from exactly one vault source: the owner's shared
+  // (oldest) vault by default, an existing owned vault, or a newly created
+  // dedicated vault. `vault` and `new_vault` are mutually exclusive — the
+  // Type.Never cross-fields make a body containing both fail validation.
+  Type.Union([
+    Type.Object({
+      vault: Type.Optional(PublicKeySchema),
+      new_vault: Type.Optional(Type.Never()),
+    }),
+    Type.Object({
+      new_vault: Type.Optional(Type.Boolean({
+        description: "If true, a brand-new vault is created for this deployment instead of reusing the owner's shared (oldest) vault.",
+      })),
+      vault: Type.Optional(Type.Never()),
+    }),
+  ]),
   Type.Union([
     Type.Object({
       strategy: Type.Union(
@@ -48,6 +63,8 @@ export const DeploymentMetadataSchema = Type.Omit(DeploymentCreateBodySchema, [
 export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   schedule?: string; // Optional for non-scheduled strategies
   rotation_time?: number; // Optional for non-infinite strategies
+  vault?: string; // Only for the existing-vault variant
+  new_vault?: boolean; // Only for the new-vault variant
 };
 
 export type DeploymentCreateSuccess = DeploymentSchema;

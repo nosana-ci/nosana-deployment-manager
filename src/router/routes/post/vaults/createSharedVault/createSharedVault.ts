@@ -1,23 +1,22 @@
 import { RouteHandler } from "fastify";
 
 import { HeadersSchema } from "../../../../schema/index.schema.js";
-import { createAndStoreSharedVault } from "./createSharedVaultFactory.js";
+import { getOrCreateVault } from "./createSharedVaultFactory.js";
 import { CreateSharedVaultSuccess, CreateSharedVaultError } from "../../../../schema/post/index.schema.js";
 
 export const createSharedVaultHandler: RouteHandler<{
   Headers: HeadersSchema;
   Reply: CreateSharedVaultSuccess | CreateSharedVaultError;
 }> = async (req, res) => {
-  const { db } = res.locals;
   const userId = req.headers["x-user-id"];
 
-  const { acknowledged, vault } = await createAndStoreSharedVault(db.vaults, userId, new Date());
+  try {
+    const vault = await getOrCreateVault({ owner: userId, createNew: true });
 
-  if (!acknowledged) {
+    res.status(200);
+    return vault;
+  } catch (error) {
+    res.log.error("Error creating vault: %s", String(error));
     res.status(500).send({ error: "Failed to create shared vault" });
-    return;
   }
-
-  res.status(200);
-  return vault
-}
+};

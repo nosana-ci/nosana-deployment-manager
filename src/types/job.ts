@@ -21,6 +21,7 @@ export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof Job
   TX: "tx",
   STATE: "state",
   TIME_START: "time_start",
+  TIME_END: "time_end",
   CREATED_AT: "created_at",
   UPDATED_AT: "updated_at",
 };
@@ -34,6 +35,12 @@ export type JobsDocument = {
   tx: string;
   state: JobState;
   time_start: number;
+  /**
+   * On-chain end timestamp (unix seconds), written when the finisher paths see
+   * the job leave RUNNING. Absent on docs from before the field existed and on
+   * jobs that have not finished.
+   */
+  time_end?: number;
   created_at: Date;
   updated_at: Date;
 };

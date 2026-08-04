@@ -16,6 +16,7 @@ export async function onStopExit(
       {
         $set: {
           state: JobState.STOPPED,
+          updated_at: new Date(),
         },
       }
     );

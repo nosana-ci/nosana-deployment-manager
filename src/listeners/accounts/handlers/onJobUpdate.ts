@@ -18,14 +18,24 @@ export async function onJobUpdate(
   jobData: Job
 ): Promise<void> {
   const jobsCollection = db.collection<JobsDocument>(NosanaCollections.JOBS);
-  const { address, node, state, timeStart } = jobData;
+  const { address, node, state, timeStart, timeEnd } = jobData;
 
   await jobsCollection.updateOne(
     {
       job: address.toString(),
       state: { $nin: [JobState.COMPLETED, JobState.STOPPED] } // required to ensure states don't regress
     },
-    { $set: { state: convertJobState(state), time_start: Number(timeStart), node: guardAgainstDefaultNodeAddress(node) } },
+    {
+      $set: {
+        state: convertJobState(state),
+        time_start: Number(timeStart),
+        node: guardAgainstDefaultNodeAddress(node),
+        updated_at: new Date(),
+        // On-chain timeEnd stays 0 until the job actually ends — leave the doc
+        // field absent rather than storing a bogus epoch-0 stamp.
+        ...(Number(timeEnd) ? { time_end: Number(timeEnd) } : {}),
+      },
+    },
     { upsert: false }
   );
 }

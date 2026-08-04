@@ -46,9 +46,12 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
   const mockJobDocument: JobsDocument = {
     job: 'job-123',
+    market: 'market-123',
+    node: 'node-123',
     deployment: testJobDeployment,
     tx: 'tx-123',
     state: JobState.RUNNING,
+    time_start: Math.floor(mockNow.getTime() / 1000),
     created_at: new Date(),
     updated_at: new Date(),
     revision: 0
@@ -241,14 +244,19 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
   });
 
   describe('rapid-completion fail-safe', () => {
-    function makeRapidJob(minutesAgo: number, durationMs: number): JobsDocument {
-      const updatedAt = new Date(mockNow.getTime() - minutesAgo * 60_000);
+    // Finished jobs shaped like production docs: `updated_at` frozen at
+    // `created_at` (the finisher paths historically never bumped it), so only
+    // the on-chain time_start/time_end stamps carry the real run time.
+    function makeFinishedJob(minutesAgo: number, runtimeMs: number): JobsDocument {
+      const createdAt = new Date(mockNow.getTime() - minutesAgo * 60_000);
+      const timeStart = Math.floor(createdAt.getTime() / 1000);
       return {
         ...mockJobDocument,
         state: JobState.COMPLETED,
-        time_start: (updatedAt.getTime() - durationMs) / 1000,
-        created_at: new Date(updatedAt.getTime() - durationMs),
-        updated_at: updatedAt,
+        time_start: timeStart,
+        time_end: timeStart + runtimeMs / 1000,
+        created_at: createdAt,
+        updated_at: createdAt,
       };
     }
 
@@ -260,9 +268,9 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
     });
 
     const threeRapidJobs = () => [
-      makeRapidJob(0, 60_000),
-      makeRapidJob(1, 60_000),
-      makeRapidJob(2, 60_000),
+      makeFinishedJob(0, 60_000),
+      makeFinishedJob(1, 60_000),
+      makeFinishedJob(2, 60_000),
     ];
 
     it('throttles the next round (instead of stopping) on the first rapid round', async () => {
@@ -331,6 +339,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
     it('stops the deployment at the streak ceiling to protect funds', async () => {
       // max_streak default 8 -> stop when streak + 1 >= 8, i.e. streak >= 7
+      vi.mocked(scheduleTask).mockResolvedValue(true); // a NEW round is being counted
       mockFindOne.mockResolvedValue({
         ...baseDeployment,
         strategy: DeploymentStrategy.INFINITE,
@@ -354,11 +363,35 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         }),
         expect.objectContaining({ session: expect.anything() }),
       );
-      // At the ceiling we stop, not throttle — no replacement LIST scheduled.
-      expect(scheduleTask).not.toHaveBeenCalled();
+      // At the ceiling we stop, not throttle — no streak bump alongside the CAS.
+      expect(mockedDeploymentsUpdate).not.toHaveBeenCalledWith(
+        { id: testDeployment },
+        expect.objectContaining({ rapid_streak: expect.anything() }),
+      );
+    });
+
+    it('does NOT stop at the ceiling when the round was already counted (duplicate event)', async () => {
+      // The production incident: a duplicate delivery of the same stop re-read
+      // the already-bumped streak and jumped straight past the ceiling. The
+      // idempotent round token (scheduleTask -> false) must gate the fail-safe
+      // exactly like it gates the throttle.
+      vi.mocked(scheduleTask).mockResolvedValue(false); // round already counted
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        rapid_streak: 7,
+      });
+      mockedJobsFindAll.mockResolvedValue(threeRapidJobs());
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(mockedWithTransaction).not.toHaveBeenCalled();
+      expect(mockedDeploymentsUpdate).not.toHaveBeenCalled();
+      expect(mockedEventsCreate).not.toHaveBeenCalled();
     });
 
     it('does not emit the stop event when the ceiling CAS loses the race', async () => {
+      vi.mocked(scheduleTask).mockResolvedValue(true);
       mockFindOne.mockResolvedValue({
         ...baseDeployment,
         strategy: DeploymentStrategy.INFINITE,
@@ -380,9 +413,9 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         rapid_streak: 3,
       });
       mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, FIVE_MINUTES + 1000), // one long job -> not all rapid
-        makeRapidJob(1, 60_000),
-        makeRapidJob(2, 60_000),
+        makeFinishedJob(0, FIVE_MINUTES + 1000), // one long job -> not all rapid
+        makeFinishedJob(1, 60_000),
+        makeFinishedJob(2, 60_000),
       ]);
       mockedJobsCount.mockResolvedValue(3);
 
@@ -394,11 +427,38 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       );
     });
 
+    it('resets the streak when long-running jobs finish, despite their docs never being rewritten after insert', async () => {
+      // The production incident: healthy ~5h40m jobs had `updated_at` frozen at
+      // the list-confirm, so the old updated_at-based predicate measured them
+      // as ~0s "rapid" jobs and the streak could never reset.
+      const fiveHoursFortyMs = (5 * 3600 + 40 * 60) * 1000;
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        rapid_streak: 6,
+      });
+      mockedJobsFindAll.mockResolvedValue([
+        makeFinishedJob(0, fiveHoursFortyMs),
+        makeFinishedJob(1, fiveHoursFortyMs),
+        makeFinishedJob(2, fiveHoursFortyMs),
+      ]);
+      mockedJobsCount.mockResolvedValue(3);
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(mockedWithTransaction).not.toHaveBeenCalled();
+      expect(mockedEventsCreate).not.toHaveBeenCalled();
+      expect(vi.mocked(DeploymentsRepository.collection.updateOne)).toHaveBeenCalledWith(
+        { id: testDeployment },
+        { $set: { rapid_streak: 0 }, $unset: { next_retry_at: '' } },
+      );
+    });
+
     it('should NOT trigger when one job ran longer than 5 minutes', async () => {
       mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, FIVE_MINUTES + 1000),
-        makeRapidJob(1, 60_000),
-        makeRapidJob(2, 60_000),
+        makeFinishedJob(0, FIVE_MINUTES + 1000),
+        makeFinishedJob(1, 60_000),
+        makeFinishedJob(2, 60_000),
       ]);
       mockedJobsCount.mockResolvedValue(0);
 
@@ -411,8 +471,8 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
     it('should NOT trigger when fewer than 3 completed jobs exist', async () => {
       mockedJobsFindAll.mockResolvedValue([
-        makeRapidJob(0, 60_000),
-        makeRapidJob(1, 60_000),
+        makeFinishedJob(0, 60_000),
+        makeFinishedJob(1, 60_000),
       ]);
       mockedJobsCount.mockResolvedValue(0);
 
@@ -421,7 +481,9 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       expect(mockedDeploymentsUpdate).not.toHaveBeenCalled();
     });
 
-    it('should query jobs created after deployment.updated_at', async () => {
+    it('should query only COMPLETED jobs created after deployment.updated_at', async () => {
+      // STOPPED jobs are deployment-initiated (rotation, revision replacement,
+      // scale-down, manual stop) and must not feed the rapid heuristic.
       mockedJobsFindAll.mockResolvedValue([]);
 
       await handler(mockJobDocument, mockDb);
@@ -429,7 +491,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       expect(mockedJobsFindAll).toHaveBeenCalledWith(
         {
           deployment: testJobDeployment,
-          state: { $in: [JobState.COMPLETED, JobState.STOPPED] },
+          state: JobState.COMPLETED,
           created_at: { $gte: baseDeployment.updated_at },
         },
         {

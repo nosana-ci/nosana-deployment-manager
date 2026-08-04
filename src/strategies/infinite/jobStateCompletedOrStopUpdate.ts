@@ -37,9 +37,13 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       const deployment = await findDeployment(db, jobDeployment);
       if (!deployment || !isActiveInfiniteDeployment(deployment)) return;
 
+      // Only COMPLETED jobs feed the rapid heuristic: a STOPPED job is a
+      // deployment-initiated action (rotation, revision replacement, scale-down,
+      // manual stop) that is short-lived by design and says nothing about
+      // workload health.
       const recentJobs = await JobsRepository.findAll({
         deployment: jobDeployment,
-        state: { $in: [JobState.COMPLETED, JobState.STOPPED] },
+        state: JobState.COMPLETED,
         created_at: { $gte: deployment.updated_at },
       }, {
         sort: { updated_at: -1 },
@@ -49,11 +53,28 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       if (allJobsRapid(recentJobs)) {
         const streak = deployment.rapid_streak ?? 0;
 
+        // One round per throttled LIST: the idempotent insert is the round
+        // token, so a burst of duplicate completion events collapses into the
+        // one that wins it. Everything below — the streak bump AND the
+        // fail-safe ceiling — is gated on winning; a duplicate re-reading the
+        // already-bumped streak can no longer re-count the same round and jump
+        // straight to the stop.
+        const delayMs = rapidCompletionCooldownMs(streak);
+        const due = new Date(Date.now() + delayMs);
+        const created = await scheduleTask(db, TaskType.LIST, deployment.id, deployment.status, due, {
+          limit: 1,
+          idempotent: true,
+        });
+        if (!created) return;
+
+        const newStreak = streak + 1;
+
         // Ceiling: after enough consecutive rapid rounds, fall back to the
         // original fail-safe and stop the deployment to protect funds. CAS on
-        // RUNNING so only one of a burst of completion events wins; once STOPPING
-        // the listener early-returns (isActiveInfiniteDeployment requires RUNNING).
-        if (rapid_completion_max_streak > 0 && streak + 1 >= rapid_completion_max_streak) {
+        // RUNNING so only one racer wins; once STOPPING the listener
+        // early-returns (isActiveInfiniteDeployment requires RUNNING), and the
+        // STOP task's housekeeping sweeps the throttled LIST created above.
+        if (rapid_completion_max_streak > 0 && newStreak >= rapid_completion_max_streak) {
           await withTransaction(async (session) => {
             const updated = await DeploymentsRepository.update(
               { id: deployment.id, status: DeploymentStatus.RUNNING },
@@ -73,28 +94,17 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
           return;
         }
 
-        // Throttle: delay the next replacement round with an escalating cooldown
-        // and bump the streak — but only once per round. The idempotent insert
-        // dedups the burst of near-simultaneous completion events into one round.
-        const delayMs = rapidCompletionCooldownMs(streak);
-        const due = new Date(Date.now() + delayMs);
-        const created = await scheduleTask(db, TaskType.LIST, deployment.id, deployment.status, due, {
-          limit: 1,
-          idempotent: true,
+        await DeploymentsRepository.update(
+          { id: deployment.id },
+          { rapid_streak: newStreak, next_retry_at: due },
+        );
+        await EventsRepository.create({
+          category: EventType.DEPLOYMENT,
+          deploymentId: deployment.id,
+          type: "RAPID_COMPLETION_THROTTLE",
+          message: `Jobs completing rapidly (round ${newStreak}): next job throttled by ${Math.round(delayMs / 1000)}s.`,
+          created_at: new Date(),
         });
-        if (created) {
-          await DeploymentsRepository.update(
-            { id: deployment.id },
-            { rapid_streak: streak + 1, next_retry_at: due },
-          );
-          await EventsRepository.create({
-            category: EventType.DEPLOYMENT,
-            deploymentId: deployment.id,
-            type: "RAPID_COMPLETION_THROTTLE",
-            message: `Jobs completing rapidly (round ${streak + 1}): next job throttled by ${Math.round(delayMs / 1000)}s.`,
-            created_at: new Date(),
-          });
-        }
         return;
       }
 

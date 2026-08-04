@@ -26,7 +26,16 @@ export async function updateAllUnfinishedJobs(kit: NosanaClient, db: Db) {
     batch.push({
       updateOne: {
         filter: { job: jobAddress },
-        update: { $set: { state, time_start: Number(job.timeStart), updated_at: now } },
+        update: {
+          $set: {
+            state,
+            time_start: Number(job.timeStart),
+            updated_at: now,
+            // On-chain timeEnd stays 0 until the job actually ends — leave the
+            // doc field absent rather than storing a bogus epoch-0 stamp.
+            ...(Number(job.timeEnd) ? { time_end: Number(job.timeEnd) } : {}),
+          },
+        },
         upsert: false
       }
     });

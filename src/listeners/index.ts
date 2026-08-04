@@ -3,6 +3,7 @@ import { Db } from "mongodb";
 import { startDeploymentCollectionListener } from "./deployments/index.js";
 import { startJobAccountsListeners } from "./accounts/index.js";
 import { startJobsCollectionListener } from "./jobs/index.js";
+import { startFrpsListener } from "./frps/index.js";
 
 export type DeploymentManagerListenersHandle = {
   stop: () => Promise<void>;
@@ -19,12 +20,15 @@ export async function startDeploymentManagerListeners(
   const deployments = startDeploymentCollectionListener(db);
   const jobs = startJobsCollectionListener(db);
   const accounts = await startJobAccountsListeners(db);
+  const frps = await startFrpsListener(db);
 
   return {
     stop: async () => {
-      // Stop the RPC monitor (which schedules work) before closing the
-      // change streams.
+      // Stop the producers that schedule work (the RPC monitor and the FRPS
+      // event stream) before closing the change streams. The FRPS stop flushes
+      // its resume cursor, so await it.
       accounts.stop();
+      await frps.stop();
       await Promise.all([deployments.stop(), jobs.stop()]);
     },
   };

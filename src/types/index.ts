@@ -14,4 +14,5 @@ export * from "./revision.js";
 export * from "./job.js";
 export * from "./task.js";
 export * from "./worker.js";
+export * from "./frps.js";
 export * from "./collection.js";

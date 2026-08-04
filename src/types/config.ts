@@ -13,7 +13,33 @@ export type DeploymentsConfig = {
    * host.docker.internal.
    */
   ws_network: string | undefined;
-  frps_address: string;
+  /** Public FRPS hostname the deployment endpoint URLs are built from. */
+  frps_public_address: string;
+  /**
+   * Cluster-internal FRPS host serving the connection event stream and the
+   * proxy-list API. Empty disables FRPS watching entirely — it has no sensible
+   * default outside the cluster.
+   */
+  frps_internal_address: string;
+  frps_internal_use_tls: boolean;
+  frps_api_key: string | undefined;
+  /** Kill-switch for FRPS tunnel-health watching. */
+  frps_watching_enabled: boolean;
+  /**
+   * Grace period between a proxy unregistering and its job being stopped. The
+   * STOP task is scheduled `due_at` this far out and deleted again if a matching
+   * `registered` event arrives first, so a brief frpc reconnect doesn't kill a
+   * healthy job.
+   */
+  frps_unhealthy_grace_ms: number;
+  /**
+   * Minimum interval between writes of the FRPS stream resume cursor. Lagging is
+   * safe — a restart replays from the last stored id and every handler is
+   * idempotent — so this trades a slightly longer replay for fewer writes.
+   */
+  frps_cursor_throttle_ms: number;
+  /** Request timeout for the FRPS proxy-list API (used by gap-recovery). */
+  frps_api_timeout_ms: number;
   tasks_batch_size: number;
   confidential_ipfs_pin: string;
   confidential_by_default: boolean;

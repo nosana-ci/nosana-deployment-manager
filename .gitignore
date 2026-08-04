@@ -3,3 +3,6 @@
 coverage/
 test-report.xml
 .env
+
+# Yori session context (pre-seeded, task 0129)
+.yori/

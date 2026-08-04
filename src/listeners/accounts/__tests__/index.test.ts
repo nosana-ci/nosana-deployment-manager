@@ -77,6 +77,7 @@ describe('listeners/accounts/index', () => {
       deployment: deploymentId,
       revision: 0,
       market: address(MARKET_ADDRESS),
+      node: null,
       tx,
       state: JobState.QUEUED,
       time_start: 0,
@@ -85,11 +86,12 @@ describe('listeners/accounts/index', () => {
     };
   }
 
-  function createJobData(state: KitJobState): Job {
+  function createJobData(state: KitJobState, timeEnd = 0): Job {
     return {
       address: address(JOB_1),
       state,
-      timeStart: BigInt(TIME_START)
+      timeStart: BigInt(TIME_START),
+      timeEnd: BigInt(timeEnd)
     } as Job;
   }
 
@@ -119,6 +121,30 @@ describe('listeners/accounts/index', () => {
           })
         }),
         { upsert: false }
+      );
+    });
+
+    it('should not write time_end while the job is still running (on-chain timeEnd is 0)', async () => {
+      await onJobUpdate(mockDb, createJobData(KitJobState.RUNNING, 0));
+
+      expect(mockJobsUpdateOne).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          $set: expect.not.objectContaining({ time_end: expect.anything() })
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('should write time_end once the job has ended on-chain', async () => {
+      await onJobUpdate(mockDb, createJobData(KitJobState.COMPLETED, TIME_START + 90));
+
+      expect(mockJobsUpdateOne).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          $set: expect.objectContaining({ time_end: TIME_START + 90 })
+        }),
+        expect.any(Object)
       );
     });
 

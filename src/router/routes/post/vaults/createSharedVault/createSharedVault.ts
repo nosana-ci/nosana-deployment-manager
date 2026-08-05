@@ -11,7 +11,7 @@ export const createSharedVaultHandler: RouteHandler<{
   const userId = req.headers["x-user-id"];
 
   try {
-    const vault = await getOrCreateVault({ owner: userId, createNew: true });
+    const vault = await getOrCreateVault({ owner: userId });
 
     res.status(200);
     return vault;

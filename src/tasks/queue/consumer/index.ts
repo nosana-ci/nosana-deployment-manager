@@ -111,7 +111,18 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       .finally(() => clearTimeout(leaseTimer));
   };
 
+  // A failed cycle must never reject: both call sites are fire-and-forget, so a
+  // rejection would crash the process. Claimed-but-undispatched tasks wait out
+  // their lease and are reclaimed.
   const fetchNewTasks = async () => {
+    try {
+      await fetchNewTasksCycle();
+    } catch (error) {
+      console.error("[tasks] fetch cycle failed", error);
+    }
+  };
+
+  const fetchNewTasksCycle = async () => {
     if (stopped) return;
 
     const capacity = tasks_batch_size - inflight.size;

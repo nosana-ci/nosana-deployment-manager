@@ -137,14 +137,18 @@ export type DeploymentLockDocument = {
 
 export type DeploymentLocksCollection = Collection<DeploymentLockDocument>;
 
-/** A claimed task hydrated with its deployment, vault, jobs and revisions. */
+/**
+ * A claimed task hydrated with its deployment, vault, jobs and revisions.
+ * `jobs` holds only QUEUED/RUNNING jobs and `revisions` is stripped of
+ * `job_definition` — see `enrichClaimedTasks`.
+ */
 export type OutstandingTasksDocument = Document &
   TaskDocument & {
-    deployment: Exclude<DeploymentDocument, "vault"> & {
+    deployment: Omit<DeploymentDocument, "vault"> & {
       vault: VaultDocument;
     };
     jobs: JobsDocument[];
-    revisions: RevisionDocument[];
+    revisions: Omit<RevisionDocument, "job_definition">[];
   };
 
 export type TaskFinishedReason = "COMPLETED" | "FAILED" | "TIMEOUT";

@@ -2,12 +2,7 @@ import { RouteHandler } from "fastify";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
 
-import type { JobsDocument, RevisionDocument } from "../../../../../types/index.js";
 import type { JobDefinitionHandlerError, JobDefinitionHandlerSuccess } from "../../../../schema/get/index.schema.js";
-
-type JobDeploymentRevision = JobsDocument & {
-  revisions: RevisionDocument[]
-};
 
 export const jobDefinitionHandler: RouteHandler<{
   Params: { job: string };
@@ -17,14 +12,17 @@ export const jobDefinitionHandler: RouteHandler<{
   const jobId = req.params.job;
 
   try {
-    const job = await db.jobs.aggregate().match({ job: { $eq: jobId } }).lookup({ from: "revisions", localField: "deployment", foreignField: "deployment", as: "revisions" }).unwind({ path: "$deployment" }).next();
+    const job = await db.jobs.findOne({ job: jobId });
 
     if (!job) {
       res.status(404).send({ error: ErrorMessages.job.NOT_FOUND });
       return;
     }
 
-    const revision = (job as JobDeploymentRevision).revisions.find(({ revision }) => revision === job.revision);
+    // Fetch only the job's own revision: a $lookup of every revision of the
+    // deployment (each carrying a full job_definition) can exceed the 16MB
+    // reply cap.
+    const revision = await db.revisions.findOne({ deployment: job.deployment, revision: job.revision });
 
     if (!revision) {
       res.status(404).send({ error: ErrorMessages.job.FAILED_TO_FIND_JOB_DEFINITION });

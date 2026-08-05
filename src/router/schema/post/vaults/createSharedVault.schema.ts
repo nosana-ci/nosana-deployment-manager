@@ -12,14 +12,15 @@ export type CreateSharedVaultSuccess = Static<typeof CreateSharedVaultSuccess>;
 export type CreateSharedVaultError = ErrorSchema;
 
 export const CreateSharedVaultSchema: FastifySchema = {
-  description: "Create a shared vault.",
+  description:
+    "Get or create the caller's shared vault: returns their existing (oldest) vault, creating one only if they have none.",
   tags: ["Deployments Vaults"],
   headers: {
     $ref: "Headers",
   },
   response: {
     200: {
-      description: "Vault created successfully.",
+      description: "The caller's shared vault (existing, or newly created).",
       content: {
         "application/json": {
           schema: {

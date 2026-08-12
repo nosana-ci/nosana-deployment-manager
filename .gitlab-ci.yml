@@ -14,6 +14,7 @@ variables:
   AUTO_BUMP_REPO: nosana-ci/apps/platform/k8s
   AUTO_BUMP_FILE: helm-deployment-manager.tf
   AUTO_BUMP_SCG_PREFIX: container_tag [^}]*= { dev = \"
+  GITHUB_REPO: nosana-deployment-manager
 
 npm install:
   image: node:22

@@ -13,7 +13,6 @@ export const FRPS_OUTCOMES = [
   "cancelled",
   "skipped",
   "stale_event",
-  "unhealthy",
 ] as const;
 export type FrpsOutcome = (typeof FRPS_OUTCOMES)[number];
 

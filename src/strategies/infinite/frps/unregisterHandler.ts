@@ -22,12 +22,13 @@ const STOPPABLE_STATES: JobState[] = [JobState.QUEUED, JobState.RUNNING];
  * workload could be unreachable even though it is still RUNNING on-chain.
  *
  * The op-level status is recorded for every teardown (for observability), but
- * only a `lost` teardown triggers a stop. FRPS distinguishes frpc shutting down
- * cleanly (`graceful` — an explicit `msg.CloseProxy`) from its control connection
- * dropping (`lost`). That matters because a job's ops each run their own frpc
- * container: when one op finishes the node stops it and its proxies go away
- * legitimately, mid-job, while the next op pulls its image. Treating every
- * teardown as a failure would kill healthy multi-op jobs at each transition.
+ * only a fault triggers a stop: `lost` (frpc/node died) and `unhealthy` (the
+ * backend failed its health check while frpc stayed up) are treated identically —
+ * to the job poster both mean the service is unreachable. `graceful` is ignored:
+ * a job's ops each run their own frpc container, so when one op finishes the node
+ * stops it and its proxies go away legitimately, mid-job, while the next op pulls
+ * its image. Treating that as a failure would kill healthy multi-op jobs at each
+ * transition.
  *
  * A missing `reason` means FRPS predates the distinction, so the event carries no
  * usable fault signal and no stop is scheduled.
@@ -60,27 +61,12 @@ export async function frpsUnregisterHandler(
     metrics?.recordOutcome("skipped");
   };
 
-  if (reason === FRPSCloseReasons.UNHEALTHY) {
-    // The backend behind the tunnel failed its health check while frpc stayed
-    // connected — the proxied service died, not the node. Recorded (status above)
-    // and surfaced here, but NOT yet acted on: the stop/replace policy for a dead
-    // backend (how long to wait for it to restart) is a separate decision. A
-    // matching `registered` flips the status back to up if it recovers.
-    metrics?.recordOutcome("unhealthy");
-    console.log(`${LOG} backend unhealthy for ${jobId ?? proxyName} (observed, no action)`);
-    if (deploymentId && jobId) {
-      await EventsRepository.create({
-        category: EventType.DEPLOYMENT,
-        deploymentId,
-        type: "FRPS_BACKEND_UNHEALTHY",
-        message: `Job ${jobId}'s backend service failed its health check while the node stayed reachable.`,
-        created_at: new Date(),
-      });
-    }
-    return;
-  }
-
-  if (reason !== FRPSCloseReasons.LOST) {
+  // `lost` (frpc/node died) and `unhealthy` (backend failed its health check
+  // while frpc stayed up) get identical treatment: to the job poster both mean
+  // "my service is unreachable", and the same grace + cancel-on-recovery covers
+  // a node reconnect and a backend restart alike. The distinct reason survives
+  // in the endpoint status and the event message purely for diagnosis.
+  if (reason !== FRPSCloseReasons.LOST && reason !== FRPSCloseReasons.UNHEALTHY) {
     // A clean shutdown (an op finishing), or an FRPS too old to say. Either way
     // there is no evidence of a fault here.
     metrics?.recordOutcome("stale_event");
@@ -128,11 +114,18 @@ export async function frpsUnregisterHandler(
   console.log(`${LOG} scheduling stop of ${jobId} at ${due_at.toISOString()}`);
   metrics?.recordOutcome("scheduled");
 
+  // One event type for both reasons — to the poster the outcome is identical —
+  // with the cause kept in the message for diagnosis.
+  const cause =
+    reason === FRPSCloseReasons.UNHEALTHY
+      ? "its service stopped responding to health checks"
+      : "lost its network tunnel";
+
   await EventsRepository.create({
     category: EventType.DEPLOYMENT,
     deploymentId: deployment.id,
     type: "FRPS_TUNNEL_LOST",
-    message: `Job ${jobId} lost its network tunnel and will be stopped and replaced in ${Math.round(graceMs / 1000)}s if it does not reconnect.`,
+    message: `Job ${jobId} ${cause} and will be stopped and replaced in ${Math.round(graceMs / 1000)}s if it does not recover.`,
     created_at: new Date(),
   });
 }

@@ -1,4 +1,4 @@
-import { Collections, DeploymentDocument, EventDocument, VaultDocument, JobsDocument, TaskDocument, DeploymentLockDocument, RevisionDocument, JobResultsDocument, FrpsStreamCursorDocument, FrpsEndpointStatusDocument } from "../types/index.js";
+import { Collections, DeploymentDocument, EventDocument, VaultDocument, JobsDocument, TaskDocument, DeploymentLockDocument, RevisionDocument, JobResultsDocument, FrpsEndpointStatusDocument } from "../types/index.js";
 
 export const NosanaCollections = {
   DEPLOYMENTS: "deployments",
@@ -9,7 +9,6 @@ export const NosanaCollections = {
   TASK_LOCKS: "task_locks",
   REVISIONS: "revisions",
   RESULTS: "results",
-  FRPS_STREAM_CURSOR: "frps_stream_cursor",
   FRPS_ENDPOINT_STATUS: "frps_endpoint_status"
 } as const;
 
@@ -27,6 +26,5 @@ export type CollectionsMap = {
   task_locks: DeploymentLockDocument;
   revisions: RevisionDocument;
   results: JobResultsDocument;
-  frps_stream_cursor: FrpsStreamCursorDocument;
   frps_endpoint_status: FrpsEndpointStatusDocument;
 };

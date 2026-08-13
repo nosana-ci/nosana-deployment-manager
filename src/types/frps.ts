@@ -4,23 +4,14 @@ import type { Collection } from "mongodb";
  * Why a tunnel is currently down. Mirrors the FRPS SSE close reason
  * (`FRPSCloseReasons` in `src/listeners/frps/types.ts`) — kept as its own type
  * here so the persistence layer doesn't depend on the listener layer.
+ *
+ * `graceful`  — frpc shut the proxy down cleanly (op finished).
+ * `lost`      — frpc/the node died (control connection dropped).
+ * `unhealthy` — frpc is still up but the backend failed its health check.
  */
-export type FrpsTunnelReason = "graceful" | "lost";
+export type FrpsTunnelReason = "graceful" | "lost" | "unhealthy";
 
 export type FrpsEndpointState = "up" | "down";
-
-/**
- * Resume point for the FRPS SSE stream. A single document (`_id = "frps"`)
- * holding the id of the last event DM processed, so a restart resumes via
- * `Last-Event-ID` instead of missing everything in between.
- */
-export type FrpsStreamCursorDocument = {
-  _id: string;
-  last_event_id: string;
-  updated_at: Date;
-};
-
-export type FrpsStreamCursorCollection = Collection<FrpsStreamCursorDocument>;
 
 /**
  * Per-`(job, opId)` tunnel status, driven entirely by the FRPS event stream.

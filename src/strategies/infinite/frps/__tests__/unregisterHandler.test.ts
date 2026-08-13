@@ -12,12 +12,7 @@ vi.mock("../../../../repositories/index.js", () => ({
   FrpsEndpointStatusRepository: { collection: { updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }) } },
 }));
 
-vi.mock("../../../../client/frps/index.js", () => ({
-  fetchLiveProxies: vi.fn(),
-}));
-
 import { frpsUnregisterHandler } from "../unregisterHandler.js";
-import { fetchLiveProxies, type LiveProxy } from "../../../../client/frps/index.js";
 import { scheduleTask } from "../../../../tasks/scheduleTask.js";
 import {
   DeploymentsRepository,
@@ -46,10 +41,10 @@ const DEPLOYMENT_ID = "deployment-1";
 const JOB_ID = "job-1";
 
 const mockedScheduleTask = vi.mocked(scheduleTask);
-const mockedFetchLiveProxies = vi.mocked(fetchLiveProxies);
 const mockedDeploymentFindOne = vi.mocked(DeploymentsRepository.findOne);
 const mockedJobFindOne = vi.mocked(JobsRepository.findOne);
 const mockedEventsCreate = vi.mocked(EventsRepository.create);
+const mockedStatusUpdate = vi.mocked(FrpsEndpointStatusRepository.collection.updateOne);
 
 const db = {} as Db;
 
@@ -88,8 +83,6 @@ describe("frpsUnregisterHandler", () => {
     mockedJobFindOne.mockResolvedValue({ job: JOB_ID, state: JobState.RUNNING } as never);
     mockedScheduleTask.mockResolvedValue(true);
     vi.mocked(FrpsEndpointStatusRepository.collection.updateOne).mockResolvedValue({ matchedCount: 1 } as never);
-    // Default: FRPS confirms the proxy really is gone.
-    mockedFetchLiveProxies.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -215,52 +208,34 @@ describe("frpsUnregisterHandler", () => {
 
       expect(mockedScheduleTask).toHaveBeenCalledOnce();
     });
-  });
 
-  describe("verification against the live proxy list", () => {
-    // Even a lost teardown is confirmed, since frpc may have reconnected between
-    // the event being published and us handling it.
+    describe("unhealthy — backend died, frpc still up", () => {
+      const unhealthy = createEvent(
+        [{ deploymentId: DEPLOYMENT_ID, opId: "op-1", jobId: JOB_ID }],
+        FRPSCloseReasons.UNHEALTHY
+      );
 
-    const liveProxy = (jobId: string): LiveProxy => ({
-      name: "proxy-1",
-      jobId,
-      opId: "op-1",
-      deploymentId: DEPLOYMENT_ID,
-    });
+      it("records the endpoint down with the unhealthy reason", async () => {
+        await frpsUnregisterHandler(unhealthy, db);
 
-    it("ignores the event when the proxy is still online", async () => {
-      mockedFetchLiveProxies.mockResolvedValue([liveProxy(JOB_ID)]);
+        expect(mockedStatusUpdate).toHaveBeenCalled();
+      });
 
-      await frpsUnregisterHandler(validEvent, db);
+      it("surfaces a distinct deployment event", async () => {
+        await frpsUnregisterHandler(unhealthy, db);
 
-      expect(mockedScheduleTask).not.toHaveBeenCalled();
-      expect(mockedEventsCreate).not.toHaveBeenCalled();
-    });
+        expect(mockedEventsCreate).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ type: "FRPS_BACKEND_UNHEALTHY", deploymentId: DEPLOYMENT_ID })
+        );
+      });
 
-    it("still stops when the proxy list cannot be read — grace + cancel covers a reconnect", async () => {
-      // The tunnel is genuinely lost; a transient API failure must not drop the
-      // signal. The grace window and registerHandler's cancel handle a reconnect.
-      mockedFetchLiveProxies.mockResolvedValue(null);
+      it("does NOT schedule a stop (handling still to be decided)", async () => {
+        await frpsUnregisterHandler(unhealthy, db);
 
-      await frpsUnregisterHandler(validEvent, db);
-
-      expect(mockedScheduleTask).toHaveBeenCalledOnce();
-    });
-
-    it("stops the job when the proxy list confirms it is gone", async () => {
-      mockedFetchLiveProxies.mockResolvedValue([liveProxy("another-job")]);
-
-      await frpsUnregisterHandler(validEvent, db);
-
-      expect(mockedScheduleTask).toHaveBeenCalledOnce();
-    });
-
-    it("does not call out to FRPS for an event it would skip anyway", async () => {
-      mockedDeploymentFindOne.mockResolvedValue(null);
-
-      await frpsUnregisterHandler(validEvent, db);
-
-      expect(mockedFetchLiveProxies).not.toHaveBeenCalled();
+        expect(mockedScheduleTask).not.toHaveBeenCalled();
+        // Never even reaches the deployment/job lookups.
+        expect(mockedDeploymentFindOne).not.toHaveBeenCalled();
+      });
     });
   });
 

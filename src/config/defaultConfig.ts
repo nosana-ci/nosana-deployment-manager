@@ -30,12 +30,6 @@ const commonConfig: Omit<
   frps_unhealthy_grace_ms: process.env.FRPS_UNHEALTHY_GRACE_MS
     ? parseInt(process.env.FRPS_UNHEALTHY_GRACE_MS)
     : 60_000,
-  frps_cursor_throttle_ms: process.env.FRPS_CURSOR_THROTTLE_MS
-    ? parseInt(process.env.FRPS_CURSOR_THROTTLE_MS)
-    : 2_000,
-  frps_api_timeout_ms: process.env.FRPS_API_TIMEOUT_MS
-    ? parseInt(process.env.FRPS_API_TIMEOUT_MS)
-    : 5_000,
   confidential_ipfs_pin: "",
   base_url:
     process.env.BASE_URL ||

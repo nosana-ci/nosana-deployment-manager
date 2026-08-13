@@ -225,5 +225,4 @@ export const JobsRepository = lazyRepository(NosanaCollections.JOBS);
 export const TasksRepository = lazyRepository(NosanaCollections.TASKS);
 export const RevisionsRepository = lazyRepository(NosanaCollections.REVISIONS);
 export const ResultsRepository = lazyRepository(NosanaCollections.RESULTS);
-export const FrpsStreamCursorRepository = lazyRepository(NosanaCollections.FRPS_STREAM_CURSOR);
 export const FrpsEndpointStatusRepository = lazyRepository(NosanaCollections.FRPS_ENDPOINT_STATUS);

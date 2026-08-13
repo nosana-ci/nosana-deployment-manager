@@ -9,10 +9,13 @@ export type FRPSEventTypes = (typeof FRPSEventTypes)[keyof typeof FRPSEventTypes
 /**
  * Why a proxy was unregistered.
  *
- * `graceful` means frpc sent an explicit `msg.CloseProxy` — it shut down
- * cleanly, which is what happens when an op finishes and the node stops its
- * frpc container. `lost` means the control connection dropped without a
- * goodbye: frpc or its host died. Only `lost` indicates an unhealthy workload.
+ * `graceful` — frpc sent an explicit `msg.CloseProxy` shutting the proxy down
+ *   cleanly (an op finished and the node stopped its frpc container).
+ * `lost` — the control connection dropped without a goodbye: frpc or its host
+ *   died. The workload is unreachable and won't come back on its own.
+ * `unhealthy` — frpc is still connected but closed the proxy itself because the
+ *   backend behind the tunnel failed its health check. The node is fine; the
+ *   proxied service died (and may be restarting).
  *
  * Absent on an FRPS old enough to predate the distinction, in which case the
  * event tells us nothing and must not be acted on.
@@ -20,6 +23,7 @@ export type FRPSEventTypes = (typeof FRPSEventTypes)[keyof typeof FRPSEventTypes
 export const FRPSCloseReasons = {
   GRACEFUL: "graceful",
   LOST: "lost",
+  UNHEALTHY: "unhealthy",
 } as const;
 
 export type FRPSCloseReason = (typeof FRPSCloseReasons)[keyof typeof FRPSCloseReasons];
@@ -62,16 +66,14 @@ export interface UnregisteredEvent extends FRPSEventBase {
 }
 
 /**
- * Sent once per connection. `gap` is true when our `Last-Event-ID` could not be
- * replayed (first connect, evicted from the ring, or the server counter reset),
- * meaning we must re-baseline from a snapshot rather than trust the event log.
+ * Sent once per connection, before the state snapshot (each proxy's last couple
+ * of lifecycle events). Purely informational — the snapshot events that follow
+ * arrive as ordinary registered/unregistered events.
  */
 export interface ConnectedEvent {
   type: typeof FRPSEventTypes.CONNECTED;
   timestamp: number;
   message?: string;
-  gap: boolean;
-  newestId?: string;
 }
 
 export interface FRPSEvents {

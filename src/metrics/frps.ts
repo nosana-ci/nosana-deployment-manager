@@ -13,6 +13,7 @@ export const FRPS_OUTCOMES = [
   "cancelled",
   "skipped",
   "stale_event",
+  "unhealthy",
 ] as const;
 export type FrpsOutcome = (typeof FRPS_OUTCOMES)[number];
 
@@ -20,8 +21,6 @@ export interface FrpsMetrics {
   setConnected(connected: boolean): void;
   recordEvent(type: FRPSEventTypes): void;
   recordOutcome(outcome: FrpsOutcome): void;
-  recordGapRecovery(): void;
-  recordCursorPersisted(): void;
 }
 
 /**
@@ -55,27 +54,10 @@ export function makeFrpsMetrics(handle: RegistryHandle): FrpsMetrics {
     registers: [handle.registry],
   });
 
-  const gapRecoveryTotal = new Counter({
-    name: "frps_gap_recovery_total",
-    help: "Times the event log could not be resumed and the baseline was re-seeded from a snapshot",
-    registers: [handle.registry],
-  });
-
-  // Alert on staleness: it stops advancing whether the stream is disconnected,
-  // wedged, or the process isn't persisting. A growing gap between now and this
-  // is how far a restart would have to replay.
-  const cursorLastPersisted = new Gauge({
-    name: "frps_stream_cursor_last_persisted_timestamp_seconds",
-    help: "Unix timestamp (seconds) the FRPS stream resume cursor was last persisted",
-    registers: [handle.registry],
-  });
-
   return {
     setConnected: (connected) => streamConnected.set(connected ? 1 : 0),
     recordEvent: (type) => eventsTotal.labels(type).inc(),
     recordOutcome: (outcome) => unhealthyJobsTotal.labels(outcome).inc(),
-    recordGapRecovery: () => gapRecoveryTotal.inc(),
-    recordCursorPersisted: () => cursorLastPersisted.set(Math.floor(Date.now() / 1000)),
   };
 }
 

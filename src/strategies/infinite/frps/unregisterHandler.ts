@@ -3,7 +3,6 @@ import type { Db } from "mongodb";
 import { getConfig } from "../../../config/index.js";
 import { scheduleTask } from "../../../tasks/scheduleTask.js";
 import { getFrpsMetrics } from "../../../metrics/frps.js";
-import { fetchLiveProxies } from "../../../client/frps/index.js";
 import { DeploymentsRepository, EventsRepository, JobsRepository } from "../../../repositories/index.js";
 import { isActiveInfiniteDeployment } from "../utils/isActiveInfiniteDeployment.js";
 
@@ -37,9 +36,8 @@ const STOPPABLE_STATES: JobState[] = [JobState.QUEUED, JobState.RUNNING];
  * immediately. A matching `registered` event within that window deletes the task
  * again (see `registerHandler`), so a brief frpc reconnect doesn't kill a healthy
  * job. Putting the grace in the task rather than an in-memory timer means a
- * listener restart mid-window still stops the job. The grace + cancel is also the
- * safety net when the live-proxy check can't be reached, so a transient FRPS-API
- * blip never drops the signal.
+ * listener restart mid-window still stops the job. The grace + cancel is the
+ * sole reconnect defence — there is deliberately no query back to FRPS.
  *
  * Redeployment is left to `infiniteJobStateCompletedOrStopUpdate`, which already
  * tops the deployment back up when a job reaches STOPPED.
@@ -61,6 +59,26 @@ export async function frpsUnregisterHandler(
     console.log(`${LOG} skipping ${proxyName}: ${why}`, detail ?? "");
     metrics?.recordOutcome("skipped");
   };
+
+  if (reason === FRPSCloseReasons.UNHEALTHY) {
+    // The backend behind the tunnel failed its health check while frpc stayed
+    // connected — the proxied service died, not the node. Recorded (status above)
+    // and surfaced here, but NOT yet acted on: the stop/replace policy for a dead
+    // backend (how long to wait for it to restart) is a separate decision. A
+    // matching `registered` flips the status back to up if it recovers.
+    metrics?.recordOutcome("unhealthy");
+    console.log(`${LOG} backend unhealthy for ${jobId ?? proxyName} (observed, no action)`);
+    if (deploymentId && jobId) {
+      await EventsRepository.create({
+        category: EventType.DEPLOYMENT,
+        deploymentId,
+        type: "FRPS_BACKEND_UNHEALTHY",
+        message: `Job ${jobId}'s backend service failed its health check while the node stayed reachable.`,
+        created_at: new Date(),
+      });
+    }
+    return;
+  }
 
   if (reason !== FRPSCloseReasons.LOST) {
     // A clean shutdown (an op finishing), or an FRPS too old to say. Either way
@@ -87,16 +105,6 @@ export async function frpsUnregisterHandler(
 
   if (!STOPPABLE_STATES.includes(job.state)) {
     return skip(`job is already ${job.state}`, jobId);
-  }
-
-  // A cheap confirmation that frpc hasn't already reconnected. If we can't reach
-  // the API we still proceed: the grace window plus `registerHandler`'s cancel
-  // cover a reconnect, so a transient API failure must not drop a real loss.
-  const live = await fetchLiveProxies();
-
-  if (live?.some((proxy) => proxy.jobId === jobId)) {
-    metrics?.recordOutcome("stale_event");
-    return;
   }
 
   const graceMs = getConfig().frps_unhealthy_grace_ms;

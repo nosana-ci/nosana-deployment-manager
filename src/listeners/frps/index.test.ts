@@ -5,22 +5,11 @@ vi.mock("../../client/eventSource/index.js", () => ({
   createEventSource: vi.fn(() => ({ on: vi.fn(), close: vi.fn() })),
 }));
 
-vi.mock("./cursor.js", () => ({
-  readCursor: vi.fn().mockResolvedValue(undefined),
-  createCursorWriter: vi.fn(() => ({ record: vi.fn(), stop: vi.fn().mockResolvedValue(undefined) })),
-}));
-
-vi.mock("./gapRecovery.js", () => ({
-  runGapRecovery: vi.fn().mockResolvedValue(undefined),
-}));
-
 import { startFrpsListener } from "./index.js";
 import { createEventSource } from "../../client/eventSource/index.js";
-import { readCursor } from "./cursor.js";
 import { setConfig } from "../../config/index.js";
 
 const mockedCreateEventSource = vi.mocked(createEventSource);
-const mockedReadCursor = vi.mocked(readCursor);
 
 const db = {} as Db;
 
@@ -28,12 +17,10 @@ describe("startFrpsListener", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockedCreateEventSource.mockReturnValue({ on: vi.fn(), close: vi.fn() });
-    mockedReadCursor.mockResolvedValue(undefined);
     setConfig("frps_watching_enabled", true);
     setConfig("frps_internal_address", "frps.frps.svc.cluster.local");
     setConfig("frps_internal_use_tls", false);
     setConfig("frps_api_key", "secret");
-    setConfig("frps_cursor_throttle_ms", 2_000);
   });
 
   it("does not subscribe when the kill-switch is off", async () => {
@@ -76,16 +63,6 @@ describe("startFrpsListener", () => {
     );
   });
 
-  it("seeds the resume point from the persisted cursor", async () => {
-    mockedReadCursor.mockResolvedValue("4821");
-
-    await startFrpsListener(db);
-
-    expect(mockedCreateEventSource).toHaveBeenCalledWith(
-      expect.objectContaining({ initialLastEventId: "4821" })
-    );
-  });
-
   it("sends no auth header when no api key is configured", async () => {
     setConfig("frps_api_key", undefined);
 
@@ -96,13 +73,12 @@ describe("startFrpsListener", () => {
     );
   });
 
-  it("registers a handler for the connected, registered and unregistered events", async () => {
+  it("registers a handler for the registered and unregistered events", async () => {
     const on = vi.fn();
     mockedCreateEventSource.mockReturnValue({ on, close: vi.fn() });
 
     await startFrpsListener(db);
 
-    expect(on).toHaveBeenCalledWith("connected", expect.any(Function));
     expect(on).toHaveBeenCalledWith("registered", expect.any(Function));
     expect(on).toHaveBeenCalledWith("unregistered", expect.any(Function));
   });

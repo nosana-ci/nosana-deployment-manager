@@ -8,8 +8,6 @@ const FRPS_ENV_KEYS = [
   "FRPS_API_KEY",
   "FRPS_WATCHING_ENABLED",
   "FRPS_UNHEALTHY_GRACE_MS",
-  "FRPS_CURSOR_THROTTLE_MS",
-  "FRPS_API_TIMEOUT_MS",
 ] as const;
 
 const originalEnv = { ...process.env };
@@ -43,18 +41,6 @@ describe("defaultConfig FRPS settings", () => {
     expect(config.frps_internal_use_tls).toBe(false);
     expect(config.frps_api_key).toBeUndefined();
     expect(config.frps_unhealthy_grace_ms).toBe(60_000);
-    expect(config.frps_cursor_throttle_ms).toBe(2_000);
-    expect(config.frps_api_timeout_ms).toBe(5_000);
-  });
-
-  it("reads the stream tunables from the environment", async () => {
-    const config = await loadConfig({
-      FRPS_CURSOR_THROTTLE_MS: "500",
-      FRPS_API_TIMEOUT_MS: "2000",
-    });
-
-    expect(config.frps_cursor_throttle_ms).toBe(500);
-    expect(config.frps_api_timeout_ms).toBe(2_000);
   });
 
   it("treats FRPS_WATCHING_ENABLED=false as the kill-switch", async () => {

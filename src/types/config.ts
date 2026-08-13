@@ -32,14 +32,6 @@ export type DeploymentsConfig = {
    * healthy job.
    */
   frps_unhealthy_grace_ms: number;
-  /**
-   * Minimum interval between writes of the FRPS stream resume cursor. Lagging is
-   * safe — a restart replays from the last stored id and every handler is
-   * idempotent — so this trades a slightly longer replay for fewer writes.
-   */
-  frps_cursor_throttle_ms: number;
-  /** Request timeout for the FRPS proxy-list API (used by gap-recovery). */
-  frps_api_timeout_ms: number;
   tasks_batch_size: number;
   confidential_ipfs_pin: string;
   confidential_by_default: boolean;

@@ -22,13 +22,12 @@ const STOPPABLE_STATES: JobState[] = [JobState.QUEUED, JobState.RUNNING];
  * workload could be unreachable even though it is still RUNNING on-chain.
  *
  * The op-level status is recorded for every teardown (for observability), but
- * only a fault triggers a stop: `lost` (frpc/node died) and `unhealthy` (the
- * backend failed its health check while frpc stayed up) are treated identically —
- * to the job poster both mean the service is unreachable. `graceful` is ignored:
- * a job's ops each run their own frpc container, so when one op finishes the node
- * stops it and its proxies go away legitimately, mid-job, while the next op pulls
- * its image. Treating that as a failure would kill healthy multi-op jobs at each
- * transition.
+ * only `lost` triggers a stop — the workload is unreachable, whether the node
+ * died or (per FRPS's collapsing) its backend failed a health check. `graceful`
+ * is ignored: a job's ops each run their own frpc container, so when one op
+ * finishes the node stops it and its proxies go away legitimately, mid-job,
+ * while the next op pulls its image. Treating that as a failure would kill
+ * healthy multi-op jobs at each transition.
  *
  * A missing `reason` means FRPS predates the distinction, so the event carries no
  * usable fault signal and no stop is scheduled.
@@ -61,12 +60,7 @@ export async function frpsUnregisterHandler(
     metrics?.recordOutcome("skipped");
   };
 
-  // `lost` (frpc/node died) and `unhealthy` (backend failed its health check
-  // while frpc stayed up) get identical treatment: to the job poster both mean
-  // "my service is unreachable", and the same grace + cancel-on-recovery covers
-  // a node reconnect and a backend restart alike. The distinct reason survives
-  // in the endpoint status and the event message purely for diagnosis.
-  if (reason !== FRPSCloseReasons.LOST && reason !== FRPSCloseReasons.UNHEALTHY) {
+  if (reason !== FRPSCloseReasons.LOST) {
     // A clean shutdown (an op finishing), or an FRPS too old to say. Either way
     // there is no evidence of a fault here.
     metrics?.recordOutcome("stale_event");
@@ -114,18 +108,11 @@ export async function frpsUnregisterHandler(
   console.log(`${LOG} scheduling stop of ${jobId} at ${due_at.toISOString()}`);
   metrics?.recordOutcome("scheduled");
 
-  // One event type for both reasons — to the poster the outcome is identical —
-  // with the cause kept in the message for diagnosis.
-  const cause =
-    reason === FRPSCloseReasons.UNHEALTHY
-      ? "its service stopped responding to health checks"
-      : "lost its network tunnel";
-
   await EventsRepository.create({
     category: EventType.DEPLOYMENT,
     deploymentId: deployment.id,
     type: "FRPS_TUNNEL_LOST",
-    message: `Job ${jobId} ${cause} and will be stopped and replaced in ${Math.round(graceMs / 1000)}s if it does not recover.`,
+    message: `Job ${jobId} became unreachable and will be stopped and replaced in ${Math.round(graceMs / 1000)}s if it does not recover.`,
     created_at: new Date(),
   });
 }

@@ -209,44 +209,17 @@ describe("frpsUnregisterHandler", () => {
       expect(mockedScheduleTask).toHaveBeenCalledOnce();
     });
 
-    describe("unhealthy — backend died, frpc still up", () => {
-      // Treated identically to lost: to the job poster both mean the service is
-      // unreachable, and the same grace + cancel covers a backend restart.
-      const unhealthy = createEvent(
+    it("records the endpoint down even for a graceful teardown", async () => {
+      // No stop, but the dashboard still sees the op's tunnel go down.
+      const graceful = createEvent(
         [{ deploymentId: DEPLOYMENT_ID, opId: "op-1", jobId: JOB_ID }],
-        FRPSCloseReasons.UNHEALTHY
+        FRPSCloseReasons.GRACEFUL
       );
 
-      it("records the endpoint down with the unhealthy reason", async () => {
-        await frpsUnregisterHandler(unhealthy, db);
+      await frpsUnregisterHandler(graceful, db);
 
-        expect(mockedStatusUpdate).toHaveBeenCalled();
-      });
-
-      it("schedules the same grace-delayed stop as a lost tunnel", async () => {
-        await frpsUnregisterHandler(unhealthy, db);
-
-        expect(mockedScheduleTask).toHaveBeenCalledExactlyOnceWith(
-          db,
-          TaskType.STOP,
-          DEPLOYMENT_ID,
-          DeploymentStatus.RUNNING,
-          new Date(NOW.getTime() + GRACE_MS),
-          { job: JOB_ID, idempotent: true }
-        );
-      });
-
-      it("emits the same tunnel-lost event type, with the cause in the message", async () => {
-        await frpsUnregisterHandler(unhealthy, db);
-
-        expect(mockedEventsCreate).toHaveBeenCalledExactlyOnceWith(
-          expect.objectContaining({
-            type: "FRPS_TUNNEL_LOST",
-            deploymentId: DEPLOYMENT_ID,
-            message: expect.stringContaining("health checks"),
-          })
-        );
-      });
+      expect(mockedStatusUpdate).toHaveBeenCalled();
+      expect(mockedScheduleTask).not.toHaveBeenCalled();
     });
   });
 

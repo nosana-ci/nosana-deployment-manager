@@ -11,11 +11,10 @@ export type FRPSEventTypes = (typeof FRPSEventTypes)[keyof typeof FRPSEventTypes
  *
  * `graceful` — frpc sent an explicit `msg.CloseProxy` shutting the proxy down
  *   cleanly (an op finished and the node stopped its frpc container).
- * `lost` — the control connection dropped without a goodbye: frpc or its host
- *   died. The workload is unreachable and won't come back on its own.
- * `unhealthy` — frpc is still connected but closed the proxy itself because the
- *   backend behind the tunnel failed its health check. The node is fine; the
- *   proxied service died (and may be restarting).
+ * `lost` — the workload is unreachable. Covers both a dropped control
+ *   connection (frpc or its host died) and frpc reporting that the backend
+ *   failed its health check while the node stayed up — FRPS collapses the two,
+ *   since either way the service is down and not by choice.
  *
  * Absent on an FRPS old enough to predate the distinction, in which case the
  * event tells us nothing and must not be acted on.
@@ -23,7 +22,6 @@ export type FRPSEventTypes = (typeof FRPSEventTypes)[keyof typeof FRPSEventTypes
 export const FRPSCloseReasons = {
   GRACEFUL: "graceful",
   LOST: "lost",
-  UNHEALTHY: "unhealthy",
 } as const;
 
 export type FRPSCloseReason = (typeof FRPSCloseReasons)[keyof typeof FRPSCloseReasons];

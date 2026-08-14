@@ -5,11 +5,12 @@ import type { Collection } from "mongodb";
  * (`FRPSCloseReasons` in `src/listeners/frps/types.ts`) — kept as its own type
  * here so the persistence layer doesn't depend on the listener layer.
  *
- * `graceful`  — frpc shut the proxy down cleanly (op finished).
- * `lost`      — frpc/the node died (control connection dropped).
- * `unhealthy` — frpc is still up but the backend failed its health check.
+ * `graceful` — frpc shut the proxy down cleanly (op finished).
+ * `lost`     — the workload is unreachable: frpc/the node died, or frpc reported
+ *              the backend failed its health check. FRPS collapses both to one
+ *              reason, since both warrant the same reaction.
  */
-export type FrpsTunnelReason = "graceful" | "lost" | "unhealthy";
+export type FrpsTunnelReason = "graceful" | "lost";
 
 export type FrpsEndpointState = "up" | "down";
 

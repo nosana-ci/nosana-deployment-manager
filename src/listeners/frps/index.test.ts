@@ -51,6 +51,29 @@ describe("startFrpsListener", () => {
     );
   });
 
+  it("strips an accidental scheme from the address instead of building http://http://", async () => {
+    setConfig("frps_internal_address", "http://frps.frps.svc.cluster.local:7501");
+
+    await startFrpsListener(db);
+
+    expect(mockedCreateEventSource).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "http://frps.frps.svc.cluster.local:7501/api/conn/events",
+      })
+    );
+  });
+
+  it("honours an https scheme in the address by using TLS", async () => {
+    setConfig("frps_internal_address", "https://frps.internal:7501");
+    setConfig("frps_internal_use_tls", false);
+
+    await startFrpsListener(db);
+
+    expect(mockedCreateEventSource).toHaveBeenCalledWith(
+      expect.objectContaining({ url: "https://frps.internal:7501/api/conn/events" })
+    );
+  });
+
   it("subscribes over https when tls is enabled", async () => {
     setConfig("frps_internal_use_tls", true);
 

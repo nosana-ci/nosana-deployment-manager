@@ -56,12 +56,20 @@ export function createEventSource<T>({
     setConnected(true);
   };
 
+  let initialFailureLogged = false;
+
   eventSource.onerror = (error) => {
     if (connected) {
       console.error(`[${name}] event stream disconnected, reconnecting`, {
         readyState: eventSource.readyState,
         error,
       });
+    } else if (!initialFailureLogged) {
+      // Never connected at all — usually a bad address or unreachable host.
+      // Logged once (not per retry) so a misconfiguration is visible in the
+      // logs instead of failing silently forever behind the connected gauge.
+      initialFailureLogged = true;
+      console.error(`[${name}] cannot connect to ${url}; retrying in the background`, { error });
     }
     setConnected(false);
   };

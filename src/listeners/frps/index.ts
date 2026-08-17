@@ -26,7 +26,7 @@ export type FrpsListenerHandle = { stop: () => Promise<void> };
  * snapshot always carries that.
  */
 export async function startFrpsListener(db: Db): Promise<FrpsListenerHandle> {
-  const noop: FrpsListenerHandle = { stop: async () => {} };
+  const noop: FrpsListenerHandle = { stop: async () => { } };
   const { frps_watching_enabled, frps_internal_address, frps_internal_use_tls, frps_api_key } =
     getConfig();
 

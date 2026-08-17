@@ -30,7 +30,7 @@ const LOG = "[FRPS register]";
  * separately would need durable per-(job, proxy) state, which isn't worth it
  * until we see this happen.
  */
-export async function frpsRegisterHandler({ metadatas, proxyName }: RegisteredEvent): Promise<void> {
+export async function frpsRegisterHandler({ metadatas }: RegisteredEvent): Promise<void> {
   const { deploymentId, jobId, opId } = parseFrpsMetadata(metadatas);
 
   if (jobId && opId) {
@@ -38,7 +38,6 @@ export async function frpsRegisterHandler({ metadatas, proxyName }: RegisteredEv
   }
 
   if (!deploymentId || !jobId) {
-    console.log(`${LOG} ignoring ${proxyName}: no deploymentId/jobId metadata`, metadatas ?? "");
     return;
   }
 

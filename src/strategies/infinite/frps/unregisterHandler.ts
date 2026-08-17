@@ -43,7 +43,7 @@ const STOPPABLE_STATES: JobState[] = [JobState.QUEUED, JobState.RUNNING];
  * tops the deployment back up when a job reaches STOPPED.
  */
 export async function frpsUnregisterHandler(
-  { metadatas, proxyName, reason }: UnregisteredEvent,
+  { metadatas, reason }: UnregisteredEvent,
   db: Db
 ): Promise<void> {
   const metrics = getFrpsMetrics();
@@ -55,8 +55,11 @@ export async function frpsUnregisterHandler(
     await recordEndpointState({ job: jobId, opId, deploymentId, state: "down", reason });
   }
 
-  const skip = (why: string, detail?: unknown) => {
-    console.log(`${LOG} skipping ${proxyName}: ${why}`, detail ?? "");
+  // Routine filtering — the vast majority of events are for proxies that
+  // aren't ours to act on (node API tunnels, non-infinite deployments, jobs
+  // already settled). At fleet scale logging each one drowns the log, and they
+  // are all by design, so they're counted on the metric and otherwise silent.
+  const skip = () => {
     metrics?.recordOutcome("skipped");
   };
 
@@ -68,23 +71,23 @@ export async function frpsUnregisterHandler(
   }
 
   if (!deploymentId || !jobId) {
-    return skip("event carried no deploymentId/jobId metadata", metadatas);
+    return skip();
   }
 
   const deployment = await DeploymentsRepository.findOne({ id: deploymentId });
 
   if (!deployment || !isActiveInfiniteDeployment(deployment)) {
-    return skip("not a running infinite deployment", deploymentId);
+    return skip();
   }
 
   const job = await JobsRepository.findOne({ job: jobId, deployment: deploymentId });
 
   if (!job) {
-    return skip("job not found", jobId);
+    return skip();
   }
 
   if (!STOPPABLE_STATES.includes(job.state)) {
-    return skip(`job is already ${job.state}`, jobId);
+    return skip();
   }
 
   const graceMs = getConfig().frps_unhealthy_grace_ms;
@@ -102,7 +105,8 @@ export async function frpsUnregisterHandler(
   );
 
   if (!created) {
-    return skip("a STOP is already pending for this job", jobId);
+    console.log(`${LOG} ${jobId} lost again; a STOP is already pending`);
+    return skip();
   }
 
   console.log(`${LOG} scheduling stop of ${jobId} at ${due_at.toISOString()}`);

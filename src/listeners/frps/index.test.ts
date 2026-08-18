@@ -18,7 +18,7 @@ describe("startFrpsListener", () => {
     vi.clearAllMocks();
     mockedCreateEventSource.mockReturnValue({ on: vi.fn(), close: vi.fn() });
     setConfig("frps_watching_enabled", true);
-    setConfig("frps_internal_address", "frps.frps.svc.cluster.local");
+    setConfig("frps_internal_address", "http://frps.frps.svc.cluster.local:7501");
     setConfig("frps_api_key", "secret");
   });
 
@@ -39,37 +39,32 @@ describe("startFrpsListener", () => {
     expect(mockedCreateEventSource).not.toHaveBeenCalled();
   });
 
-  it("defaults a bare host to http and sends the api key header", async () => {
+  it("subscribes to the events endpoint under the address with the api key header", async () => {
     await startFrpsListener(db);
 
     expect(mockedCreateEventSource).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
-        url: "http://frps.frps.svc.cluster.local/api/conn/events",
+        url: "http://frps.frps.svc.cluster.local:7501/api/conn/events",
         headers: { "X-API-Key": "secret" },
       })
     );
   });
 
-  it("keeps an explicit http scheme instead of building http://http://", async () => {
-    setConfig("frps_internal_address", "http://frps.frps.svc.cluster.local:7501");
-
-    await startFrpsListener(db);
-
-    expect(mockedCreateEventSource).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "http://frps.frps.svc.cluster.local:7501/api/conn/events",
-      })
-    );
-  });
-
-  it("uses TLS when the address carries an https scheme", async () => {
-    setConfig("frps_internal_address", "https://frps.internal:7501");
+  it("keeps the scheme from the address, so https stays https", async () => {
+    setConfig("frps_internal_address", "https://frps.internal:7501/");
 
     await startFrpsListener(db);
 
     expect(mockedCreateEventSource).toHaveBeenCalledWith(
       expect.objectContaining({ url: "https://frps.internal:7501/api/conn/events" })
     );
+  });
+
+  it("throws on an address without a scheme instead of subscribing to a broken url", async () => {
+    setConfig("frps_internal_address", "frps.frps.svc.cluster.local:7501");
+
+    await expect(startFrpsListener(db)).rejects.toThrow(/Invalid URL/);
+    expect(mockedCreateEventSource).not.toHaveBeenCalled();
   });
 
   it("sends no auth header when no api key is configured", async () => {

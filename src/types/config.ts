@@ -16,10 +16,10 @@ export type DeploymentsConfig = {
   /** Public FRPS hostname the deployment endpoint URLs are built from. */
   frps_public_address: string;
   /**
-   * Cluster-internal FRPS address serving the connection event stream and the
-   * proxy-list API, as `host:port` or `https://host:port` (a bare `host:port`
-   * is plain http). Empty disables FRPS watching entirely — it has no sensible
-   * default outside the cluster.
+   * Cluster-internal FRPS base URL serving the connection event stream and the
+   * proxy-list API, including scheme and port (`http://host:port` or
+   * `https://host:port`). Empty disables FRPS watching entirely — it has no
+   * sensible default outside the cluster.
    */
   frps_internal_address: string;
   frps_api_key: string | undefined;

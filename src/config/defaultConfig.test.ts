@@ -48,12 +48,12 @@ describe("defaultConfig FRPS settings", () => {
 
   it("reads the address, api key and grace period from the environment", async () => {
     const config = await loadConfig({
-      FRPS_INTERNAL_ADDRESS: "frps.internal",
+      FRPS_INTERNAL_ADDRESS: "http://frps.internal:7501",
       FRPS_API_KEY: "secret",
       FRPS_UNHEALTHY_GRACE_MS: "5000",
     });
 
-    expect(config.frps_internal_address).toBe("frps.internal");
+    expect(config.frps_internal_address).toBe("http://frps.internal:7501");
     expect(config.frps_api_key).toBe("secret");
     expect(config.frps_unhealthy_grace_ms).toBe(5_000);
   });

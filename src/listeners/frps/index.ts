@@ -39,12 +39,9 @@ export async function startFrpsListener(db: Db): Promise<FrpsListenerHandle> {
     return noop;
   }
 
-  // The address may carry its scheme ("https://host:port"); a bare "host:port"
-  // is plain http.
-  const base = /^https?:\/\//i.test(frps_internal_address)
-    ? frps_internal_address
-    : `http://${frps_internal_address}`;
-  const url = `${base}/api/conn/events`;
+  // Throws on a malformed address (e.g. a bare host:port with no scheme), so a
+  // misconfiguration fails at startup instead of retrying forever in the background.
+  const url = new URL("/api/conn/events", frps_internal_address).href;
   console.log(`${LOG} subscribing to ${url}`);
 
   // Process events strictly in order. SSE delivers them ordered (the snapshot

@@ -24,7 +24,6 @@ const commonConfig: Omit<
   confidential_by_default: process.env.CONFIDENTIAL_BY_DEFAULT === "true",
   vault_key: process.env.VAULT_KEY || undefined,
   frps_internal_address: process.env.FRPS_INTERNAL_ADDRESS ?? "",
-  frps_internal_use_tls: process.env.FRPS_INTERNAL_USE_TLS === "true",
   frps_api_key: process.env.FRPS_API_KEY || undefined,
   frps_watching_enabled: process.env.FRPS_WATCHING_ENABLED !== "false",
   frps_unhealthy_grace_ms: process.env.FRPS_UNHEALTHY_GRACE_MS

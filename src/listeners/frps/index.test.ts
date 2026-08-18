@@ -19,7 +19,6 @@ describe("startFrpsListener", () => {
     mockedCreateEventSource.mockReturnValue({ on: vi.fn(), close: vi.fn() });
     setConfig("frps_watching_enabled", true);
     setConfig("frps_internal_address", "frps.frps.svc.cluster.local");
-    setConfig("frps_internal_use_tls", false);
     setConfig("frps_api_key", "secret");
   });
 
@@ -40,7 +39,7 @@ describe("startFrpsListener", () => {
     expect(mockedCreateEventSource).not.toHaveBeenCalled();
   });
 
-  it("subscribes over http with the api key header", async () => {
+  it("defaults a bare host to http and sends the api key header", async () => {
     await startFrpsListener(db);
 
     expect(mockedCreateEventSource).toHaveBeenCalledExactlyOnceWith(
@@ -51,7 +50,7 @@ describe("startFrpsListener", () => {
     );
   });
 
-  it("strips an accidental scheme from the address instead of building http://http://", async () => {
+  it("keeps an explicit http scheme instead of building http://http://", async () => {
     setConfig("frps_internal_address", "http://frps.frps.svc.cluster.local:7501");
 
     await startFrpsListener(db);
@@ -63,26 +62,13 @@ describe("startFrpsListener", () => {
     );
   });
 
-  it("honours an https scheme in the address by using TLS", async () => {
+  it("uses TLS when the address carries an https scheme", async () => {
     setConfig("frps_internal_address", "https://frps.internal:7501");
-    setConfig("frps_internal_use_tls", false);
 
     await startFrpsListener(db);
 
     expect(mockedCreateEventSource).toHaveBeenCalledWith(
       expect.objectContaining({ url: "https://frps.internal:7501/api/conn/events" })
-    );
-  });
-
-  it("subscribes over https when tls is enabled", async () => {
-    setConfig("frps_internal_use_tls", true);
-
-    await startFrpsListener(db);
-
-    expect(mockedCreateEventSource).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: "https://frps.frps.svc.cluster.local/api/conn/events",
-      })
     );
   });
 

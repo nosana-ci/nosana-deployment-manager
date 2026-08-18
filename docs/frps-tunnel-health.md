@@ -35,10 +35,9 @@ Key mechanics:
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `FRPS_INTERNAL_ADDRESS` | *(empty — disabled)* | Cluster-internal FRPS host **including port**, e.g. `frps.frps.svc.cluster.local:7501`. Empty disables watching entirely. |
+| `FRPS_INTERNAL_ADDRESS` | *(empty — disabled)* | Cluster-internal FRPS address **including port**, e.g. `frps.frps.svc.cluster.local:7501`. Prefix with `https://` for TLS; a bare `host:port` is plain http. Empty disables watching entirely. |
 | `FRPS_API_KEY` | — | The FRPS `proxyAPIServer` API key (its `ADMIN_KEY`), sent as `X-API-Key`. |
 | `FRPS_WATCHING_ENABLED` | `true` | Kill-switch. Set `false` to disable without unsetting the address. |
-| `FRPS_INTERNAL_USE_TLS` | `false` | Scheme for the internal address. |
 | `FRPS_UNHEALTHY_GRACE_MS` | `60000` | Grace between a `lost` teardown and the stop; a re-register inside it cancels. |
 
 `FRPS_ADDRESS` (public endpoint hostname) is unchanged; internally the config field was renamed to `frps_public_address` to distinguish it from the new internal address.

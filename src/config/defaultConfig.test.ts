@@ -4,7 +4,6 @@ import type { DeploymentsConfig } from "../types/index.js";
 
 const FRPS_ENV_KEYS = [
   "FRPS_INTERNAL_ADDRESS",
-  "FRPS_INTERNAL_USE_TLS",
   "FRPS_API_KEY",
   "FRPS_WATCHING_ENABLED",
   "FRPS_UNHEALTHY_GRACE_MS",
@@ -38,7 +37,6 @@ describe("defaultConfig FRPS settings", () => {
     // No default address: the listener has to be told where FRPS is, so an
     // unconfigured environment simply doesn't subscribe.
     expect(config.frps_internal_address).toBe("");
-    expect(config.frps_internal_use_tls).toBe(false);
     expect(config.frps_api_key).toBeUndefined();
     expect(config.frps_unhealthy_grace_ms).toBe(60_000);
   });
@@ -46,12 +44,6 @@ describe("defaultConfig FRPS settings", () => {
   it("treats FRPS_WATCHING_ENABLED=false as the kill-switch", async () => {
     expect((await loadConfig({ FRPS_WATCHING_ENABLED: "false" })).frps_watching_enabled).toBe(false);
     expect((await loadConfig({ FRPS_WATCHING_ENABLED: "true" })).frps_watching_enabled).toBe(true);
-  });
-
-  it("parses FRPS_INTERNAL_USE_TLS as a string, not a truthiness check", async () => {
-    // `Boolean("false")` is true — the bug this guards against.
-    expect((await loadConfig({ FRPS_INTERNAL_USE_TLS: "false" })).frps_internal_use_tls).toBe(false);
-    expect((await loadConfig({ FRPS_INTERNAL_USE_TLS: "true" })).frps_internal_use_tls).toBe(true);
   });
 
   it("reads the address, api key and grace period from the environment", async () => {

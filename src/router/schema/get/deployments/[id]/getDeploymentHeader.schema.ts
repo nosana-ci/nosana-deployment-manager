@@ -21,6 +21,20 @@ export const GetDeploymentHeaderSchema: FastifySchema = {
     },
     required: ["deployment"],
   },
+  querystring: Type.Object({
+    includeTime: Type.Optional(
+      Type.Union([Type.Literal("true"), Type.Literal("false")], {
+        description: "Include a timestamp in the signed message.",
+      })
+    ),
+    message: Type.Optional(
+      Type.String({
+        minLength: 1,
+        description:
+          "Custom message to sign. Defaults to \"DEPLOYMENT_HEADER\".",
+      })
+    ),
+  }),
   response: {
     200: {
       type: "string",

@@ -7,12 +7,12 @@ import type { HeadersSchema } from "../../../../../schema/index.schema.js";
 
 export const deploymentGetHeaderHandler: RouteHandler<{
   Params: { deployment: string };
-  Querystring: { includeTime?: string };
+  Querystring: { includeTime?: string; message?: string };
   Headers: HeadersSchema;
   Reply: GetDeploymentHeaderSuccess | GetDeploymentHeaderError;
 }> = async (req, res) => {
   const owner = req.headers["x-user-id"];
-  const { includeTime } = req.query;
+  const { includeTime, message } = req.query;
   const {
     db: { vaults },
   } = res.locals;
@@ -37,6 +37,7 @@ export const deploymentGetHeaderHandler: RouteHandler<{
         const worker = new VaultWorker("../router/routes/get/deployments/[id]/getDeploymentHeaders/worker.js", {
           workerData: {
             includeTime: includeTime === "true",
+            message,
             vault: vaultDocument.vault_key,
           }
         });

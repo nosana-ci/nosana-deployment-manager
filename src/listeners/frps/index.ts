@@ -40,7 +40,14 @@ export async function startFrpsListener(db: Db): Promise<FrpsListenerHandle> {
     return noop;
   }
 
-  const url = `${frps_internal_use_tls ? "https" : "http"}://${frps_internal_address}/api/conn/events`;
+  // Tolerate an address that already carries a scheme (e.g. "https://host:port"):
+  // strip it so we don't build "http://http://...", and treat an explicit https
+  // as a request for TLS even if FRPS_INTERNAL_USE_TLS is unset.
+  const schemeMatch = /^(https?):\/\//i.exec(frps_internal_address);
+  const address = schemeMatch ? frps_internal_address.slice(schemeMatch[0].length) : frps_internal_address;
+  const useTls = frps_internal_use_tls || schemeMatch?.[1].toLowerCase() === "https";
+
+  const url = `${useTls ? "https" : "http"}://${address}/api/conn/events`;
   console.log(`${LOG} subscribing to ${url}`);
 
   // Process events strictly in order. SSE delivers them ordered (the snapshot

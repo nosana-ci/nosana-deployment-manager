@@ -13,6 +13,8 @@ import { setupDeploymentsRoutes, setupJobsRoutes, setupStatsRoutes, setupVaultRo
 import { AppMode } from "../config/mode.js";
 
 import { addSchemas } from "./schema/index.schema.js";
+import { createDeploymentWatchers, type DeploymentWatchers } from "./stream/deploymentWatchers.js";
+import { startDeploymentChangeListener } from "./stream/deploymentChangeListener.js";
 
 import { Collections } from "../types/index.js";
 
@@ -101,19 +103,31 @@ export async function startDeploymentManagerApi(db: Db, mode: AppMode, metricsHa
     return collections;
   }, {} as Collections);
 
+  // SSE connections register in the watchers; the change listener runs alongside
+  // the API and consults them before forwarding a change.
+  const deploymentWatchers = createDeploymentWatchers();
+  const deploymentChanges = startDeploymentChangeListener(db, deploymentWatchers, server.log);
+  // Open streams would otherwise hold server.close() until every client leaves.
+  server.addHook("preClose", async () => deploymentWatchers.closeAll());
+  server.addHook("onClose", async () => {
+    await deploymentChanges.stop();
+  });
+
   server.decorateReply("locals", {
     getter() {
       if (!this._locals) {
         this._locals = {
           db: dbCollections,
+          deploymentWatchers,
         };
       }
-      return this._locals as { db: Collections };
+      return this._locals as { db: Collections; deploymentWatchers: DeploymentWatchers };
     },
     setter(value) {
       if (!this._locals) {
         this._locals = {
           db: dbCollections,
+          deploymentWatchers,
         };
       }
       Object.assign(this._locals, value);

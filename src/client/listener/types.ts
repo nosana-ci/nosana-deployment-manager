@@ -1,4 +1,4 @@
-import { Db } from "mongodb";
+import { Db, InferIdType } from "mongodb";
 
 export type FilterOperators<T> =
   | { $eq: T }
@@ -20,12 +20,23 @@ export type Filters<T> =
 
 export const OnEvent = {
   "INSERT": "insert",
-  "UPDATE": "update"
+  "UPDATE": "update",
+  "DELETE": "delete"
 } as const;
 export type EventType = typeof OnEvent[keyof typeof OnEvent];
 
 export type EventCallback<T> = (data: T, db: Db) => void;
 export type InsertEvent<T> = [typeof OnEvent.INSERT, EventCallback<T>];
 export type UpdateEvent<T> = [typeof OnEvent.UPDATE, EventCallback<T>, { fields?: (keyof T)[]; filters?: Filters<T> }];
+/** A delete carries no document, only its key. */
+export type DeleteCallback<T> = (documentKey: { _id: InferIdType<T> }, db: Db) => void;
+export type DeleteEvent<T> = [typeof OnEvent.DELETE, DeleteCallback<T>];
+
+/** One overload per event, so an inline callback is typed for the event it handles. */
+export type AddListener<T> = {
+  (...params: InsertEvent<T>): void;
+  (...params: UpdateEvent<T>): void;
+  (...params: DeleteEvent<T>): void;
+};
 
 export type StrategyListener<T> = InsertEvent<T> | UpdateEvent<T>

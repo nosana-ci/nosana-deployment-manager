@@ -255,6 +255,24 @@ describe("createCollectionListener", () => {
     await started;
   });
 
+  it("delivers delete events with the document key", async () => {
+    const stream = createFakeStream();
+    const db = createFakeDb(stream);
+
+    const onDelete = vi.fn();
+    const listener = createCollectionListener("tasks", db);
+    listener.addListener("delete", onDelete);
+
+    const started = listener.start();
+    stream.push({ operationType: "delete", documentKey: { _id: "x" } });
+    await flush();
+
+    expect(onDelete).toHaveBeenCalledWith({ _id: "x" }, db);
+
+    await listener.stop();
+    await started;
+  });
+
   it("ignores stream errors raised after stop()", async () => {
     const stream = createFakeStream();
     const db = createFakeDb(stream);

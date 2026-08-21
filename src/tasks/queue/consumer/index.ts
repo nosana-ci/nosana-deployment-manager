@@ -23,7 +23,7 @@ import {
 } from "../../../types/index.js";
 import { addTaskStat, removeTaskStat } from "../../../stats/index.js";
 
-export const FETCH_INTERVAL_MS = 5_000;
+export const FETCH_INTERVAL_MS = 1_000;
 export const TASK_DRAIN_POLL_INTERVAL_MS = 500;
 
 export type TaskCollectionListenerHandle = {

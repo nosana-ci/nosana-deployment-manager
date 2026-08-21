@@ -1,6 +1,7 @@
 import type { RouteHandler } from "fastify";
 
 import { getKit } from "../../../../../../../../kit/index.js";
+import { findJobAccount } from "../../../../../../../../listeners/accounts/helpers/index.js";
 import { buildDeploymentJobResponse } from "./buildDeploymentJobResponse.js";
 
 import type { HeadersSchema } from "../../../../../../../schema/index.schema.js";
@@ -34,24 +35,20 @@ export const deploymentJobByIdHandler: RouteHandler<{
     return;
   }
 
-  const jobData = await kit.api!.jobs.get(jobId);
-
-  if (!jobData) {
-    res.status(500).send({
-      error: "Job not found in indexer",
-    });
-    return;
-  }
-
   const results = await resultsCollection.findOne({
     job: job.job,
   });
 
-  res.status(200).send(await buildDeploymentJobResponse(
-    deployment,
-    job,
-    revision,
-    results,
-    jobData
-  ));
+  try {
+    // The chain is the authority on the job's lifecycle. A queued job that was
+    // delisted has no account any more; our record is then all there is.
+    const onchain = await findJobAccount(kit, job.job);
+
+    res.status(200).send(await buildDeploymentJobResponse(deployment, job, revision, results, onchain));
+  } catch (error) {
+    req.log.error(error);
+    res.status(500).send({
+      error: "Failed to get deployment job",
+    });
+  }
 } 

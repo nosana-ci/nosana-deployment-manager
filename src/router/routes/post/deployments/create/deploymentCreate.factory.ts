@@ -32,7 +32,7 @@ export function createDeploymentRevisionEndpoints(
         endpoints.push({
           opId: op.id,
           port: expose,
-          url: `https://${getExposeIdHash(deploymentHash, op.id, 0)}.${getConfig().frps_address}`,
+          url: `https://${getExposeIdHash(deploymentHash, op.id, 0)}.${getConfig().frps_public_address}`,
         });
       }
 
@@ -49,7 +49,7 @@ export function createDeploymentRevisionEndpoints(
           endpoints.push({
             opId: op.id,
             port,
-            url: `https://${getExposeIdHash(deploymentHash, op.id, 0)}.${getConfig().frps_address}`,
+            url: `https://${getExposeIdHash(deploymentHash, op.id, 0)}.${getConfig().frps_public_address}`,
           });
         }
       }

@@ -1,4 +1,4 @@
-import { Collections, DeploymentDocument, EventDocument, VaultDocument, JobsDocument, TaskDocument, DeploymentLockDocument, RevisionDocument, JobResultsDocument } from "../types/index.js";
+import { Collections, DeploymentDocument, EventDocument, VaultDocument, JobsDocument, TaskDocument, DeploymentLockDocument, RevisionDocument, JobResultsDocument, FrpsEndpointStatusDocument } from "../types/index.js";
 
 export const NosanaCollections = {
   DEPLOYMENTS: "deployments",
@@ -8,7 +8,8 @@ export const NosanaCollections = {
   TASKS: "tasks",
   TASK_LOCKS: "task_locks",
   REVISIONS: "revisions",
-  RESULTS: "results"
+  RESULTS: "results",
+  FRPS_ENDPOINT_STATUS: "frps_endpoint_status"
 } as const;
 
 export type NosanaCollectionName = keyof typeof NosanaCollections;
@@ -25,4 +26,5 @@ export type CollectionsMap = {
   task_locks: DeploymentLockDocument;
   revisions: RevisionDocument;
   results: JobResultsDocument;
+  frps_endpoint_status: FrpsEndpointStatusDocument;
 };

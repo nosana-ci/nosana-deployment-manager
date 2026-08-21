@@ -28,6 +28,7 @@ import {
   shouldRunConsumer,
 } from "./config/mode.js";
 import { createMetrics } from "./metrics/index.js";
+import { registerFrpsMetrics } from "./metrics/frps.js";
 
 const SHUTDOWN_TIMEOUT_MS = 130_000; // 120s task drain + 10s margin
 
@@ -38,6 +39,9 @@ initStats();
 const metrics = createMetrics(mode);
 if (metrics.worker) {
   registerWorkerMetrics(metrics.worker);
+}
+if (metrics.frps) {
+  registerFrpsMetrics(metrics.frps);
 }
 
 if (shouldRunWorker(mode)) {

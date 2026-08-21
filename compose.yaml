@@ -15,8 +15,11 @@ x-dm-env: &dm-env
   RAPID_COMPLETION_COOLDOWN_BASE_MS: "${RAPID_COMPLETION_COOLDOWN_BASE_MS:-60000}"
   CONFIDENTIAL_BY_DEFAULT: "${CONFIDENTIAL_BY_DEFAULT:-true}"
   DEPLOYMENT_MANAGER_PORT: "${DEPLOYMENT_MANAGER_PORT:-3000}"
-  SOLANA_NETWORK: "${SOLANA_NETWORK}"
-  SOLANA_WS_NETWORK: "${SOLANA_WS_NETWORK}"
+  # No value: pass through from the host only when set. `"${SOLANA_NETWORK}"`
+  # would pass an empty string when unset, which defeats the `??` fallbacks in
+  # src/config/defaultConfig.ts and leaves the kit without an RPC URL.
+  SOLANA_NETWORK:
+  SOLANA_WS_NETWORK:
   DOCDB_HOST: "${DOCDB_HOST:-host.docker.internal}"
   DOCDB_PORT: "${DOCDB_PORT:-27017}"
   DOCDB_USERNAME: "${DOCDB_USERNAME}"

@@ -12,7 +12,7 @@ const commonConfig: Omit<
   | "nos_address"
   | "rpc_network"
   | "ws_network"
-  | "frps_address"
+  | "frps_public_address"
   | "dashboard_backend_url"
 > = {
   tasks_batch_size: process.env.TASKS_BATCH_SIZE
@@ -23,6 +23,12 @@ const commonConfig: Omit<
     : 3001,
   confidential_by_default: process.env.CONFIDENTIAL_BY_DEFAULT === "true",
   vault_key: process.env.VAULT_KEY || undefined,
+  frps_internal_address: process.env.FRPS_INTERNAL_ADDRESS ?? "",
+  frps_api_key: process.env.FRPS_API_KEY || undefined,
+  frps_watching_enabled: process.env.FRPS_WATCHING_ENABLED !== "false",
+  frps_unhealthy_grace_ms: process.env.FRPS_UNHEALTHY_GRACE_MS
+    ? parseInt(process.env.FRPS_UNHEALTHY_GRACE_MS)
+    : 60_000,
   confidential_ipfs_pin: "",
   base_url:
     process.env.BASE_URL ||
@@ -98,7 +104,7 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
       process.env.SOLANA_NETWORK ??
       "https://rpc.ironforge.network/mainnet?apiKey=01J4RYMAWZC65B6CND9DTZZ5BK",
     ws_network: process.env.SOLANA_WS_NETWORK || undefined,
-    frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.prd.nos.ci",
+    frps_public_address: process.env.FRPS_ADDRESS ?? "node.k8s.prd.nos.ci",
     dashboard_backend_url:
       process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.prd.nos.ci",
     ...commonConfig,
@@ -109,7 +115,7 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
       process.env.NOS_ADDRESS ?? "devr1BGQndEW5k5zfvG5FsLyZv1Ap73vNgAHcQ9sUVP",
     rpc_network: process.env.SOLANA_NETWORK ?? "https://api.devnet.solana.com",
     ws_network: process.env.SOLANA_WS_NETWORK || undefined,
-    frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
+    frps_public_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
     dashboard_backend_url:
       process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.dev.nos.ci",
 
@@ -128,7 +134,7 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     rpc_network:
       process.env.SOLANA_NETWORK || "http://host.docker.internal:8899",
     ws_network: process.env.SOLANA_WS_NETWORK || "ws://host.docker.internal:8900",
-    frps_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
+    frps_public_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
     dashboard_backend_url: process.env.DASHBOARD_BACKEND_URL || undefined,
     ...commonConfig,
   },

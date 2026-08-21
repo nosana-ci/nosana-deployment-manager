@@ -28,7 +28,7 @@ Started:
 
 Not started:
 
-- Mongo change-stream listeners.
+- The strategy change-stream listeners. (The API does open its own read-only `deployments`/`jobs` change streams to fan changes out to `GET /deployments/:id/stream` clients; they schedule nothing, so they are safe per replica.)
 - Solana RPC monitor.
 - Task scheduler / worker thread pool.
 - Confidential job-definition IPFS pin (the API does not need it; only the worker does).

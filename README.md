@@ -52,7 +52,7 @@ This service is currently NOT scraped — a follow-up MR will add a `ServiceMoni
 
 The service is split across two run modes selected at startup via `APP_MODE`:
 
-- `api` — Fastify HTTP server only. Multi-replica, autoscaled, RollingUpdate.
+- `api` — Fastify HTTP server, plus read-only `deployments`/`jobs` change streams feeding the SSE deployment stream (no scheduling, safe per replica). Multi-replica, autoscaled, RollingUpdate.
 - `worker` — Mongo change-stream listeners (deployments, jobs), the Solana RPC monitor (`kit.jobs.monitor()`), and the task scheduler + worker_threads pool. Singleton: 1 replica with `Recreate` strategy.
 - `all` — both (default; used by `compose.yaml` for local dev).
 

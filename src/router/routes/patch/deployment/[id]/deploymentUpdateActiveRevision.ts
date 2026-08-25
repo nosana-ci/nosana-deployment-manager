@@ -1,6 +1,8 @@
 import type { RouteHandler } from "fastify";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
+import { getKit } from "../../../../../kit/index.js";
+import { injectSsh } from "../../../../../ssh/index.js";
 
 import type { HeadersSchema } from "../../../../schema/index.schema.js";
 import type {
@@ -32,6 +34,17 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
   try {
     const updated_at = new Date();
     const endpoints = createDeploymentRevisionEndpoints(deployment.id, deployment.vault, revision.job_definition);
+
+    if (!deployment.confidential) {
+      const ipfs_definition_hash = await getKit().ipfs.pin(
+        injectSsh(revision.job_definition, deployment.ssh_public_keys)
+      );
+      await db.revisions.updateOne(
+        { deployment: deployment.id, revision: active_revision },
+        { $set: { ipfs_definition_hash } }
+      );
+    }
+
     const { acknowledged } = await db.deployments.updateOne(
       {
         id: { $eq: deployment.id },

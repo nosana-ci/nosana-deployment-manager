@@ -14,7 +14,14 @@ vi.mock("../../execution/orchestrate/index.js", () => ({
 vi.mock("../../../repositories/index.js", () => ({
   getRepository: () => ({ collection: { updateOne: (...a: unknown[]) => tasksUpdateOne(...a) } }),
 }));
-vi.mock("../../../worker/Worker.js", () => ({ VaultWorker: vi.fn() }));
+vi.mock("../../../worker/Worker.js", () => ({
+  VaultWorker: vi.fn(),
+  workerErrorFormatter: (error: unknown) => String(error),
+}));
+const resolveListDefinitionHash = vi.fn(() => "QmDefinition");
+vi.mock("./resolveDefinitionHash.js", () => ({
+  resolveListDefinitionHash: (...a: unknown[]) => resolveListDefinitionHash(...a),
+}));
 vi.mock("./events/index.js", () => ({
   onListConfirmed: vi.fn(),
   // Mirror the real handler's relevant behaviour: flag the run as retryable.
@@ -34,6 +41,7 @@ const db = {} as Db;
 
 function makeTask(over: {
   target_count?: number;
+  ipfs_definition_hash?: string;
   replicas: number;
   strategy?: string;
   jobs?: unknown[];
@@ -42,6 +50,7 @@ function makeTask(over: {
     _id: new ObjectId(),
     deploymentId: "dep-1",
     target_count: over.target_count,
+    ipfs_definition_hash: over.ipfs_definition_hash,
     transactions: [],
     jobs: over.jobs ?? [],
     deployment: {
@@ -59,25 +68,70 @@ describe("runListTask target", () => {
     reconcileUnits.mockReset().mockResolvedValue({ confirmed: 5, errored: 0, aborted: false });
     tasksUpdateOne.mockReset().mockResolvedValue({ acknowledged: true });
     onListExit.mockReset().mockResolvedValue(undefined);
+    resolveListDefinitionHash.mockReset().mockReturnValue("QmDefinition");
   });
 
-  it("uses the persisted target_count on reclaim and does NOT recompute from live replicas", async () => {
+  it("hands the frozen definition hash to the signer worker", async () => {
+    const task = makeTask({ target_count: 1, replicas: 1 });
+
+    await runListTask(db, task, new AbortController().signal);
+
+    expect(resolveListDefinitionHash).toHaveBeenCalledWith(task);
+    const { makeWorker } = reconcileUnits.mock.calls[0][0] as { makeWorker: (count: number, startUnit: number) => unknown };
+    makeWorker(1, 0);
+    const { VaultWorker } = await import("../../../worker/Worker.js");
+    expect(VaultWorker).toHaveBeenCalledWith(
+      expect.any(String),
+      { workerData: expect.objectContaining({ ipfs_definition_hash: "QmDefinition" }) }
+    );
+  });
+
+  it("propagates a resolution failure before signing (consumer abandons for reclaim)", async () => {
+    resolveListDefinitionHash.mockImplementation(() => {
+      throw new Error("Active revision not found");
+    });
+    const task = makeTask({ target_count: 1, replicas: 1 });
+
+    await expect(runListTask(db, task, new AbortController().signal)).rejects.toThrow(
+      "Active revision not found"
+    );
+    expect(reconcileUnits).not.toHaveBeenCalled();
+    expect(onListExit).not.toHaveBeenCalled();
+  });
+
+  it("uses the frozen target and hash on reclaim without re-resolving or re-persisting", async () => {
     // target_count frozen at 5, but the (reloaded) deployment now says 20 replicas.
-    const task = makeTask({ target_count: 5, replicas: 20 });
+    const task = makeTask({ target_count: 5, ipfs_definition_hash: "QmFrozen", replicas: 20 });
 
     await runListTask(db, task, new AbortController().signal);
 
     expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 5 }));
+    expect(resolveListDefinitionHash).not.toHaveBeenCalled();
     expect(tasksUpdateOne).not.toHaveBeenCalled(); // already frozen — no re-persist
   });
 
-  it("computes and persists target_count from replicas on the first attempt", async () => {
+  it("computes and persists target and hash in one write on the first attempt", async () => {
     const task = makeTask({ replicas: 8, strategy: DeploymentStrategy.SIMPLE, jobs: [] });
 
     await runListTask(db, task, new AbortController().signal);
 
-    expect(tasksUpdateOne).toHaveBeenCalledWith({ _id: task._id }, { $set: { target_count: 8 } });
+    expect(tasksUpdateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: task._id },
+      { $set: { target_count: 8, ipfs_definition_hash: "QmDefinition" } }
+    );
     expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 8 }));
+  });
+
+  it("resolves and persists only the missing hash on a task frozen before the hash existed", async () => {
+    const task = makeTask({ target_count: 5, replicas: 20 });
+
+    await runListTask(db, task, new AbortController().signal);
+
+    expect(resolveListDefinitionHash).toHaveBeenCalledWith(task);
+    expect(tasksUpdateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: task._id },
+      { $set: { target_count: 5, ipfs_definition_hash: "QmDefinition" } }
+    );
   });
 
   it("reschedules (RETRY) instead of failing terminally on a handled error", async () => {

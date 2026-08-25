@@ -1,10 +1,10 @@
 import type { Db } from "mongodb";
 
 import { VaultWorker } from "../../../worker/Worker.js";
-import { getConfig } from "../../../config/index.js";
 import { getRepository } from "../../../repositories/index.js";
 import { reconcileUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
+import { resolveListDefinitionHash } from "./resolveDefinitionHash.js";
 import {
   RetrySignal,
   applyRetryState,
@@ -57,12 +57,21 @@ export async function runListTask(
       ),
   };
 
-  // Target is fixed on the first attempt so reclaim tops up rather than
-  // re-deriving (which would shrink as this task's own jobs appear).
+  // Target and definition hash are frozen together on the first attempt so a
+  // reclaim tops up the same plan instead of re-deriving it: the target would
+  // shrink as this task's own jobs appear, and the hash — which embeds the
+  // deployment's SSH keys when set — must stay identical for the API batch
+  // path's idempotency key. A throw here (nothing is signed yet) propagates to
+  // the consumer's catch-all, which abandons the task for reclaim.
   let target = task.target_count;
-  if (target == null) {
-    target = computeListTarget(task);
-    await tasks.updateOne({ _id: task._id }, { $set: { target_count: target } });
+  let ipfsDefinitionHash = task.ipfs_definition_hash;
+  if (target == null || ipfsDefinitionHash == null) {
+    target ??= computeListTarget(task);
+    ipfsDefinitionHash ??= resolveListDefinitionHash(task);
+    await tasks.updateOne(
+      { _id: task._id },
+      { $set: { target_count: target, ipfs_definition_hash: ipfsDefinitionHash } }
+    );
   }
 
   const result = await reconcileUnits({
@@ -78,7 +87,7 @@ export async function runListTask(
           task,
           taskId: task._id.toHexString(),
           vault: task.deployment.vault.vault_key,
-          confidential_ipfs_pin: getConfig().confidential_ipfs_pin,
+          ipfs_definition_hash: ipfsDefinitionHash,
           count,
           startUnit,
           target,

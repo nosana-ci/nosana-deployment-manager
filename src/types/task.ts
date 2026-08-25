@@ -120,6 +120,15 @@ export type TaskDocument = {
    * as a confirmed no-op, so a job that ends between attempts never fails the batch.
    */
   stop_targets?: string[];
+  /**
+   * IPFS hash of the job definition a LIST task posts, frozen on the first
+   * attempt. With SSH keys configured the definition is re-pinned with the keys
+   * merged in, so it must be fixed per task: the API batch path sends it under a
+   * stable idempotency key on every reclaim (a changed hash would be
+   * `IDEMPOTENCY_KEY_PAYLOAD_MISMATCH`), and every slot of one task should run
+   * the same definition.
+   */
+  ipfs_definition_hash?: string;
 };
 
 export type TasksCollection = Collection<TaskDocument>;

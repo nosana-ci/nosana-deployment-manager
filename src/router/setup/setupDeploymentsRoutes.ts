@@ -24,6 +24,7 @@ const {
     deploymentJobByIdHandler,
     getDeploymentJobsHandler,
     getDeploymentRevisionsHandler,
+    getDeploymentSshKeysHandler,
     getDeploymentEventsHandler,
     streamDeploymentEventsHandler,
   },
@@ -39,6 +40,7 @@ const {
     deploymentUpdateNameHandler,
     deploymentUpdateReplicaCountHandler,
     deploymentUpdateScheduleHandler,
+    deploymentUpdateSshKeysHandler,
     deploymentUpdateTimeoutHandler,
   },
   delete: {
@@ -55,6 +57,7 @@ const {
     DeploymentJobByIdSchema,
     GetDeploymentJobsSchema,
     GetDeploymentRevisionsSchema,
+    GetDeploymentSshKeysSchema,
     GetDeploymentEventsSchema,
     StreamDeploymentEventsSchema,
   },
@@ -65,6 +68,7 @@ const {
     DeploymentUpdateNameSchema,
     DeploymentUpdateReplicaCountSchema,
     DeploymentUpdateScheduleSchema,
+    DeploymentUpdateSshKeysSchema,
     DeploymentUpdateTimeoutSchema,
   },
   delete: { DeploymentDeleteSchema },
@@ -152,6 +156,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       exposeHeadRoute: false,
     },
     streamDeploymentEventsHandler
+  );
+
+  server.get(
+    `${API_PREFIX}/:deployment/ssh-keys`,
+    {
+      schema: GetDeploymentSshKeysSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    getDeploymentSshKeysHandler
   );
 
   // POST
@@ -246,6 +259,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentUpdateScheduleHandler
+  );
+
+  server.patch(
+    `${API_PREFIX}/:deployment/update-ssh-keys`,
+    {
+      schema: DeploymentUpdateSshKeysSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentUpdateSshKeysHandler
   );
 
   server.patch(

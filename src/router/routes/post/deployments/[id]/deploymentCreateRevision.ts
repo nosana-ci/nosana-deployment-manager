@@ -23,7 +23,13 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
   const userId = req.headers["x-user-id"];
 
   try {
-    const { revision, endpoints } = await createNewDeploymentRevision(deployment.active_revision, deployment.id, deployment.vault, jobDefinition);
+    // `ssh` never lands on the revision: keys submitted with the definition are
+    // applied to the deployment instead (omitted = keep the current keys, whose
+    // merged pin is recomputed against this new definition).
+    const { revision, endpoints, ssh_public_keys } = await createNewDeploymentRevision(deployment.active_revision, deployment.id, deployment.vault, jobDefinition, {
+      confidential: deployment.confidential,
+      currentPublicKeys: deployment.ssh_public_keys,
+    });
 
     const { acknowledged: revAck } = await db.revisions.insertOne(revision);
     if (!revAck) {
@@ -44,6 +50,7 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
           active_revision: revision.revision,
           endpoints,
           updated_at,
+          ...(ssh_public_keys && { ssh_public_keys }),
         },
       }
     );

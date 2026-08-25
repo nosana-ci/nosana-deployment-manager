@@ -1,10 +1,11 @@
 import { FastifySchema } from "fastify";
-import { Type, Static } from "@sinclair/typebox";
+import { CloneType, Type, Static } from "@sinclair/typebox";
 
 import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../index.schema.js";
 
 import { DeploymentStrategy } from "../../../../types/index.js";
 import { DeploymentScheduleSchema } from "../../components/deploymentSchedule.schema.js";
+import { SshPublicKeysSchema } from "../../components/ssh.schema.js";
 
 export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
@@ -16,6 +17,12 @@ export const DeploymentCreateBodySchema = Type.Intersect([
     autostart: Type.Optional(Type.Boolean({
       description: "If true, the deployment is started immediately after creation instead of being left as a DRAFT.",
     })),
+    ssh_public_keys: Type.Optional(
+      CloneType(SshPublicKeysSchema, {
+        description:
+          "SSH public keys granted access to this deployment's jobs. Takes precedence over an `ssh` block inside job_definition.",
+      })
+    ),
     job_definition: Type.Ref("JobDefinition")
   }),
   // A deployment funds from exactly one vault source: the owner's shared

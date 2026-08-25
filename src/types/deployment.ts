@@ -61,6 +61,7 @@ export const DeploymentDocumentFields: Record<
   ROTATION_TIME: "rotation_time",
   RAPID_STREAK: "rapid_streak",
   NEXT_RETRY_AT: "next_retry_at",
+  SSH_PUBLIC_KEYS: "ssh_public_keys",
 };
 
 export type DeploymentCollection = Collection<DeploymentDocument>;
@@ -91,6 +92,16 @@ export type DeploymentDocumentBase = {
    * only — the deployment stays RUNNING while it waits; cleared on success.
    */
   next_retry_at?: Date;
+  /**
+   * SSH public keys granted access to this deployment's jobs. Kept OFF the
+   * stored revision `job_definition` so rotating a key never creates a
+   * revision or rolls the jobs. They still reach every job: the write paths
+   * merge them into the active revision's pin (`ipfs_definition_hash`), the
+   * job-definition route merges them into what confidential nodes fetch, and
+   * a rotation pushes them to the nodes of jobs already running. Present iff
+   * keys are configured — revoking removes the field.
+   */
+  ssh_public_keys?: string[];
 };
 
 export type Endpoint = {

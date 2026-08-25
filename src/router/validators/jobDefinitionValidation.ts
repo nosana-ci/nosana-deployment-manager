@@ -2,6 +2,8 @@ import { validateJobDefinition, JobDefinition } from "@nosana/kit";
 import { FastifySchemaCompiler } from "fastify/types/schema.js";
 import { FastifySchema } from "fastify";
 
+import { validateJobDefinitionSshKeys } from "../../ssh/index.js";
+
 export const jobDefinitionValidation: FastifySchemaCompiler<FastifySchema> = ({
   httpPart,
 }) => {
@@ -18,6 +20,12 @@ export const jobDefinitionValidation: FastifySchemaCompiler<FastifySchema> = ({
         .join(", ");
       return { error: new Error(message) };
     }
+
+    const sshError = validateJobDefinitionSshKeys(data as JobDefinition);
+    if (sshError) {
+      return { error: new Error(`ssh.public_keys: ${sshError}`) };
+    }
+
     return { value: data };
   };
 };

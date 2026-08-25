@@ -32,7 +32,8 @@ export const ErrorMessages = {
     FAILED_TO_CREATE_NEW_REVISION: "Failed to create a new deployment revision.",
     INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
     INVALID_ROTATION_TIME: "Rotation time must be at least 10 minutes less than timeout.",
-    INVALID_TIMEOUT: "Timeout for infinite deployments must be at least 1 hour."
+    INVALID_TIMEOUT: "Timeout for infinite deployments must be at least 1 hour.",
+    FAILED_TO_UPDATE_SSH_KEYS: "Failed to update deployment SSH keys.",
   },
   job: {
     NOT_FOUND: "Job not found.",

@@ -2,24 +2,19 @@ import type { WithId } from "mongodb";
 
 import type {
   DeploymentDocument,
-  DeploymentStatus,
   EventDocument,
-  EventType,
   JobsDocument,
-  JobState,
   TaskDocument,
-  TaskStatus,
   TaskType,
 } from "../../types/index.js";
+import type { DeploymentStreamEventSchema } from "../schema/index.schema.js";
 
-export type DeploymentStreamEvent =
-  | { type: "deployment"; status: DeploymentStatus; replicas: number; active_revision: number }
-  | { type: "job"; job: string; state: JobState; node: string | null; timeStart: number; timeEnd: number }
-  /** A new entry in the deployment's event log; `event` is the entry's own type. */
-  | { type: "event"; category: EventType; event: string; message: string; tx: string | null; created_at: string }
-  | { type: "task"; id: string; task: TaskType; status: TaskStatus; attempts: number; due_at: string; job: string | null }
-  /** The task left the queue: completed, or cancelled along with its deployment. */
-  | { type: "task"; id: string; task: TaskType; status: "DONE" };
+/**
+ * One frame of the stream, derived from the schema that describes it in the
+ * OpenAPI document so the two cannot disagree. Edit
+ * `DeploymentStreamEventSchema` to change what may be emitted.
+ */
+export type DeploymentStreamEvent = DeploymentStreamEventSchema;
 
 /** One SSE connection: where its deployment's events go, and how to end it. */
 export type DeploymentListener = {

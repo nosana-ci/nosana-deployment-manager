@@ -1,6 +1,5 @@
 import type { Db } from "mongodb";
 
-import { getConfig } from "../../../config/index.js";
 import { VaultWorker } from "../../../worker/Worker.js";
 import { getRepository } from "../../../repositories/index.js";
 import { scheduleTask } from "../../scheduleTask.js";
@@ -84,7 +83,6 @@ export async function runStopTask(
       task,
       taskId: task._id.toHexString(),
       vault: task.deployment.vault.vault_key,
-      confidential_ipfs_pin: getConfig().confidential_ipfs_pin,
       stopTargets,
     },
   });

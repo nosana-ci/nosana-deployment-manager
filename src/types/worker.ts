@@ -88,7 +88,15 @@ export type WorkerData = {
    */
   taskId: string;
   vault: string;
-  confidential_ipfs_pin: string;
+  /**
+   * Definition hash the LIST signer posts, resolved and frozen by the parent
+   * (see `TaskDocument.ipfs_definition_hash`): the shared confidential
+   * placeholder pin for a confidential deployment — its real definition never
+   * rides an on-chain hash — or the active revision's pin otherwise. Always
+   * set for LIST; optional only because STOP/EXTEND share this shape and
+   * don't post a definition.
+   */
+  ipfs_definition_hash?: string;
   /**
    * Number of jobs the signer should produce this run (parent-decided); the
    * signer packs them into the fewest size/CU-bounded txs.

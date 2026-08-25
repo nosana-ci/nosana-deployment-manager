@@ -29,22 +29,17 @@ import type { WorkerData } from "../../../types/index.js";
 try {
   const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0, target } =
     await prepareWorker<WorkerData>(workerData);
-  const { active_revision, confidential, market, timeout } = task.deployment;
+  const { market, timeout } = task.deployment;
 
-  let ipfs_definition_hash: string = workerData.confidential_ipfs_pin;
-
-  if (!confidential) {
-    const activeRevision = task.revisions.find(({ revision }) => revision === active_revision);
-
-    if (!activeRevision) {
-      parentPort!.postMessage({
-        event: "ERROR",
-        error: "Active revision not found",
-      });
-      process.exit(1);
-    }
-
-    ipfs_definition_hash = activeRevision.ipfs_definition_hash;
+  // Resolved + frozen by the parent before the worker is spawned (see
+  // resolveDefinitionHash.ts): the shared confidential placeholder pin for a
+  // confidential deployment — its real definition is served to the node by the
+  // job-definition route, never via an on-chain hash — or the active revision's
+  // pin (SSH keys merged in) otherwise. This worker posts it blindly.
+  const { ipfs_definition_hash } = workerData;
+  if (!ipfs_definition_hash) {
+    parentPort!.postMessage({ event: "ERROR", error: "Missing definition hash" });
+    process.exit(1);
   }
 
   if (useNosanaApiKey) {

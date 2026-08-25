@@ -15,6 +15,11 @@ vi.mock("worker_threads", () => ({
   parentPort: { postMessage: state.postMessage },
 }));
 
+type FakeSignKit = {
+  authorization: { generate: (message: string, options: { includeTime: boolean }) => Promise<string> };
+  api: { auth: { signMessage: (message: string, options: { includeTime: boolean }) => Promise<string> } };
+};
+
 vi.mock("../../../../../../worker/Worker.js", () => ({
   prepareWorker: vi.fn(async (data: Record<string, unknown>) => ({
     ...data,
@@ -24,6 +29,8 @@ vi.mock("../../../../../../worker/Worker.js", () => ({
       api: { auth: { signMessage: state.signMessage } },
     },
   })),
+  signAuthHeader: (kit: FakeSignKit, useApi: boolean, message: string, options: { includeTime: boolean }) =>
+    useApi ? kit.api.auth.signMessage(message, options) : kit.authorization.generate(message, options),
 }));
 
 async function runWorker(

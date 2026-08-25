@@ -1,4 +1,4 @@
-import { validateJobDefinition } from "@nosana/kit";
+import { validateJobDefinition, type JobDefinition } from "@nosana/kit";
 import { FastifySchemaCompiler } from "fastify/types/schema.js";
 import { Value } from "@sinclair/typebox/value";
 import {
@@ -6,6 +6,8 @@ import {
   DeploymentMetadataSchema,
 } from "../schema/post/deployments/deploymentCreate.schema.js";
 import { FastifySchema } from "fastify";
+
+import { validateJobDefinitionSshKeys } from "../../ssh/index.js";
 
 export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
   ({ httpPart }) => {
@@ -35,6 +37,11 @@ export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
           )
           .join(", ");
         return { error: new Error(message) };
+      }
+
+      const sshError = validateJobDefinitionSshKeys(body.job_definition as JobDefinition);
+      if (sshError) {
+        return { error: new Error(`job_definition.ssh.public_keys: ${sshError}`) };
       }
 
       return { value: data };

@@ -94,6 +94,23 @@ export async function prepareWorker<
 }
 
 /**
+ * Sign `message` into the `authorization` header value the node's job-owner
+ * routes verify, using whichever credential the vault holds: the CM signs on
+ * behalf of an API-key vault, the wallet signs locally otherwise. The header
+ * format is a cross-service contract — change it here and every caller follows.
+ */
+export function signAuthHeader(
+  kit: NosanaClient,
+  useNosanaApiKey: boolean,
+  message: string,
+  options: { includeTime: boolean }
+): Promise<string> {
+  return useNosanaApiKey
+    ? kit.api!.auth.signMessage(message, options)
+    : kit.authorization.generate(message, options);
+}
+
+/**
  * Build + sign an instruction into a serialized blob and capture its
  * `lastValidBlockHeight`, without broadcasting. This is the per-unit half of the
  * persist-before-send protocol shared by the LIST/STOP/EXTEND signer workers.

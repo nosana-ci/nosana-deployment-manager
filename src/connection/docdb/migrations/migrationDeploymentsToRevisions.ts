@@ -19,7 +19,9 @@ export default async function migrateDeploymentsToEndpoints(db: Db) {
   for (const { ipfs_definition_hash, ...deploymentWithIPFSHash } of deployments) {
     try {
       const jobDefinition = await kit.ipfs.retrieve<JobDefinition>(ipfs_definition_hash);
-      const { revision } = await createNewDeploymentRevision(0, deploymentWithIPFSHash.id, deploymentWithIPFSHash.vault, jobDefinition);
+      const { revision } = await createNewDeploymentRevision(0, deploymentWithIPFSHash.id, deploymentWithIPFSHash.vault, jobDefinition, {
+        confidential: deploymentWithIPFSHash.confidential ?? false,
+      });
 
       const { acknowledged: revisionAcknowledged } = await db.collection("revisions").insertOne(revision);
 

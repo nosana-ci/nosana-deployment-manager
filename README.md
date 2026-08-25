@@ -158,6 +158,8 @@ curl -X GET http://localhost:3001/deployments \
 - `PATCH /deployments/:deployment/update-replica-count` - Update replica count
 - `PATCH /deployments/:deployment/update-schedule` - Update schedule
 - `PATCH /deployments/:deployment/update-timeout` - Update timeout
+- `GET /deployments/:deployment/ssh-keys` - Get the deployment's SSH public keys
+- `PATCH /deployments/:deployment/update-ssh-keys` - Replace the SSH public keys and authorize them on running jobs (see `docs/ssh-keys.md`)
 - `POST /deployments/:deployment/archive` - Archive a deployment
 - `GET /deployments/:deployment/tasks` - Get scheduled tasks
 - `GET /deployments/:deployment/jobs/:job` - Get job by ID

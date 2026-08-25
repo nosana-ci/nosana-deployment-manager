@@ -4,6 +4,7 @@ import type { JobDefinition, OperationArgsMap } from "@nosana/kit";
 
 import { getKit } from "../../../../../kit/index.js";
 import { getConfig } from "../../../../../config/index.js";
+import { extractSsh, injectSsh } from "../../../../../ssh/index.js";
 import { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
 
 import {
@@ -12,6 +13,7 @@ import {
   type Endpoint,
   type RevisionDocument,
   type DeploymentDocument,
+  type DeploymentDocumentBase,
 } from "../../../../../types/index.js";
 
 export function createDeploymentRevisionEndpoints(
@@ -59,13 +61,27 @@ export function createDeploymentRevisionEndpoints(
   return endpoints;
 }
 
+/**
+ * Build the next revision. Any `ssh` block on the submitted definition is split
+ * off and handed back as `ssh_public_keys` for the caller to store on the
+ * deployment — the revision's `job_definition` never carries keys, so rotating
+ * them later doesn't create a revision. For a NON-confidential deployment the
+ * revision's PIN does carry them: what gets pinned (and later posted by LIST)
+ * is the definition with the effective keys merged in. A confidential
+ * deployment's pin stays key-free — nothing of its definition may live on
+ * public IPFS; nodes get definition + keys from the authenticated
+ * job-definition route instead. `currentPublicKeys` is the deployment's
+ * existing set, kept when the submitted definition doesn't mention keys.
+ */
 export async function createNewDeploymentRevision(
   currentRevision: number,
   deployment: string,
   vault: string,
-  jobDefinition: JobDefinition
-): Promise<{ revision: RevisionDocument, endpoints: Endpoint[] }> {
+  submittedJobDefinition: JobDefinition,
+  options: { confidential: boolean; currentPublicKeys?: string[] }
+): Promise<{ revision: RevisionDocument, endpoints: Endpoint[], ssh_public_keys?: string[] }> {
   const kit = getKit();
+  const { jobDefinition, public_keys = options.currentPublicKeys } = extractSsh(submittedJobDefinition);
 
   const endpoints: Endpoint[] = createDeploymentRevisionEndpoints(
     deployment,
@@ -82,7 +98,10 @@ export async function createNewDeploymentRevision(
     },
   }
 
-  const newIpfsHash = await kit.ipfs.pin(finalJobDefinition);
+  const ssh_public_keys = public_keys?.length ? public_keys : undefined;
+  const newIpfsHash = await kit.ipfs.pin(
+    options.confidential ? finalJobDefinition : injectSsh(finalJobDefinition, ssh_public_keys)
+  );
 
   return {
     revision: {
@@ -92,6 +111,7 @@ export async function createNewDeploymentRevision(
       job_definition: finalJobDefinition,
       created_at: new Date(),
     }, endpoints,
+    ssh_public_keys,
   };
 }
 
@@ -113,7 +133,7 @@ export async function createDeployment(
 ): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
   const { address } = await generateKeyPairSigner();
 
-  const baseFields = {
+  const baseFields: Omit<DeploymentDocumentBase, "endpoints"> = {
     id: address.toString(),
     vault,
     name,
@@ -128,12 +148,14 @@ export async function createDeployment(
     updated_at: created_at,
   };
 
-  const { revision, endpoints } = await createNewDeploymentRevision(
+  const { revision, endpoints, ssh_public_keys } = await createNewDeploymentRevision(
     0,
     baseFields.id,
     vault,
-    job_definition as JobDefinition
+    job_definition as JobDefinition,
+    { confidential: baseFields.confidential }
   );
+  if (ssh_public_keys) baseFields.ssh_public_keys = ssh_public_keys;
 
   if (strategy === DeploymentStrategy.SCHEDULED) {
     if (!schedule) {

@@ -4,6 +4,7 @@ export * from "./deployments/[id]/getScheduledTasks.js";
 export * from "./deployments/[id]/getDeploymentHeaders/index.js";
 export * from "./deployments/[id]/getDeploymentJobs.js";
 export * from "./deployments/[id]/getDeploymentRevisions.js";
+export * from "./deployments/[id]/getDeploymentSshKeys.js";
 export * from "./deployments/[id]/getDeploymentEvents.js";
 export * from "./deployments/[id]/jobs/[id]/getDeploymentJobById/getDeploymentJobById.js"
 export * from "./deployments/list.js";

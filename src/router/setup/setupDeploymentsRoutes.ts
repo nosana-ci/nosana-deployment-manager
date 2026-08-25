@@ -26,6 +26,7 @@ const {
     getDeploymentRevisionsHandler,
     getDeploymentSshKeysHandler,
     getDeploymentEventsHandler,
+    streamDeploymentEventsHandler,
   },
   post: {
     deploymentCreateHandler,
@@ -58,6 +59,7 @@ const {
     GetDeploymentRevisionsSchema,
     GetDeploymentSshKeysSchema,
     GetDeploymentEventsSchema,
+    StreamDeploymentEventsSchema,
   },
   post: { DeploymentCreateSchema, DeploymentCreateRevisionSchema, DeploymentStartSchema, DeploymentStopSchema },
   patch: {
@@ -143,6 +145,17 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware],
     },
     getDeploymentEventsHandler
+  );
+
+  server.get(
+    `${API_PREFIX}/:deployment/stream`,
+    {
+      schema: StreamDeploymentEventsSchema,
+      preHandler: [getDeploymentMiddleware],
+      // A HEAD request would hijack and never answer.
+      exposeHeadRoute: false,
+    },
+    streamDeploymentEventsHandler
   );
 
   server.get(

@@ -1,5 +1,5 @@
 import { address } from "@solana/addresses";
-import type { NosanaClient } from "@nosana/kit";
+import type { Job, NosanaClient } from "@nosana/kit";
 
 /**
  * @solana/errors codes meaning "the account simply isn't on-chain". `kit.jobs.get`
@@ -23,16 +23,20 @@ function isAccountNotFound(error: unknown): boolean {
   return false;
 }
 
-export async function checkJobExists(kit: NosanaClient, jobAddress: string): Promise<boolean> {
+/** The job's on-chain account, or null once it no longer exists (a delisted job). */
+export async function findJobAccount(kit: NosanaClient, jobAddress: string): Promise<Job | null> {
   try {
-    await kit.jobs.get(address(jobAddress));
-    return true;
+    return await kit.jobs.get(address(jobAddress));
   } catch (error) {
     if (isAccountNotFound(error)) {
-      return false;
+      return null;
     }
     // Re-throw anything else (RPC/transport failures): a transient read error
     // must not be mistaken for "job gone" and silently mark it STOPPED.
     throw error;
   }
+}
+
+export async function checkJobExists(kit: NosanaClient, jobAddress: string): Promise<boolean> {
+  return (await findJobAccount(kit, jobAddress)) !== null;
 }

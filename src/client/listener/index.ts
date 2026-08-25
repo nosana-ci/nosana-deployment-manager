@@ -4,7 +4,7 @@ import { matchFilter } from "./helpers/matchFilter.js";
 import { CollectionsNames } from "../../definitions/collection.js";
 
 import { Collections } from "../../types/index.js";
-import { EventCallback, Filters, InsertEvent, UpdateEvent } from "./types.js";
+import { AddListener, DeleteCallback, DeleteEvent, EventCallback, Filters, InsertEvent, UpdateEvent } from "./types.js";
 
 export type CollectionListener<T extends Document> = ReturnType<
   typeof createCollectionListener<T>
@@ -22,21 +22,24 @@ export function createCollectionListener<T extends Document>(
     options?: { fields?: (keyof T)[]; filters?: Filters<T> };
     callback: EventCallback<T>;
   }> = [];
+  const deleteCallbacks: Array<DeleteCallback<T>> = [];
 
   let stream: ChangeStream<T> | null = null;
   let stopped = false;
 
-  const addListener = (...params: InsertEvent<T> | UpdateEvent<T>): void => {
-    const [eventType, callback, options] = params;
-    switch (eventType) {
+  const addListener: AddListener<T> = (...params: InsertEvent<T> | UpdateEvent<T> | DeleteEvent<T>): void => {
+    switch (params[0]) {
       case "insert":
-        insertCallbacks.push(callback);
+        insertCallbacks.push(params[1]);
         break;
       case "update":
         updateCallbacks.push({
-          options,
-          callback: callback,
+          options: params[2],
+          callback: params[1],
         });
+        break;
+      case "delete":
+        deleteCallbacks.push(params[1]);
     }
   };
 
@@ -73,6 +76,9 @@ export function createCollectionListener<T extends Document>(
                 callback(event.fullDocument, db);
               }
             });
+            break;
+          case "delete":
+            deleteCallbacks.forEach((callback) => callback(event.documentKey, db));
         }
       }
     } catch (err) {

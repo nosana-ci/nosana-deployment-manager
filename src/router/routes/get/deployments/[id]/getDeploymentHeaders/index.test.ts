@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import fastify, { type FastifyInstance, type RouteHandler } from "fastify";
+import type { WithId } from "mongodb";
 
 import { addSchemas } from "../../../../../schema/index.schema.js";
 import { GetDeploymentHeaderSchema } from "../../../../../schema/get/deployments/[id]/getDeploymentHeader.schema.js";
 import { deploymentGetHeaderHandler } from "./index.js";
 
-import type { DeploymentAggregation } from "../../../../../../types/index.js";
+import type { DeploymentDocument } from "../../../../../../types/index.js";
 
 type SpawnedWorkerData = { includeTime: boolean; message?: string; vault: string };
 
@@ -39,7 +40,7 @@ const VAULT_KEY = "encrypted-vault-key";
 const AUTH_HEADERS = { "x-user-id": OWNER, authorization: "sig" };
 
 const setDeployment: RouteHandler<{ Params: { deployment: string } }> = async (_req, res) => {
-  res.locals.deployment = { vault: VAULT } as DeploymentAggregation;
+  res.locals.deployment = { vault: VAULT } as WithId<DeploymentDocument>;
 };
 
 async function buildServer(): Promise<FastifyInstance> {

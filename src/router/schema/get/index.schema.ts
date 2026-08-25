@@ -7,6 +7,7 @@ export * from "./deployments/[id]/getDeploymentJobs.schema.js";
 export * from "./deployments/[id]/getDeploymentRevisions.schema.js";
 export * from "./deployments/[id]/getDeploymentSshKeys.schema.js";
 export * from "./deployments/[id]/getDeploymentEvents.schema.js";
+export * from "./deployments/[id]/streamDeploymentEvents.schema.js";
 export * from "./deployments/[id]/jobs/[id]/getDeploymentJobById.schema.js"
 // Jobs
 export * from "./jobs/[id]/jobDefinition.schema.js";

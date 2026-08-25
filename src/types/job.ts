@@ -12,6 +12,9 @@ export const JobState = {
 
 export type JobState = (typeof JobState)[keyof typeof JobState];
 
+/** The states a job can still be found in on chain; everything else is history. */
+export const ACTIVE_JOB_STATES = [JobState.QUEUED, JobState.RUNNING] as const;
+
 export const JobsDocumentFields: Record<Uppercase<keyof JobsDocument>, keyof JobsDocument> = {
   JOB: "job",
   MARKET: "market",

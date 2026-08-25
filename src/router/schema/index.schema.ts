@@ -9,6 +9,7 @@ import { JobSchema } from "./components/job.schema.js";
 import { TaskSchema } from "./components/task.schema.js";
 import { ErrorSchema } from "./components/error.schema.js";
 import { EventSchema } from "./components/event.schema.js";
+import { DeploymentStreamEventSchema } from "./components/deploymentStreamEvent.schema.js";
 import { HeadersSchema, HostHeadersSchema } from "./components/headers.schema.js";
 import { EndpointSchema } from "./components/endpoint.schema.js";
 import { RevisionSchema } from "./components/revision.schema.js";
@@ -21,6 +22,7 @@ export * from "./components/deployment.schema.js";
 export * from "./components/pagination.schema.js";
 export * from "./components/error.schema.js";
 export * from "./components/event.schema.js";
+export * from "./components/deploymentStreamEvent.schema.js";
 export * from "./components/headers.schema.js";
 export * from "./components/job.schema.js";
 export * from "./components/jobResults.schema.js";
@@ -70,6 +72,11 @@ export function addSchemas(server: FastifyInstance) {
   server.addSchema({
     $id: "DeploymentStatus",
     ...DeploymentStatusSchema,
+  });
+
+  server.addSchema({
+    $id: "DeploymentStreamEvent",
+    ...DeploymentStreamEventSchema,
   });
 
   server.addSchema({

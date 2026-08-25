@@ -125,7 +125,8 @@ export async function createDeployment(
     schedule,
     confidential,
     timeout,
-    rotation_time
+    rotation_time,
+    ssh_public_keys
   }: DeploymentCreateBody,
   vault: string,
   owner: string,
@@ -148,14 +149,18 @@ export async function createDeployment(
     updated_at: created_at,
   };
 
-  const { revision, endpoints, ssh_public_keys } = await createNewDeploymentRevision(
+  const { revision, endpoints, ssh_public_keys: storedPublicKeys } = await createNewDeploymentRevision(
     0,
     baseFields.id,
     vault,
-    job_definition as JobDefinition,
+    // Top-level keys are authoritative: injecting them replaces any `ssh`
+    // block embedded in the submitted definition before the split.
+    ssh_public_keys
+      ? injectSsh(job_definition as JobDefinition, ssh_public_keys)
+      : (job_definition as JobDefinition),
     { confidential: baseFields.confidential }
   );
-  if (ssh_public_keys) baseFields.ssh_public_keys = ssh_public_keys;
+  if (storedPublicKeys) baseFields.ssh_public_keys = storedPublicKeys;
 
   if (strategy === DeploymentStrategy.SCHEDULED) {
     if (!schedule) {

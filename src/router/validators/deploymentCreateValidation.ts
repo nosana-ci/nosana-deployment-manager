@@ -7,7 +7,7 @@ import {
 } from "../schema/post/deployments/deploymentCreate.schema.js";
 import { FastifySchema } from "fastify";
 
-import { validateJobDefinitionSshKeys } from "../../ssh/index.js";
+import { validateJobDefinitionSshKeys, validateSshPublicKeys } from "../../ssh/index.js";
 
 export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
   ({ httpPart }) => {
@@ -42,6 +42,15 @@ export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
       const sshError = validateJobDefinitionSshKeys(body.job_definition as JobDefinition);
       if (sshError) {
         return { error: new Error(`job_definition.ssh.public_keys: ${sshError}`) };
+      }
+
+      if (body.ssh_public_keys) {
+        const topLevelSshError = validateSshPublicKeys(
+          body.ssh_public_keys.map((key) => key.trim())
+        );
+        if (topLevelSshError) {
+          return { error: new Error(`ssh_public_keys: ${topLevelSshError}`) };
+        }
       }
 
       return { value: data };

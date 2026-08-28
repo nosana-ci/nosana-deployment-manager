@@ -24,11 +24,21 @@ import { getConfig } from "../../config/index.js";
  * `rapid_completion_max_streak` consecutive rapid rounds is it stopped, to protect
  * funds. A healthy (non-rapid) job resets the streak. Otherwise schedules a
  * replacement LIST if replicas are under-provisioned.
+ *
+ * A job stopped for missing its startup deadline feeds the SAME streak, and is
+ * what keeps a startup timeout from rotating nodes forever: a definition that can
+ * never come online (wrong port, image that always fails to boot, a timeout set
+ * shorter than the image pull) would otherwise burn the vault one replacement at a
+ * time. It counts on its own rather than through `allJobsRapid`, which only reads
+ * COMPLETED jobs — these are STOPPED, and deliberately excluded there as
+ * deployment-initiated. The marker is the evidence: `armStartupDeadline` sets it
+ * when the clock starts and `disarmStartupDeadline` clears it the moment the
+ * tunnel comes up, so it survives to here only on a job that never came online.
  */
 export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocument> =
   [
     OnEvent.UPDATE,
-    async ({ deployment: jobDeployment }, db) => {
+    async ({ deployment: jobDeployment, startup_deadline }, db) => {
       const {
         rapid_completion_job_count,
         rapid_completion_threshold_minutes,
@@ -37,11 +47,15 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       const deployment = await findDeployment(db, jobDeployment);
       if (!deployment || !isActiveInfiniteDeployment(deployment)) return;
 
+      // Still armed on a settled job: it was stopped for never opening its tunnel.
+      // Counts as a round on its own, so the query below is skipped.
+      const startupFailed = !!startup_deadline;
+
       // Only COMPLETED jobs feed the rapid heuristic: a STOPPED job is a
       // deployment-initiated action (rotation, revision replacement, scale-down,
       // manual stop) that is short-lived by design and says nothing about
       // workload health.
-      const recentJobs = await JobsRepository.findAll({
+      const recentJobs = startupFailed ? [] : await JobsRepository.findAll({
         deployment: jobDeployment,
         state: JobState.COMPLETED,
         created_at: { $gte: deployment.updated_at },
@@ -50,7 +64,7 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
         limit: deployment.replicas * rapid_completion_job_count,
       })
 
-      if (allJobsRapid(recentJobs)) {
+      if (startupFailed || allJobsRapid(recentJobs)) {
         const streak = deployment.rapid_streak ?? 0;
 
         // One round per throttled LIST: the idempotent insert is the round
@@ -86,8 +100,10 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
             await EventsRepository.create({
               category: EventType.DEPLOYMENT,
               deploymentId: deployment.id,
-              type: "RAPID_COMPLETION_FAIL_SAFE",
-              message: `Deployment stopped to protect funds: ${rapid_completion_max_streak} consecutive rounds of jobs completed in under ${rapid_completion_threshold_minutes} minutes.`,
+              type: startupFailed ? "STARTUP_TIMEOUT_FAIL_SAFE" : "RAPID_COMPLETION_FAIL_SAFE",
+              message: startupFailed
+                ? `Deployment stopped to protect funds: ${rapid_completion_max_streak} consecutive rounds of jobs failing to come online within ${deployment.startup_timeout} minutes of starting.`
+                : `Deployment stopped to protect funds: ${rapid_completion_max_streak} consecutive rounds of jobs completed in under ${rapid_completion_threshold_minutes} minutes.`,
               created_at: new Date(),
             }, { session });
           });
@@ -101,8 +117,10 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
         await EventsRepository.create({
           category: EventType.DEPLOYMENT,
           deploymentId: deployment.id,
-          type: "RAPID_COMPLETION_THROTTLE",
-          message: `Jobs completing rapidly (round ${newStreak}): next job throttled by ${Math.round(delayMs / 1000)}s.`,
+          type: startupFailed ? "STARTUP_TIMEOUT_THROTTLE" : "RAPID_COMPLETION_THROTTLE",
+          message: startupFailed
+            ? `Job did not come online within ${deployment.startup_timeout} minutes of starting and was replaced (round ${newStreak}): next job throttled by ${Math.round(delayMs / 1000)}s.`
+            : `Jobs completing rapidly (round ${newStreak}): next job throttled by ${Math.round(delayMs / 1000)}s.`,
           created_at: new Date(),
         });
         return;

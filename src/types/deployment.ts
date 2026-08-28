@@ -24,20 +24,23 @@ export type DeploymentStrategy = (typeof DeploymentStrategy)[keyof typeof Deploy
 
 export type DeploymentDocument =
   | ({
-      strategy: "SCHEDULED";
-      schedule: string;
-      rotation_time?: never;
-    } & DeploymentDocumentBase)
+    strategy: "SCHEDULED";
+    schedule: string;
+    rotation_time?: never;
+    startup_timeout?: never;
+  } & DeploymentDocumentBase)
   | ({
-      strategy: "INFINITE";
-      rotation_time: number;
-      schedule?: never;
-    } & DeploymentDocumentBase)
+    strategy: "INFINITE";
+    rotation_time: number;
+    schedule?: never;
+    startup_timeout?: number;
+  } & DeploymentDocumentBase)
   | ({
-      strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
-      schedule?: never;
-      rotation_time?: never;
-    } & DeploymentDocumentBase);
+    strategy: Exclude<DeploymentStrategy, "SCHEDULED">;
+    schedule?: never;
+    rotation_time?: never;
+    startup_timeout?: never;
+  } & DeploymentDocumentBase);
 
 export const DeploymentDocumentFields: Record<
   Uppercase<keyof DeploymentDocument>,
@@ -59,6 +62,7 @@ export const DeploymentDocumentFields: Record<
   STRATEGY: "strategy",
   SCHEDULE: "schedule",
   ROTATION_TIME: "rotation_time",
+  STARTUP_TIMEOUT: "startup_timeout",
   RAPID_STREAK: "rapid_streak",
   NEXT_RETRY_AT: "next_retry_at",
   SSH_PUBLIC_KEYS: "ssh_public_keys",

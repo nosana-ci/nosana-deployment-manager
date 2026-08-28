@@ -1,6 +1,6 @@
 import typia from "typia";
 import { RouteHandler } from "fastify";
-import { DeploymentStatus, DeploymentStrategy } from "@nosana/kit";
+import { DeploymentStatus, DeploymentStrategy, type JobDefinition } from "@nosana/kit";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
 import { encryptWithKey } from "../../../../../vault/encrypt.js";
@@ -9,6 +9,7 @@ import { getOrCreateVault, storeVaultDocument, VaultNotFoundError } from "../../
 
 import {
   createDeployment,
+  hasExposedPorts,
 } from "./deploymentCreate.factory.js";
 
 import type {
@@ -41,8 +42,14 @@ export const deploymentCreateHandler: RouteHandler<{
         res.status(400).send({ error: ErrorMessages.deployments.INVALID_TIMEOUT });
         return;
       }
+
       if (req.body.rotation_time && req.body.rotation_time >= req.body.timeout - 10) {
         res.status(400).send({ error: ErrorMessages.deployments.INVALID_ROTATION_TIME });
+        return;
+      }
+
+      if (req.body.startup_timeout && !hasExposedPorts(req.body.job_definition as JobDefinition)) {
+        res.status(400).send({ error: ErrorMessages.deployments.STARTUP_TIMEOUT_WITHOUT_ENDPOINTS });
         return;
       }
     }

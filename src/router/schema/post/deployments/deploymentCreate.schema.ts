@@ -59,6 +59,11 @@ export const DeploymentCreateBodySchema = Type.Intersect([
       rotation_time: Type.Optional(Type.Number({
         description: "Rotation time in seconds. Must be at least 10 minutes less than timeout to allow for proper rotation."
       })),
+      startup_timeout: Type.Optional(Type.Number({
+        minimum: 1,
+        description:
+          "Minutes a job has, from the moment a node starts running it, to open its network tunnel. A job that does not come online in time is stopped and replaced on another node. Must cover the image pull and any operations that run before the exposed one. Requires the job definition to expose at least one port.",
+      })),
     })
   ]),
 ]);
@@ -70,6 +75,7 @@ export const DeploymentMetadataSchema = Type.Omit(DeploymentCreateBodySchema, [
 export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   schedule?: string; // Optional for non-scheduled strategies
   rotation_time?: number; // Optional for non-infinite strategies
+  startup_timeout?: number; // Optional, infinite strategy only
   vault?: string; // Only for the existing-vault variant
   new_vault?: boolean; // Only for the new-vault variant
 };

@@ -243,6 +243,99 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
     });
   });
 
+  describe('startup-timeout rotation', () => {
+    // A job stopped for missing its startup deadline: `startup_deadline` is still
+    // set, because `disarmStartupDeadline` only clears it when the tunnel came up.
+    const neverCameOnline: JobsDocument = {
+      ...mockJobDocument,
+      state: JobState.STOPPED,
+      startup_deadline: new Date(mockNow.getTime() - 60_000),
+    };
+
+    beforeEach(() => {
+      vi.mocked(scheduleTask).mockResolvedValue(true);
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        startup_timeout: 5,
+      });
+    });
+
+    it('counts as a round on its own, without consulting recent completions', async () => {
+      await handler(neverCameOnline, mockDb);
+
+      // The rapid heuristic reads COMPLETED jobs only, and these are STOPPED —
+      // asking it would always answer "not rapid".
+      expect(mockedJobsFindAll).not.toHaveBeenCalled();
+      expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
+        { id: testDeployment },
+        { rapid_streak: 1, next_retry_at: new Date(mockNow.getTime() + 60_000) },
+      );
+      expect(mockedEventsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'STARTUP_TIMEOUT_THROTTLE' }),
+      );
+    });
+
+    it('throttles the replacement, so a definition that can never come online cannot rotate nodes flat out', async () => {
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        startup_timeout: 5,
+        rapid_streak: 2,
+      });
+
+      await handler(neverCameOnline, mockDb);
+
+      // base 60s * 2^2
+      const due = new Date(mockNow.getTime() + 240_000);
+      expect(scheduleTask).toHaveBeenCalledWith(
+        mockDb,
+        TaskType.LIST,
+        testDeployment,
+        DeploymentStatus.RUNNING,
+        due,
+        { limit: 1, idempotent: true },
+      );
+    });
+
+    it('stops the deployment at the streak ceiling to protect funds', async () => {
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        startup_timeout: 5,
+        rapid_streak: 7, // ceiling is 8
+      });
+
+      await handler(neverCameOnline, mockDb);
+
+      expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
+        { id: testDeployment, status: DeploymentStatus.RUNNING },
+        { status: DeploymentStatus.STOPPING },
+        expect.anything(),
+      );
+      expect(mockedEventsCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'STARTUP_TIMEOUT_FAIL_SAFE' }),
+        expect.anything(),
+      );
+    });
+
+    it('does not count a job whose deadline was cleared when its tunnel came up', async () => {
+      mockedJobsCount.mockResolvedValue(2);
+
+      await handler({ ...neverCameOnline, startup_deadline: undefined }, mockDb);
+
+      expect(mockedEventsCreate).not.toHaveBeenCalled();
+      expect(scheduleTask).toHaveBeenCalledWith(
+        mockDb,
+        TaskType.LIST,
+        testDeployment,
+        DeploymentStatus.RUNNING,
+        mockNow,
+        { limit: 1 },
+      );
+    });
+  });
+
   describe('rapid-completion fail-safe', () => {
     // Finished jobs shaped like production docs: `updated_at` frozen at
     // `created_at` (the finisher paths historically never bumped it), so only

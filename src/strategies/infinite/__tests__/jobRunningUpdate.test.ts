@@ -10,6 +10,12 @@ vi.mock('../../../tasks/scheduleTask.js', () => ({
   scheduleTask: vi.fn()
 }));
 
+import { armStartupDeadline } from '../utils/armStartupDeadline.js';
+
+vi.mock('../utils/armStartupDeadline.js', () => ({
+  armStartupDeadline: vi.fn()
+}));
+
 import { OnEvent } from '../../../client/listener/types.js';
 import { getTimeNthMinutesBeforeTimeout } from '../../../tasks/utils/getTimeNthMinutesBeforeTimeout.js';
 
@@ -78,6 +84,33 @@ describe('infiniteJobRunningUpdate', () => {
 
     it('should filter for RUNNING state', () => {
       expect(options?.filters).toEqual({ state: { $eq: JobState.RUNNING } });
+    });
+  });
+
+  describe('startup deadline', () => {
+    it('arms the deadline as soon as a node starts the job', async () => {
+      mockFindOne.mockResolvedValue({
+        ...baseDeployment,
+        strategy: DeploymentStrategy.INFINITE,
+        startup_timeout: 5,
+      });
+      mockCountDocuments.mockResolvedValue(3);
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(armStartupDeadline).toHaveBeenCalledWith(
+        mockDb,
+        expect.objectContaining({ id: testDeployment, startup_timeout: 5 }),
+        testJob,
+      );
+    });
+
+    it('is not armed for a deployment that is no longer an active INFINITE one', async () => {
+      mockFindOne.mockResolvedValue({ ...baseDeployment, strategy: DeploymentStrategy.SIMPLE });
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(armStartupDeadline).not.toHaveBeenCalled();
     });
   });
 

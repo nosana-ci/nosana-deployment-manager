@@ -72,8 +72,25 @@ DM itself can be deployed at any point in this sequence — it does nothing unti
 - **INFINITE deployments only**, in `RUNNING` state. Other strategies have no replacement logic to hang a reaction on.
 - **HTTP proxies only.** Job identity comes from the frpc metadata on the deployment (`-dp`) proxy. SSH `tcpmux` and RA-TLS `https` proxies emit no lifecycle events yet.
 - **Detecting a dead backend requires a health check.** frpc only probes the backend when the job definition declares an HTTP health check (`type: http`, `GET`, expected 200). With one, a dead backend is reported as `lost` and handled like any other unreachability; without one, a dead backend behind a live tunnel produces no signal at all.
-- **A job whose service never comes up is not acted on.** "Still starting" and "will never start" are indistinguishable from the outside, and a wrong teardown is worse than silence. This is deliberate — there is no time-based startup guessing anywhere in this feature.
+- **A job whose service never comes up is acted on only when the owner asks for it.** "Still starting" and "will never start" are indistinguishable from the outside, so DM never guesses: it acts only on the deadline an owner sets explicitly (`startup_timeout`, below). Without one, a job that never opens its tunnel is left alone.
 - FRPS retains a down proxy's last events for **24h**; a DM outage longer than that could miss a death that occurred early in the outage window.
+
+## Startup timeout (INFINITE, opt-in)
+
+`startup_timeout` — minutes, set at deployment creation — is how long a job has to open its tunnel, measured from the moment a node starts running it. It reuses the machinery above rather than adding a worker:
+
+1. The job reaches `RUNNING`: `armStartupDeadline` schedules a STOP targeting that job, `due_at` = now + `startup_timeout`, and stamps the same date on the job as `startup_deadline`.
+2. The tunnel registers: `frpsRegisterHandler` deletes the pending STOP and clears the marker. Nothing is logged — coming up in time is the normal path.
+3. The tunnel never registers: the STOP falls due, the job is stopped, and `infiniteJobStateCompletedOrStopUpdate` replaces it on another node.
+
+The task's `due_at` **is** the deadline, so it survives a listener restart, and the register-side cancel is the same delete that retires an unhealthy-tunnel grace stop.
+
+Notes:
+
+- The clock starts at `RUNNING`, which is only where a node *claimed* the job — the image pull and any ops preceding the exposed one happen inside the window. Set it generously.
+- A job stopped for missing its deadline feeds the **rapid-completion streak**, so a definition that can never come online (wrong port, image that won't boot, timeout shorter than the pull) backs off with an escalating cooldown and stops the deployment at `RAPID_COMPLETION_MAX_STREAK` instead of rotating nodes forever. Events: `STARTUP_TIMEOUT_THROTTLE`, `STARTUP_TIMEOUT_FAIL_SAFE`.
+- Creation rejects `startup_timeout` on a definition that exposes no ports — nothing could ever report such a job online, so every job would rotate.
+- A tunnel that registers *after* the deadline has passed does not undo the stop: the job was late, and a deployment that is consistently late still needs to escalate.
 
 ## Verifying after enablement
 

@@ -3,11 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("../../../../repositories/index.js", () => ({
   TasksRepository: { collection: { deleteOne: vi.fn() } },
   EventsRepository: { create: vi.fn() },
+  JobsRepository: { collection: { findOneAndUpdate: vi.fn() } },
   FrpsEndpointStatusRepository: { collection: { updateOne: vi.fn().mockResolvedValue({ matchedCount: 1 }) } },
 }));
 
 import { frpsRegisterHandler } from "../registerHandler.js";
-import { EventsRepository, TasksRepository, FrpsEndpointStatusRepository } from "../../../../repositories/index.js";
+import { EventsRepository, JobsRepository, TasksRepository, FrpsEndpointStatusRepository } from "../../../../repositories/index.js";
 
 import { EventType, TaskStatus, TaskType } from "../../../../types/index.js";
 import { FRPSEventTypes, type RegisteredEvent } from "../../../../listeners/frps/types.js";
@@ -19,6 +20,7 @@ const JOB_ID = "job-1";
 const mockedDeleteOne = vi.mocked(TasksRepository.collection.deleteOne);
 const mockedEventsCreate = vi.mocked(EventsRepository.create);
 const mockedStatusUpdate = vi.mocked(FrpsEndpointStatusRepository.collection.updateOne);
+const mockedJobUpdate = vi.mocked(JobsRepository.collection.findOneAndUpdate);
 
 function createEvent(metadatas?: RegisteredEvent["metadatas"]): RegisteredEvent {
   return {
@@ -39,6 +41,8 @@ describe("frpsRegisterHandler", () => {
     vi.setSystemTime(NOW);
     mockedDeleteOne.mockResolvedValue({ deletedCount: 1, acknowledged: true } as never);
     mockedStatusUpdate.mockResolvedValue({ matchedCount: 1 } as never);
+    // Default: the cancelled stop was an unhealthy-tunnel grace stop (no startup marker).
+    mockedJobUpdate.mockResolvedValue(null as never);
   });
 
   it("marks the endpoint up", async () => {
@@ -99,6 +103,33 @@ describe("frpsRegisterHandler", () => {
     await frpsRegisterHandler(createEvent());
 
     expect(mockedDeleteOne).not.toHaveBeenCalled();
+  });
+
+  it("clears the startup deadline off the job", async () => {
+    await frpsRegisterHandler(validEvent);
+
+    expect(mockedJobUpdate).toHaveBeenCalledExactlyOnceWith(
+      { job: JOB_ID, deployment: DEPLOYMENT_ID },
+      { $unset: { startup_deadline: "" } },
+      { returnDocument: "before" },
+    );
+  });
+
+  it("stays quiet when the cancelled stop was a startup deadline: coming online in time is the normal path", async () => {
+    mockedJobUpdate.mockResolvedValue({ startup_deadline: NOW } as never);
+
+    await frpsRegisterHandler(validEvent);
+
+    expect(mockedDeleteOne).toHaveBeenCalledOnce();
+    expect(mockedEventsCreate).not.toHaveBeenCalled();
+  });
+
+  it("leaves the job untouched when there was no pending stop, so a fired deadline still counts", async () => {
+    mockedDeleteOne.mockResolvedValue({ deletedCount: 0, acknowledged: true } as never);
+
+    await frpsRegisterHandler(validEvent);
+
+    expect(mockedJobUpdate).not.toHaveBeenCalled();
   });
 
   it("resolves the job from metadata split across several objects", async () => {

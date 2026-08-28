@@ -62,6 +62,24 @@ export function createDeploymentRevisionEndpoints(
 }
 
 /**
+ * Whether any `container/run` op exposes a port, i.e. whether this definition can
+ * ever produce an FRPS tunnel. `startup_timeout` is meaningless without one — the
+ * job could never report that it came online — so creation rejects the pair.
+ *
+ * Only presence is checked; the shape of each entry is the job definition
+ * validation's job.
+ */
+export function hasExposedPorts(jobDefinition: JobDefinition): boolean {
+  return jobDefinition.ops.some((op) => {
+    if (op.type !== "container/run") return false;
+
+    const { expose } = op.args as OperationArgsMap["container/run"];
+
+    return Array.isArray(expose) ? expose.length > 0 : expose !== undefined && expose !== null;
+  });
+}
+
+/**
  * Build the next revision. Any `ssh` block on the submitted definition is split
  * off and handed back as `ssh_public_keys` for the caller to store on the
  * deployment — the revision's `job_definition` never carries keys, so rotating
@@ -126,6 +144,7 @@ export async function createDeployment(
     confidential,
     timeout,
     rotation_time,
+    startup_timeout,
     ssh_public_keys
   }: DeploymentCreateBody,
   vault: string,
@@ -183,6 +202,7 @@ export async function createDeployment(
         strategy,
         timeout,
         rotation_time: rotation_time ?? getConfig().default_minutes_before_timeout,
+        ...(startup_timeout !== undefined && { startup_timeout }),
         endpoints
       }, revision
     };

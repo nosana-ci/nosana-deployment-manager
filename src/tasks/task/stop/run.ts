@@ -74,6 +74,7 @@ export async function runStopTask(
     stopTargets = selectJobsToStop(task.jobs, {
       limit: task.limit,
       activeRevision: task.active_revision,
+      job: task.job,
     }).map(({ job }) => job);
     await tasks.updateOne({ _id: task._id }, { $set: { stop_targets: stopTargets } });
   }

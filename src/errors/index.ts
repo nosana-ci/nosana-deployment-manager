@@ -33,6 +33,8 @@ export const ErrorMessages = {
     INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
     INVALID_ROTATION_TIME: "Rotation time must be at least 10 minutes less than timeout.",
     INVALID_TIMEOUT: "Timeout for infinite deployments must be at least 1 hour.",
+    STARTUP_TIMEOUT_WITHOUT_ENDPOINTS:
+      "Startup timeout requires the job definition to expose at least one port; without one the job can never report that it came online.",
     FAILED_TO_UPDATE_SSH_KEYS: "Failed to update deployment SSH keys.",
   },
   job: {

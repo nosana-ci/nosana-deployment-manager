@@ -52,7 +52,8 @@ export const DeploymentSchema = Type.Intersect([
     Type.Object({
       timeout: Type.Number({ minimum: 60 }),
       strategy: Type.Literal(DeploymentStrategy.INFINITE),
-      rotation_time: Type.Number()
+      rotation_time: Type.Number(),
+      startup_timeout: Type.Optional(Type.Number({ minimum: 1 })),
     }),
   ]),
 ]);

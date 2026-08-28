@@ -16,7 +16,7 @@ vi.mock("@solana/signers", () => ({
   generateKeyPairSigner: async () => ({ address: "D".repeat(44) }),
 }));
 
-import { createDeployment } from "./deploymentCreate.factory.js";
+import { createDeployment, hasExposedPorts } from "./deploymentCreate.factory.js";
 
 const OWNER = "1".repeat(44);
 const VAULT = "3".repeat(44);
@@ -38,6 +38,60 @@ function makeBody(over: Partial<DeploymentCreateBody> = {}): DeploymentCreateBod
 }
 
 const create = (body: DeploymentCreateBody) => createDeployment(body, VAULT, OWNER, new Date());
+
+const exposing = (expose: unknown): JobDefinition =>
+  ({
+    version: "0.1",
+    type: "container",
+    ops: [{ type: "container/run", id: "op-1", args: { image: "img", expose } }],
+  } as unknown as JobDefinition);
+
+describe("hasExposedPorts", () => {
+  it("is false when no op exposes anything — nothing could ever open a tunnel", () => {
+    expect(hasExposedPorts(definition)).toBe(false);
+    expect(hasExposedPorts(exposing(undefined))).toBe(false);
+  });
+
+  it("is true for a bare port, string or number", () => {
+    expect(hasExposedPorts(exposing(8080))).toBe(true);
+    expect(hasExposedPorts(exposing("8080"))).toBe(true);
+  });
+
+  it("is true for a list of ports or service objects", () => {
+    expect(hasExposedPorts(exposing([8080]))).toBe(true);
+    expect(hasExposedPorts(exposing([{ port: 8080 }]))).toBe(true);
+  });
+
+  it("is false for an empty list", () => {
+    expect(hasExposedPorts(exposing([]))).toBe(false);
+  });
+
+  it("ignores ops that are not container/run", () => {
+    const definitionWithOtherOp = {
+      version: "0.1",
+      type: "container",
+      ops: [{ type: "container/create-volume", id: "vol", args: { expose: 8080 } }],
+    } as unknown as JobDefinition;
+
+    expect(hasExposedPorts(definitionWithOtherOp)).toBe(false);
+  });
+});
+
+describe("createDeployment startup_timeout", () => {
+  it("stores the startup timeout on an INFINITE deployment", async () => {
+    const { deployment } = await create(
+      makeBody({ strategy: "INFINITE", timeout: 60, startup_timeout: 5 }),
+    );
+
+    expect(deployment).toMatchObject({ strategy: "INFINITE", startup_timeout: 5 });
+  });
+
+  it("leaves the field off when it was not requested", async () => {
+    const { deployment } = await create(makeBody({ strategy: "INFINITE", timeout: 60 }));
+
+    expect(deployment).not.toHaveProperty("startup_timeout");
+  });
+});
 
 describe("createDeployment ssh keys", () => {
   beforeEach(() => {

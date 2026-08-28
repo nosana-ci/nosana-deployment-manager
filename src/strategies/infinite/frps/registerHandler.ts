@@ -1,26 +1,28 @@
 import { getFrpsMetrics } from "../../../metrics/frps.js";
-import { EventsRepository, TasksRepository } from "../../../repositories/index.js";
+import { EventsRepository } from "../../../repositories/index.js";
 
 import { parseFrpsMetadata } from "./parseMetadata.js";
 import { recordEndpointState } from "./endpointStatus.js";
+import { disarmStartupDeadline } from "../utils/armStartupDeadline.js";
 
 import type { RegisteredEvent } from "../../../listeners/frps/types.js";
-import { EventType, TaskStatus, TaskType } from "../../../types/index.js";
+import { EventType } from "../../../types/index.js";
 
 const LOG = "[FRPS register]";
 
 /**
- * Handles a proxy coming back on FRPS: cancels the STOP that `frpsUnregisterHandler`
- * scheduled, if it is still inside its grace window.
+ * Handles a proxy coming up on FRPS: cancels the pending STOP for that job, which
+ * is either the grace-window stop `frpsUnregisterHandler` scheduled for a lost
+ * tunnel, or the startup deadline `armStartupDeadline` armed when the job started
+ * running. A registered proxy retires both — the job is reachable.
  *
- * The delete cannot race the consumer. `claimTasks` only claims tasks whose
- * `due_at` has passed, so filtering on `due_at > now` guarantees the task has not
- * been picked up; if the grace already elapsed and a consumer claimed it, the
- * filter simply doesn't match and the stop proceeds — the correct outcome, since
- * by then the tunnel was down for the full window.
+ * Only the tunnel-recovery case is reported: a job coming online inside its
+ * startup window is the ordinary outcome on every job start, and logging it would
+ * say nothing an operator needs. `disarmStartupDeadline` tells the two apart.
  *
- * Matching on `job` is unambiguous: no other scheduler sets `job` on a STOP task,
- * and every other STOP is scheduled `due_at = now`.
+ * Matching on `job` is unambiguous: the two targeted schedulers above are the only
+ * ones that set `job` on a STOP, they cannot both have one pending (the schedule
+ * is idempotent per job), and every other STOP is scheduled `due_at = now`.
  *
  * Known limitation: a job exposing several ports has one proxy per port, all
  * carrying the same `jobId`. Cancellation is per-job, not per-proxy, so if one
@@ -41,15 +43,9 @@ export async function frpsRegisterHandler({ metadatas }: RegisteredEvent): Promi
     return;
   }
 
-  const { deletedCount } = await TasksRepository.collection.deleteOne({
-    task: TaskType.STOP,
-    deploymentId,
-    job: jobId,
-    status: TaskStatus.PENDING,
-    due_at: { $gt: new Date() },
-  });
+  const { cancelled, startup } = await disarmStartupDeadline(deploymentId, jobId);
 
-  if (!deletedCount) return;
+  if (!cancelled || startup) return;
 
   console.log(`${LOG} ${jobId} reconnected within its grace window, cancelling stop`);
   getFrpsMetrics()?.recordOutcome("cancelled");

@@ -3,6 +3,7 @@ import { scheduleTask } from "../../tasks/scheduleTask.js";
 import { NosanaCollections } from "../../definitions/collection.js";
 
 import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
+import { armStartupDeadline } from "./utils/armStartupDeadline.js";
 import { isActiveInfiniteDeployment } from "./utils/isActiveInfiniteDeployment.js";
 import { getTimeNthMinutesBeforeTimeout } from "../../tasks/utils/getTimeNthMinutesBeforeTimeout.js";
 
@@ -16,6 +17,10 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
   async ({ deployment: jobDeployment, job }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || !isActiveInfiniteDeployment(deployment)) return;;
+
+    // A node has taken the job: start its startup-timeout clock (no-op unless the
+    // deployment configured one).
+    await armStartupDeadline(db, deployment, job);
 
     const runningJobsCount = await db
       .collection<JobsDocument>(NosanaCollections.JOBS)

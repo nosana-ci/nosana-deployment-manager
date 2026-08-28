@@ -59,6 +59,38 @@ describe('selectJobsToStop', () => {
     expect(ids(result)).toEqual(['queue', 'run-a', 'run-b']);
   });
 
+  describe('targeting one job', () => {
+    it('stops only the targeted job, never the deployment\'s other replicas', () => {
+      const jobs = [
+        job('healthy-a', JobState.RUNNING, 100),
+        job('unreachable', JobState.RUNNING, 200),
+        job('healthy-b', JobState.RUNNING, 300),
+      ];
+
+      // No limit: what a targeted scheduler (lost tunnel, missed startup
+      // deadline) sets. Without the target filter this returns all three.
+      const result = selectJobsToStop(jobs, { job: 'unreachable' });
+
+      expect(ids(result)).toEqual(['unreachable']);
+    });
+
+    it('stops the targeted job even when it is on the active revision', () => {
+      const jobs = [job('target', JobState.RUNNING, 100, 2)];
+
+      const result = selectJobsToStop(jobs, { job: 'target', activeRevision: 2 });
+
+      expect(ids(result)).toEqual(['target']);
+    });
+
+    it('selects nothing when the targeted job already settled', () => {
+      const jobs = [job('other', JobState.RUNNING, 100)];
+
+      const result = selectJobsToStop(jobs, { job: 'gone' });
+
+      expect(result).toEqual([]);
+    });
+  });
+
   it('excludes jobs on the active revision', () => {
     const jobs = [
       job('old-queued', JobState.QUEUED, 1000, 1),

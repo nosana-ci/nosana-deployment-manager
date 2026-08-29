@@ -77,7 +77,7 @@ DM itself can be deployed at any point in this sequence — it does nothing unti
 
 ## Startup timeout (INFINITE, opt-in)
 
-`startup_timeout` — minutes, set at deployment creation — is how long a job has to open its tunnel, measured from the moment a node starts running it. It reuses the machinery above rather than adding a worker:
+`startup_timeout` — minutes, set at deployment creation or later via `PATCH /deployments/:deployment/update-startup-timeout` — is how long a job has to open its tunnel, measured from the moment a node starts running it. A change applies to jobs started after it, since `armStartupDeadline` reads the field only when a job reaches `RUNNING`. It reuses the machinery above rather than adding a worker:
 
 1. The job reaches `RUNNING`: `armStartupDeadline` schedules a STOP targeting that job, `due_at` = now + `startup_timeout`, and stamps the same date on the job as `startup_deadline`.
 2. The tunnel registers: `frpsRegisterHandler` deletes the pending STOP and clears the marker. Nothing is logged — coming up in time is the normal path.

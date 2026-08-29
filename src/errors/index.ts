@@ -26,6 +26,7 @@ export const ErrorMessages = {
     FAILED_TO_ARCHIVE: "Failed to archive deployment.",
     FAILED_TO_DELETE: "Failed to delete deployment.",
     FAILED_TIMEOUT_UPDATE: "Failed to update deployment timeout.",
+    FAILED_STARTUP_TIMEOUT_UPDATE: "Failed to update deployment startup timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
     FAILED_NAME_UPDATE: "Failed to update deployment name.",
     FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",

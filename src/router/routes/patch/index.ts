@@ -4,4 +4,5 @@ export * from "./deployment/[id]/deploymentUpdateName.js";
 export * from "./deployment/[id]/deploymentUpdateReplicaCount.js";
 export * from "./deployment/[id]/deploymentUpdateSchedule.js";
 export * from "./deployment/[id]/deploymentUpdateSshKeys/index.js";
+export * from "./deployment/[id]/deploymentUpdateStartupTimeout.js";
 export * from "./deployment/[id]/deploymentUpdateTimeout.js";

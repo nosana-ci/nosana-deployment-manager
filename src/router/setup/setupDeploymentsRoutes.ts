@@ -41,6 +41,7 @@ const {
     deploymentUpdateReplicaCountHandler,
     deploymentUpdateScheduleHandler,
     deploymentUpdateSshKeysHandler,
+    deploymentUpdateStartupTimeoutHandler,
     deploymentUpdateTimeoutHandler,
   },
   delete: {
@@ -69,6 +70,7 @@ const {
     DeploymentUpdateReplicaCountSchema,
     DeploymentUpdateScheduleSchema,
     DeploymentUpdateSshKeysSchema,
+    DeploymentUpdateStartupTimeoutSchema,
     DeploymentUpdateTimeoutSchema,
   },
   delete: { DeploymentDeleteSchema },
@@ -277,5 +279,14 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentUpdateTimeoutHandler
+  );
+
+  server.patch(
+    `${API_PREFIX}/:deployment/update-startup-timeout`,
+    {
+      schema: DeploymentUpdateStartupTimeoutSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentUpdateStartupTimeoutHandler
   );
 }

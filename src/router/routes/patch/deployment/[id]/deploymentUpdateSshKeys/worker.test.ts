@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import type { SignSshAuthorizationMessage } from "../../../../../../ssh/index.js";
 import type { SshKeysWorkerData } from "./worker.js";
 
 const state = vi.hoisted(() => ({
@@ -55,10 +54,6 @@ async function runWorker(data: Omit<SshKeysWorkerData, "vault">, { useNosanaApiK
   await import("./worker.js");
 }
 
-function pushedSign(call: number): SignSshAuthorizationMessage {
-  return (state.push.mock.calls[call][0] as { sign: SignSshAuthorizationMessage }).sign;
-}
-
 describe("deploymentUpdateSshKeys worker", () => {
   beforeEach(() => {
     state.postMessage.mockClear();
@@ -67,19 +62,14 @@ describe("deploymentUpdateSshKeys worker", () => {
     state.push.mockReset().mockResolvedValue({ ok: true });
   });
 
-  it("pushes the keys to each node with a signer bound to the vault wallet", async () => {
+  it("pushes the keys to each node with the vault-signed owner header", async () => {
     await runWorker({ public_keys: KEYS, jobs: [{ job: JOB_A, node: NODE }, { job: JOB_B, node: NODE }] });
 
     // Every job gets the same timestamped owner header, signed once by the vault.
-    const pushArgs = { public_keys: KEYS, sign: expect.any(Function), authHeader: "wallet:DEPLOYMENT_HEADER" };
+    const pushArgs = { public_keys: KEYS, authHeader: "wallet:DEPLOYMENT_HEADER" };
     expect(state.push).toHaveBeenCalledWith({ node: NODE, job: JOB_A, ...pushArgs });
     expect(state.push).toHaveBeenCalledWith({ node: NODE, job: JOB_B, ...pushArgs });
     expect(state.generate).toHaveBeenCalledWith("DEPLOYMENT_HEADER", { includeTime: true });
-
-    // The per-key signer returns the body message untouched, signed over the
-    // exact message with no timestamp appended.
-    await expect(pushedSign(0)("a message")).resolves.toBe("wallet:a message");
-    expect(state.generate).toHaveBeenCalledWith("a message", { includeTime: false });
     expect(state.signMessage).not.toHaveBeenCalled();
 
     expect(state.postMessage).toHaveBeenCalledWith({
@@ -98,9 +88,6 @@ describe("deploymentUpdateSshKeys worker", () => {
       expect.objectContaining({ authHeader: "apikey:DEPLOYMENT_HEADER" })
     );
     expect(state.signMessage).toHaveBeenCalledWith("DEPLOYMENT_HEADER", { includeTime: true });
-
-    await expect(pushedSign(0)("a message")).resolves.toBe("apikey:a message");
-    expect(state.signMessage).toHaveBeenCalledWith("a message", { includeTime: false });
     expect(state.generate).not.toHaveBeenCalled();
   });
 

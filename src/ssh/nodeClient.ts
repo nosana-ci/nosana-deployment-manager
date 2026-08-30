@@ -4,71 +4,33 @@ import { messageOf } from "../tasks/idempotency/errorInfo.js";
 /** Per-node budget; a dead node must not hold the whole rotation hostage. */
 export const NODE_REQUEST_TIMEOUT_MS = 10_000;
 
-/** First line of the signed authorization message; the node rejects any other. */
-export const SSH_AUTHORIZATION_MESSAGE_HEADER = "Nosana SSH Authorization v1";
-export const SSH_AUTHORIZATION_AUDIENCE = "nosana-ssh-gateway";
-
 /** A node's public API base URL, fronted by FRPS like the deployment endpoints. */
 export function getNodeUrl(node: string): string {
   return `https://${node}.${getConfig().frps_public_address}`;
 }
 
-/**
- * Signs an authorization message as the job's poster; returns the untouched
- * `kit.authorization.generate` output — `<message>:<base58 signature>` — which
- * the node verifies as-is.
- */
-export type SignSshAuthorizationMessage = (message: string) => Promise<string>;
-
 export type NodeSshKeysResult = { ok: true } | { ok: false; error: string };
 
 /**
- * The exact message text the node's `POST /job/:jobId/ssh/authorize` verifies
- * (see the node's `ssh-authorize.ts`): field order, the `nosana-<job>` ssh user
- * and the audience must match verbatim. The `network` line is included only for
- * networks a node can be configured with; when absent (localnet) the node
- * skips that check.
- */
-export function buildSshAuthorizationMessage(args: {
-  job: string;
-  node: string;
-  sshPublicKey: string;
-}): string {
-  const { network } = getConfig();
-  return [
-    SSH_AUTHORIZATION_MESSAGE_HEADER,
-    "",
-    `job: ${args.job}`,
-    `node: ${args.node}`,
-    `sshUser: nosana-${args.job}`,
-    `sshPublicKey: ${args.sshPublicKey}`,
-    ...(network === "mainnet" || network === "devnet" ? [`network: ${network}`] : []),
-    `audience: ${SSH_AUTHORIZATION_AUDIENCE}`,
-  ].join("\n");
-}
-
-/**
  * Grant every key in the set SSH access to one running job. The node's only
- * SSH route is `POST /job/:jobId/ssh/authorize` — one key per call, each
- * carrying a message signed by the job's poster (the deployment's vault),
- * verified against `job.project`. `authHeader` is the standard job-owner
- * `authorization` header the node's middleware checks to authenticate the
- * request itself; one header serves the whole set. Never throws — the caller
- * reports per-job outcomes, it doesn't abort the rotation because one node is
- * unreachable.
+ * SSH route is `POST /job/:jobId/ssh/authorize` — one key per call. The request
+ * is authenticated by the standard job-owner `authorization` header, which the
+ * node verifies against `job.project`; the body only names the key to add. The
+ * node derives everything else itself: the node id from the request host and
+ * the job from the route param. Never throws — the caller reports per-job
+ * outcomes, it doesn't abort the rotation because one node is unreachable.
  */
 export async function pushSshKeysToNode(args: {
   node: string;
   job: string;
   public_keys: string[];
-  sign: SignSshAuthorizationMessage;
   authHeader: string;
 }): Promise<NodeSshKeysResult> {
-  const { node, job, public_keys, sign, authHeader } = args;
+  const { node, job, public_keys, authHeader } = args;
 
   const failures: string[] = [];
   for (const [index, sshPublicKey] of public_keys.entries()) {
-    const failure = await authorizeSshKey({ node, job, sshPublicKey, sign, authHeader });
+    const failure = await authorizeSshKey({ node, job, sshPublicKey, authHeader });
     if (failure) failures.push(`public_keys[${index}]: ${failure}`);
   }
 
@@ -80,23 +42,15 @@ async function authorizeSshKey(args: {
   node: string;
   job: string;
   sshPublicKey: string;
-  sign: SignSshAuthorizationMessage;
   authHeader: string;
 }): Promise<string | undefined> {
-  const { node, job, sshPublicKey, sign, authHeader } = args;
+  const { node, job, sshPublicKey, authHeader } = args;
 
   try {
-    const message = buildSshAuthorizationMessage({ job, node, sshPublicKey });
-    // The key-binding message is multiline, so it can't travel in a header; it
-    // goes in the body and the node verifies it unmodified. The `authorization`
-    // header is the standard job-owner grant the node's middleware verifies to
-    // authenticate the request itself — same signer, checked against `job.project`.
-    const authorization = await sign(message);
-
     const response = await fetch(`${getNodeUrl(node)}/job/${job}/ssh/authorize`, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: authHeader },
-      body: JSON.stringify({ authorization }),
+      body: JSON.stringify({ sshPublicKey }),
       signal: AbortSignal.timeout(NODE_REQUEST_TIMEOUT_MS),
     });
 

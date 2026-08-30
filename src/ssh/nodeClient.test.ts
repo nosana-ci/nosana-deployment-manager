@@ -15,6 +15,8 @@ const NODE = "N".repeat(44);
 const JOB = "J".repeat(44);
 const KEY_A = "ssh-ed25519 AAAA alice";
 const KEY_B = "ssh-ed25519 BBBB bob";
+// Stands in for the timestamped owner header the node's middleware verifies.
+const AUTH_HEADER = "DEPLOYMENT_HEADER:base58sig:1700000000000";
 
 describe("nodeClient", () => {
   const fetchMock = vi.fn();
@@ -62,7 +64,13 @@ describe("nodeClient", () => {
   });
 
   it("authorizes each key with the untouched signed message string", async () => {
-    const result = await pushSshKeysToNode({ node: NODE, job: JOB, public_keys: [KEY_A, KEY_B], sign });
+    const result = await pushSshKeysToNode({
+      node: NODE,
+      job: JOB,
+      public_keys: [KEY_A, KEY_B],
+      sign,
+      authHeader: AUTH_HEADER,
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const calls = fetchMock.mock.calls as Array<[string, NonNullable<Parameters<typeof fetch>[1]>]>;
@@ -71,7 +79,11 @@ describe("nodeClient", () => {
       const [url, init] = calls[index];
       expect(url).toBe(`https://${NODE}.node.k8s.test.nos.ci/job/${JOB}/ssh/authorize`);
       expect(init.method).toBe("POST");
-      expect(init.headers).toMatchObject({ "content-type": "application/json" });
+      // The owner header authenticates the request; content-type stays JSON.
+      expect(init.headers).toMatchObject({
+        "content-type": "application/json",
+        authorization: AUTH_HEADER,
+      });
       expect(init.signal).toBeInstanceOf(AbortSignal);
 
       // The body carries signAuthHeader's output as-is — never unwrapped.
@@ -87,7 +99,13 @@ describe("nodeClient", () => {
       .mockResolvedValueOnce(new Response('{"error":"Invalid SSH authorization signature"}', { status: 400 }))
       .mockResolvedValueOnce(new Response("", { status: 201 }));
 
-    const result = await pushSshKeysToNode({ node: NODE, job: JOB, public_keys: [KEY_A, KEY_B], sign });
+    const result = await pushSshKeysToNode({
+      node: NODE,
+      job: JOB,
+      public_keys: [KEY_A, KEY_B],
+      sign,
+      authHeader: AUTH_HEADER,
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
@@ -99,7 +117,13 @@ describe("nodeClient", () => {
   it("reports a network error as that key's failure, without throwing", async () => {
     fetchMock.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    const result = await pushSshKeysToNode({ node: NODE, job: JOB, public_keys: [KEY_A], sign });
+    const result = await pushSshKeysToNode({
+      node: NODE,
+      job: JOB,
+      public_keys: [KEY_A],
+      sign,
+      authHeader: AUTH_HEADER,
+    });
 
     expect(result).toEqual({ ok: false, error: "public_keys[0]: Error ECONNREFUSED" });
   });
@@ -107,7 +131,13 @@ describe("nodeClient", () => {
   it("reports a signing failure as that key's failure, without calling the node", async () => {
     sign.mockRejectedValueOnce(new Error("cannot sign"));
 
-    const result = await pushSshKeysToNode({ node: NODE, job: JOB, public_keys: [KEY_A], sign });
+    const result = await pushSshKeysToNode({
+      node: NODE,
+      job: JOB,
+      public_keys: [KEY_A],
+      sign,
+      authHeader: AUTH_HEADER,
+    });
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(result).toEqual({ ok: false, error: "public_keys[0]: Error cannot sign" });

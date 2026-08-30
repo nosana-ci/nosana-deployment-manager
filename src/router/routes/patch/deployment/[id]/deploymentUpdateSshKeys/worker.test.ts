@@ -70,11 +70,14 @@ describe("deploymentUpdateSshKeys worker", () => {
   it("pushes the keys to each node with a signer bound to the vault wallet", async () => {
     await runWorker({ public_keys: KEYS, jobs: [{ job: JOB_A, node: NODE }, { job: JOB_B, node: NODE }] });
 
-    expect(state.push).toHaveBeenCalledWith({ node: NODE, job: JOB_A, public_keys: KEYS, sign: expect.any(Function) });
-    expect(state.push).toHaveBeenCalledWith({ node: NODE, job: JOB_B, public_keys: KEYS, sign: expect.any(Function) });
+    // Every job gets the same timestamped owner header, signed once by the vault.
+    const pushArgs = { public_keys: KEYS, sign: expect.any(Function), authHeader: "wallet:DEPLOYMENT_HEADER" };
+    expect(state.push).toHaveBeenCalledWith({ node: NODE, job: JOB_A, ...pushArgs });
+    expect(state.push).toHaveBeenCalledWith({ node: NODE, job: JOB_B, ...pushArgs });
+    expect(state.generate).toHaveBeenCalledWith("DEPLOYMENT_HEADER", { includeTime: true });
 
-    // The signer returns the standard authorization header untouched, signed
-    // over the exact message with no timestamp appended.
+    // The per-key signer returns the body message untouched, signed over the
+    // exact message with no timestamp appended.
     await expect(pushedSign(0)("a message")).resolves.toBe("wallet:a message");
     expect(state.generate).toHaveBeenCalledWith("a message", { includeTime: false });
     expect(state.signMessage).not.toHaveBeenCalled();
@@ -90,6 +93,11 @@ describe("deploymentUpdateSshKeys worker", () => {
 
   it("signs through the API when the vault holds an API key", async () => {
     await runWorker({ public_keys: KEYS, jobs: [{ job: JOB_A, node: NODE }] }, { useNosanaApiKey: true });
+
+    expect(state.push).toHaveBeenCalledWith(
+      expect.objectContaining({ authHeader: "apikey:DEPLOYMENT_HEADER" })
+    );
+    expect(state.signMessage).toHaveBeenCalledWith("DEPLOYMENT_HEADER", { includeTime: true });
 
     await expect(pushedSign(0)("a message")).resolves.toBe("apikey:a message");
     expect(state.signMessage).toHaveBeenCalledWith("a message", { includeTime: false });

@@ -4,6 +4,7 @@ import { EventsRepository } from "../../../repositories/index.js";
 import { parseFrpsMetadata } from "./parseMetadata.js";
 import { recordEndpointState } from "./endpointStatus.js";
 import { disarmStartupDeadline } from "../utils/armStartupDeadline.js";
+import { refreshDeploymentEndpointStatus } from "../../../endpoints/deploymentEndpointStatus.js";
 
 import type { RegisteredEvent } from "../../../listeners/frps/types.js";
 import { EventType } from "../../../types/index.js";
@@ -42,6 +43,9 @@ export async function frpsRegisterHandler({ metadatas }: RegisteredEvent): Promi
   if (!deploymentId || !jobId) {
     return;
   }
+
+  // The deployment now answers on this op, if the job backing it is RUNNING.
+  await refreshDeploymentEndpointStatus(deploymentId);
 
   const { cancelled, startup } = await disarmStartupDeadline(deploymentId, jobId);
 

@@ -5,6 +5,10 @@ vi.mock("../../../../tasks/scheduleTask.js", () => ({
   scheduleTask: vi.fn(),
 }));
 
+vi.mock("../../../../endpoints/deploymentEndpointStatus.js", () => ({
+  refreshDeploymentEndpointStatus: vi.fn(),
+}));
+
 vi.mock("../../../../repositories/index.js", () => ({
   DeploymentsRepository: { findOne: vi.fn() },
   JobsRepository: { findOne: vi.fn() },

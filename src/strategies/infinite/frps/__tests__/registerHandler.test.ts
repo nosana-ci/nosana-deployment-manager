@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+vi.mock("../../../../endpoints/deploymentEndpointStatus.js", () => ({
+  refreshDeploymentEndpointStatus: vi.fn(),
+}));
+
 vi.mock("../../../../repositories/index.js", () => ({
   TasksRepository: { collection: { deleteOne: vi.fn() } },
   EventsRepository: { create: vi.fn() },

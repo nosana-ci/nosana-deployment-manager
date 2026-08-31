@@ -8,6 +8,7 @@ import { isActiveInfiniteDeployment } from "../utils/isActiveInfiniteDeployment.
 
 import { parseFrpsMetadata } from "./parseMetadata.js";
 import { recordEndpointState } from "./endpointStatus.js";
+import { refreshDeploymentEndpointStatus } from "../../../endpoints/deploymentEndpointStatus.js";
 
 import { FRPSCloseReasons, type UnregisteredEvent } from "../../../listeners/frps/types.js";
 import { EventType, JobState, TaskType } from "../../../types/index.js";
@@ -53,6 +54,14 @@ export async function frpsUnregisterHandler(
   // graceful teardowns too. Needs both keys to identify the endpoint.
   if (jobId && opId) {
     await recordEndpointState({ job: jobId, opId, deploymentId, state: "down", reason });
+  }
+
+  // Recomputed, not switched off: another replica may still serve this endpoint.
+  // Runs for every teardown reason, and before the strategy filtering below —
+  // reachability is reported for every deployment, not just the INFINITE ones
+  // whose jobs this handler may go on to stop.
+  if (deploymentId) {
+    await refreshDeploymentEndpointStatus(deploymentId);
   }
 
   // Routine filtering — the vast majority of events are for proxies that

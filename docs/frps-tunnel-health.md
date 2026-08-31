@@ -92,6 +92,71 @@ Notes:
 - Creation rejects `startup_timeout` on a definition that exposes no ports — nothing could ever report such a job online, so every job would rotate.
 - A tunnel that registers *after* the deadline has passed does not undo the stop: the job was late, and a deployment that is consistently late still needs to escalate.
 
+## Deployment endpoint status
+
+`GET /deployments/:id` and the deployment list return each endpoint with `online`,
+and the SSE stream carries one `endpoint` frame per endpoint — the endpoint itself
+(`opId`, `port`, `url`, `online`), the same shape those routes return, so a client
+needs nothing else to render it.
+
+An endpoint is online when **some job of the deployment has that op's tunnel up
+AND is still RUNNING on chain**. Both halves matter:
+
+- The FRPS half is the reachability signal. No health check is involved — a
+  registered tunnel is the whole test.
+- The on-chain half is what retires an endpoint. `frps_endpoint_status` rows are
+  never deleted, so a row can outlive its job (an FRPS outage longer than its 24h
+  event retention leaves nothing in the reconnect snapshot to correct it). Job
+  state is authoritative for whether the workload still exists.
+
+The value is stored on the deployment's own `endpoints`, so a read is just the
+deployment. `refreshDeploymentEndpointStatus` maintains it from the listeners that
+see it move: a tunnel registering, a tunnel dropping, and a job state change
+(`jobEndpointStatusUpdate`, every strategy). Each recomputes from source rather
+than toggling, so a missed trigger — a listener restart, an FRPS event that never
+arrived — is corrected by the next one instead of persisting a wrong answer.
+
+Only endpoints that actually moved are written, through `arrayFilters` on `opId`
+rather than `$set`ting the array, so a concurrent write to the deployment cannot
+be clobbered by a stale copy read moments earlier.
+
+Backfilled by `18-migrateEndpointsToOnline`, which is required rather than
+cosmetic: the response schema makes `online` mandatory, so a deployment written
+before the field existed fails serialization and the read routes answer 500. The
+migration computes the real value by the same rule the listeners use, so a
+deployment that is serving does not read offline until its next event, and only
+fills endpoints where the field is absent.
+
+Two things it must not disturb, both guarded:
+
+- **`updated_at` is never bumped.** It marks configuration changes, and
+  `infiniteJobStateCompletedOrStopUpdate` selects recent jobs with
+  `created_at >= deployment.updated_at` — a tunnel flap moving it would quietly
+  break the rapid-completion fail-safe.
+- **A revision rebuilds `endpoints` wholesale**, so they start offline. That is
+  left to converge rather than carried across: the new revision's ops may differ,
+  and a revision change always schedules a STOP for the old revision and a LIST
+  for the new, so the job state changes that follow put reachability back to the
+  truth.
+
+Status is per `opId`, so several ports exposed by one op always report together.
+That is a node-side property, not an FRPS one: `deployment_endpoint` is derived as
+`getExposeIdHash(deploymentHash, opId, 0)` with the port pinned to 0, so an op's
+ports share one deployment hostname and one load-balanced proxy. (frpc does
+register a proxy per port — the job-level URLs beside these are already per port.)
+Deriving that hostname per port is a node change; when it lands, tunnel status
+needs a port key here and the port on the FRPS event, since only `registered`
+carries `domains`.
+
+On the stream, the opening snapshot states every endpoint straight off the
+deployment. After that, an `endpoints` change restates them all — the change event
+carries the whole document, not a diff. One replica flapping while another still
+serves the endpoint writes nothing, and so emits nothing.
+
+With FRPS watching disabled (`FRPS_WATCHING_ENABLED=false` or no
+`FRPS_INTERNAL_ADDRESS`) nothing writes tunnel status, so every endpoint reports
+`online: false`.
+
 ## Verifying after enablement
 
 1. `frps_stream_connected` is 1 and `frps_events_total` is advancing.

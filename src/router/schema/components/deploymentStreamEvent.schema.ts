@@ -1,6 +1,7 @@
 import { Static, Type } from "@sinclair/typebox";
 
 import { PublicKeySchema } from "./publicKey.schema.js";
+import { EndpointSchema } from "./endpoint.schema.js";
 import { DeploymentStatusSchema } from "./deployment.schema.js";
 import { TaskTypeSchema } from "./task.schema.js";
 
@@ -57,6 +58,10 @@ export const DeploymentStreamEventSchema = Type.Union([
     due_at: Type.String({ format: "date-time" }),
     job: Type.Union([Type.String(), Type.Null()]),
   }),
+  // One of the deployment's endpoints, exactly as `GET /deployments/:id` returns
+  // it, with its current reachability. Sent whole rather than as a status delta,
+  // so a client can render it without holding the endpoint list.
+  Type.Composite([Type.Object({ type: Type.Literal("endpoint") }), EndpointSchema]),
   // The task left the queue: completed, or cancelled along with its deployment.
   Type.Object({
     type: Type.Literal("task"),

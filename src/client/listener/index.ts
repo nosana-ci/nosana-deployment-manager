@@ -1,10 +1,11 @@
 import { ChangeStream, Collection, Db, Document } from "mongodb";
 
+import { matchFields } from "./helpers/matchFields.js";
 import { matchFilter } from "./helpers/matchFilter.js";
 import { CollectionsNames } from "../../definitions/collection.js";
 
 import { Collections } from "../../types/index.js";
-import { AddListener, DeleteCallback, DeleteEvent, EventCallback, Filters, InsertEvent, UpdateEvent } from "./types.js";
+import { AddListener, DeleteCallback, DeleteEvent, EventCallback, Filters, InsertEvent, UpdateEvent, WatchedFields } from "./types.js";
 
 export type CollectionListener<T extends Document> = ReturnType<
   typeof createCollectionListener<T>
@@ -19,7 +20,7 @@ export function createCollectionListener<T extends Document>(
   const collection: Collection<T> = db.collection(key);
   const insertCallbacks: Array<EventCallback<T>> = [];
   const updateCallbacks: Array<{
-    options?: { fields?: (keyof T)[]; filters?: Filters<T> };
+    options?: { fields?: WatchedFields<T>; filters?: Filters<T> };
     callback: EventCallback<T>;
   }> = [];
   const deleteCallbacks: Array<DeleteCallback<T>> = [];
@@ -61,7 +62,7 @@ export function createCollectionListener<T extends Document>(
               const updatedFields = event.updateDescription.updatedFields;
               if (!updatedFields) return;
 
-              if (options?.fields && !options.fields.some((field) => field in updatedFields)) {
+              if (options?.fields && !matchFields(updatedFields, options.fields)) {
                 return;
               }
 

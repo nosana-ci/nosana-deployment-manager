@@ -25,7 +25,13 @@ export async function updateAllUnfinishedJobs(kit: NosanaClient, db: Db) {
 
     batch.push({
       updateOne: {
-        filter: { job: jobAddress },
+        // Same guard as `onJobUpdate`, and for the same reason: `kit.jobs.all()`
+        // is a snapshot, so a job that finished between that read and this write
+        // would be dragged back to the state it held when the batch was taken.
+        filter: {
+          job: jobAddress,
+          state: { $nin: [JobState.COMPLETED, JobState.STOPPED] },
+        },
         update: {
           $set: {
             state,

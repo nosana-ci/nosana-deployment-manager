@@ -6,7 +6,7 @@ import cors from "@fastify/cors";
 import { streamDeploymentEventsHandler } from "./streamDeploymentEvents.js";
 import { createDeploymentWatchers, type DeploymentStreamEvent } from "../../../../stream/deploymentWatchers.js";
 
-const DEPLOYMENT = { id: "9X4SgG88q7La2UAxioNJKD9EfYEMtYpnuLHvzUvEGDEB", status: "STARTING", replicas: 1, active_revision: 1 };
+const DEPLOYMENT = { id: "9X4SgG88q7La2UAxioNJKD9EfYEMtYpnuLHvzUvEGDEB", status: "STARTING", replicas: 1, active_revision: 1, endpoints: [] };
 const ORIGIN = "https://dashboard.example";
 
 /** A step the test releases by hand, standing in for a DB round-trip. */

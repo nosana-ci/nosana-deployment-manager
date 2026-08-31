@@ -2,6 +2,7 @@ import type { WithId } from "mongodb";
 
 import type {
   DeploymentDocument,
+  Endpoint,
   EventDocument,
   JobsDocument,
   TaskDocument,
@@ -69,6 +70,18 @@ export function toTaskEvent(doc: WithId<TaskDocument>): DeploymentStreamEvent {
 
 export function toTaskDoneEvent(id: string, task: TaskType): DeploymentStreamEvent {
   return { type: "task", id, task, status: "DONE" };
+}
+
+/**
+ * One frame per endpoint, carrying the endpoint itself — url included — rather
+ * than a status delta, so it matches what the deployment routes return and a
+ * client needs nothing else to render it.
+ *
+ * One frame per entry, not per tunnel: several ports of an op share reachability
+ * and so repeat the same value, but each entry is a row the client displays.
+ */
+export function toEndpointEvents(endpoints: Endpoint[] = []): DeploymentStreamEvent[] {
+  return endpoints.map((endpoint) => ({ type: "endpoint", ...endpoint }));
 }
 
 /** The deployments with open SSE connections on this process, and those connections. */

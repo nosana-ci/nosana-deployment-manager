@@ -4,6 +4,7 @@ import {
   deploymentStatusStartingUpdate,
   deploymentStatusStoppingUpdate,
   deploymentTimeoutUpdate,
+  jobEndpointStatusUpdate,
 } from "./all/index.js";
 import {
   infiniteJobRunningUpdate,
@@ -32,6 +33,7 @@ export const strategyListeners: StrategyListeners = {
   ],
   jobs: [
     jobAllActiveJobsStop,
+    jobEndpointStatusUpdate,
     simpleExtendedJobRunningUpdate,
     infiniteJobRunningUpdate,
     infiniteJobStateCompletedOrStopUpdate,

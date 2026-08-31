@@ -24,7 +24,8 @@ const deploymentDoc: {
   active_revision: number;
   confidential: boolean;
   ssh_public_keys?: string[];
-} = { id: DEPLOYMENT, vault: VAULT, active_revision: 2, confidential: false };
+  endpoints?: unknown[];
+} = { id: DEPLOYMENT, vault: VAULT, active_revision: 2, confidential: false, endpoints: [] };
 
 const setDeployment: RouteHandler<{ Params: { deployment: string } }> = async (_req, res) => {
   res.locals.deployment = deploymentDoc as unknown as DeploymentAggregation;

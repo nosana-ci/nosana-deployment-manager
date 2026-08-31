@@ -3,6 +3,7 @@ import type { RouteHandler } from "fastify";
 import { ErrorMessages } from "../../../../../errors/index.js";
 import {
   toDeploymentEvent,
+  toEndpointEvents,
   toJobEvent,
   toTaskEvent,
   type DeploymentStreamEvent,
@@ -91,4 +92,5 @@ export const streamDeploymentEventsHandler: RouteHandler<{
   send(toDeploymentEvent(deployment));
   activeJobs.map(toJobEvent).forEach(send);
   outstandingTasks.map(toTaskEvent).forEach(send);
+  toEndpointEvents(deployment.endpoints).forEach(send);
 };

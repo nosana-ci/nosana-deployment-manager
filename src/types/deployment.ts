@@ -112,4 +112,5 @@ export type Endpoint = {
   opId: string;
   port: number | string;
   url: string;
+  online: boolean;
 };

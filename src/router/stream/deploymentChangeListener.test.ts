@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+import { matchFields } from "../../client/listener/helpers/matchFields.js";
+
 import { JobState, type DeploymentDocument, type EventDocument, type JobsDocument } from "../../types/index.js";
 
 type Callback = (doc: unknown, db: unknown) => void;
@@ -114,7 +116,15 @@ describe("startDeploymentChangeListener", () => {
   });
 
   it("forwards updates only to the fields the stream reports", () => {
-    expect(latest("deployments").updateOptions).toEqual([{ fields: ["status", "replicas", "active_revision"] }]);
+    expect(latest("deployments").updateOptions).toEqual([
+      { fields: ["status", "replicas", "active_revision"] },
+      // Its own registration, so the two never restate each other.
+      { fields: ["endpoints"] },
+    ]);
+    // The mocked listener does not apply field filters, so tie the endpoint
+    // registration to what mongo actually reports for the write behind it: a
+    // `$set` through arrayFilters names `endpoints.<i>.online`, never `endpoints`.
+    expect(matchFields({ "endpoints.0.online": true }, ["endpoints"])).toBe(true);
     expect(latest("jobs").updateOptions).toEqual([{ fields: ["state", "node", "time_start", "time_end"] }]);
     expect(latest("tasks").updateOptions).toEqual([{ fields: ["status", "attempts", "due_at"] }]);
     // The event log is append-only.
@@ -187,6 +197,58 @@ describe("startDeploymentChangeListener", () => {
 
     expect(() => emit("tasks", "delete", { _id: "unknown" })).not.toThrow();
     expect(received).toHaveLength(0);
+  });
+
+  describe("endpoint reachability", () => {
+    // The mocked collection listener does not apply the per-registration `fields`
+    // filter, so a deployment emit reaches the deployment callback too.
+    const endpointFrames = () =>
+      received.filter((event) => (event as { type: string }).type === "endpoint");
+
+    type TestEndpoint = { opId: string; port: number; url: string; online: boolean };
+
+    const withEndpoints = (endpoints: TestEndpoint[]) =>
+      deployment({ endpoints } as Partial<DeploymentDocument>);
+
+    const api = { opId: "api", port: 8080, url: "https://api.test", online: true };
+    const ui = { opId: "ui", port: 3000, url: "https://ui.test", online: false };
+
+    it("reports each endpoint whole, url included", () => {
+      watch();
+
+      emit("deployments", "update", withEndpoints([api, ui]));
+
+      expect(endpointFrames()).toEqual([
+        { type: "endpoint", ...api },
+        { type: "endpoint", ...ui },
+      ]);
+    });
+
+    it("states each port of an op separately, since each is a row the client shows", () => {
+      watch();
+      const second = { ...api, port: 9090 };
+
+      emit("deployments", "update", withEndpoints([api, second]));
+
+      expect(endpointFrames()).toEqual([
+        { type: "endpoint", ...api },
+        { type: "endpoint", ...second },
+      ]);
+    });
+
+    it("drops endpoints for a deployment nobody is watching", () => {
+      emit("deployments", "update", { ...withEndpoints([api]), id: OTHER_DEPLOYMENT });
+
+      expect(received).toEqual([]);
+    });
+
+    it("does not report endpoints on a job change: the deployment carries them", () => {
+      watch();
+
+      emit("jobs", "update", job({ state: JobState.STOPPED }));
+
+      expect(endpointFrames()).toEqual([]);
+    });
   });
 
   it("fans one change out to every connection on the same deployment", () => {

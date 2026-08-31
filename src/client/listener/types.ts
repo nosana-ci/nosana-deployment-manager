@@ -27,7 +27,14 @@ export type EventType = typeof OnEvent[keyof typeof OnEvent];
 
 export type EventCallback<T> = (data: T, db: Db) => void;
 export type InsertEvent<T> = [typeof OnEvent.INSERT, EventCallback<T>];
-export type UpdateEvent<T> = [typeof OnEvent.UPDATE, EventCallback<T>, { fields?: (keyof T)[]; filters?: Filters<T> }];
+/**
+ * The document fields an update listener reacts to. `Extract<…, string>` because
+ * these are matched against change-stream field paths, which are always strings —
+ * a `symbol` or numeric key could never appear there.
+ */
+export type WatchedFields<T> = Extract<keyof T, string>[];
+
+export type UpdateEvent<T> = [typeof OnEvent.UPDATE, EventCallback<T>, { fields?: WatchedFields<T>; filters?: Filters<T> }];
 /** A delete carries no document, only its key. */
 export type DeleteCallback<T> = (documentKey: { _id: InferIdType<T> }, db: Db) => void;
 export type DeleteEvent<T> = [typeof OnEvent.DELETE, DeleteCallback<T>];

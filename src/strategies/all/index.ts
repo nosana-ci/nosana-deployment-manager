@@ -4,3 +4,4 @@ export * from "./deploymentRevisionUpdate.js";
 export * from "./deploymentStatusStartingUpdate.js";
 export * from "./deploymentStatusStoppingUpdate.js";
 export * from "./deploymentTimeoutUpdate.js";
+export * from "./jobEndpointStatusUpdate.js";

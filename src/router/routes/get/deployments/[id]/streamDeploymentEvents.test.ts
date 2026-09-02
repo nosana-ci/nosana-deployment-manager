@@ -8,12 +8,12 @@ const DEPLOYMENT_ID = "9X4SgG88q7La2UAxioNJKD9EfYEMtYpnuLHvzUvEGDEB";
 type TestEndpoint = { opId: string; port: number; url: string; online: boolean };
 const DEPLOYMENT = { id: DEPLOYMENT_ID, status: "STARTING", replicas: 1, active_revision: 1, endpoints: [] as TestEndpoint[] };
 const DEPLOYMENT_EVENT = { type: "deployment", status: "STARTING", replicas: 1, active_revision: 1 };
-const EXISTING_JOB = { deployment: DEPLOYMENT_ID, job: "existing", state: "QUEUED", node: null, time_start: 0 };
+const EXISTING_JOB = { deployment: DEPLOYMENT_ID, job: "existing", state: "QUEUED", node: null, time_start: 0, revision: 3, created_at: new Date("2026-08-22T10:00:00.000Z") };
 const OUTSTANDING_TASK = { _id: "task-1", deploymentId: DEPLOYMENT_ID, task: "STOP", status: "PENDING", attempts: 0, due_at: new Date("2026-08-22T10:05:00.000Z"), job: "existing" };
 const PLUGIN_HEADERS = { "access-control-allow-origin": "https://dashboard.example", vary: "Origin" };
 
 const jobEvent = (overrides: Partial<Extract<DeploymentStreamEvent, { type: "job" }>> = {}): DeploymentStreamEvent =>
-  ({ type: "job", job: "j", state: "RUNNING", node: "n", timeStart: 5, timeEnd: 0, ...overrides });
+  ({ type: "job", job: "j", state: "RUNNING", node: "n", timeStart: 5, timeEnd: 0, revision: 1, created_at: "2026-08-22T10:00:00.000Z", ...overrides });
 
 const harness = ({
   activeJobs = [] as unknown[],
@@ -95,6 +95,9 @@ describe("streamDeploymentEventsHandler", () => {
 
     expect(frames(res.raw.write)).toEqual([
       DEPLOYMENT_EVENT,
+      // The active-job set, empty here, still states the snapshot so a
+      // reconnecting client prunes anything it was still showing.
+      { type: "jobs", jobs: [] },
       // The endpoint itself, url included — the client needs nothing else to
       // render it.
       { type: "endpoint", ...api },
@@ -143,7 +146,9 @@ describe("streamDeploymentEventsHandler", () => {
     expect(tasksSort).toHaveBeenCalledWith({ due_at: 1 });
     expect(frames(res.raw.write)).toEqual([
       DEPLOYMENT_EVENT,
-      { type: "job", job: "existing", state: "QUEUED", node: null, timeStart: 0, timeEnd: 0 },
+      // The authoritative active-job set, ahead of the per-job detail.
+      { type: "jobs", jobs: ["existing"] },
+      { type: "job", job: "existing", state: "QUEUED", node: null, timeStart: 0, timeEnd: 0, revision: 3, created_at: "2026-08-22T10:00:00.000Z" },
       { type: "task", id: "task-1", task: "STOP", status: "PENDING", attempts: 0, due_at: "2026-08-22T10:05:00.000Z", job: "existing" },
     ]);
     // The snapshot's tasks are remembered so their deletions route back here.
@@ -151,7 +156,7 @@ describe("streamDeploymentEventsHandler", () => {
 
     watchers.notify(DEPLOYMENT_ID, jobEvent({ job: "live" }));
 
-    expect(frames(res.raw.write)[3]).toEqual(jobEvent({ job: "live" }));
+    expect(frames(res.raw.write)[4]).toEqual(jobEvent({ job: "live" }));
   });
 
   it("answers 503 instead of opening a stream when the active jobs cannot be loaded", async () => {

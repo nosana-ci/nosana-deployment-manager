@@ -42,7 +42,19 @@ export function toJobEvent(doc: JobsDocument): DeploymentStreamEvent {
     node: doc.node,
     timeStart: doc.time_start,
     timeEnd: doc.time_end ?? 0,
+    revision: doc.revision,
+    created_at: doc.created_at.toISOString(),
   };
+}
+
+/**
+ * The authoritative set of a deployment's active jobs at connect time, by id.
+ * Sent once when the stream opens so a reconnecting client can prune any job it
+ * still shows that is no longer active: a completion reached while disconnected
+ * is never replayed as a live frame, so its absence here is the only signal.
+ */
+export function toJobsSnapshotEvent(jobs: JobsDocument[]): DeploymentStreamEvent {
+  return { type: "jobs", jobs: jobs.map((job) => job.job) };
 }
 
 export function toLogEvent(doc: EventDocument): DeploymentStreamEvent {

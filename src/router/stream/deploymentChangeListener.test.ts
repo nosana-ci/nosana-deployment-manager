@@ -63,7 +63,7 @@ const emit = (collection: Collection, event: "insert" | "update" | "delete", doc
   latest(collection)[event].forEach((callback) => callback(doc, {}));
 
 const job = (overrides: Partial<JobsDocument> = {}): JobsDocument =>
-  ({ deployment: DEPLOYMENT, job: JOB, state: JobState.RUNNING, node: NODE, time_start: 1787291204, ...overrides }) as JobsDocument;
+  ({ deployment: DEPLOYMENT, job: JOB, state: JobState.RUNNING, node: NODE, time_start: 1787291204, revision: 1, created_at: new Date("2026-08-22T10:00:00.000Z"), ...overrides }) as JobsDocument;
 
 const deployment = (overrides: Partial<DeploymentDocument> = {}): DeploymentDocument =>
   ({ id: DEPLOYMENT, status: "RUNNING", replicas: 2, active_revision: 3, ...overrides }) as DeploymentDocument;
@@ -137,7 +137,7 @@ describe("startDeploymentChangeListener", () => {
     emit("jobs", "update", job());
 
     expect(received).toEqual([
-      { type: "job", job: JOB, state: JobState.RUNNING, node: NODE, timeStart: 1787291204, timeEnd: 0 },
+      { type: "job", job: JOB, state: JobState.RUNNING, node: NODE, timeStart: 1787291204, timeEnd: 0, revision: 1, created_at: "2026-08-22T10:00:00.000Z" },
     ]);
   });
 

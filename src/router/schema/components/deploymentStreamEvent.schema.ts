@@ -37,6 +37,20 @@ export const DeploymentStreamEventSchema = Type.Union([
     node: Type.Union([PublicKeySchema, Type.Null()]),
     timeStart: Type.Number({ minimum: 0 }),
     timeEnd: Type.Number({ minimum: 0 }),
+    // The revision the job belongs to, for its "Rev N" chip.
+    revision: Type.Number({ minimum: 1 }),
+    // When the job was created: shown as "started N ago" and used to sort the list.
+    created_at: Type.String({ format: "date-time" }),
+  }),
+  // The complete set of the deployment's active (queued or running) jobs at the
+  // moment the stream opens, by id. Sent once, ahead of the per-job frames, and
+  // authoritative: a reconnecting client prunes any job it still shows that is
+  // absent here. A job that reached a terminal state during the disconnect is
+  // not among the live `job` frames — those are sent only on a change and are
+  // not replayed — so this is the only signal that it is gone.
+  Type.Object({
+    type: Type.Literal("jobs"),
+    jobs: Type.Array(PublicKeySchema),
   }),
   // A new entry in the deployment's event log; `event` is the entry's own type.
   Type.Object({

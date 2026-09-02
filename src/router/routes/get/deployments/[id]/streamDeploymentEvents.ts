@@ -5,6 +5,7 @@ import {
   toDeploymentEvent,
   toEndpointEvents,
   toJobEvent,
+  toJobsSnapshotEvent,
   toTaskEvent,
   type DeploymentStreamEvent,
 } from "../../../../stream/deploymentWatchers.js";
@@ -90,6 +91,9 @@ export const streamDeploymentEventsHandler: RouteHandler<{
   outstandingTasks.forEach((task) => deploymentWatchers.trackTask(String(task._id), deployment.id, task.task));
 
   send(toDeploymentEvent(deployment));
+  // The authoritative active-job set precedes the per-job detail, so a
+  // reconnecting client can prune jobs that finished while it was away.
+  send(toJobsSnapshotEvent(activeJobs));
   activeJobs.map(toJobEvent).forEach(send);
   outstandingTasks.map(toTaskEvent).forEach(send);
   toEndpointEvents(deployment.endpoints).forEach(send);

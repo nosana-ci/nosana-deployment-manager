@@ -109,9 +109,9 @@ describe("stream events", () => {
   });
 
   it("maps a job document to its lifecycle event, with no end time reading as 0", () => {
-    const doc = { job: "j", state: JobState.RUNNING, node: "n", time_start: 10 } as JobsDocument;
+    const doc = { job: "j", state: JobState.RUNNING, node: "n", time_start: 10, revision: 2, created_at: new Date("2026-08-22T10:00:00.000Z") } as JobsDocument;
 
-    expect(toJobEvent(doc)).toEqual({ type: "job", job: "j", state: "RUNNING", node: "n", timeStart: 10, timeEnd: 0 });
+    expect(toJobEvent(doc)).toEqual({ type: "job", job: "j", state: "RUNNING", node: "n", timeStart: 10, timeEnd: 0, revision: 2, created_at: "2026-08-22T10:00:00.000Z" });
   });
 
   it("maps an event-log entry, keeping its own type as `event` and a missing tx as null", () => {

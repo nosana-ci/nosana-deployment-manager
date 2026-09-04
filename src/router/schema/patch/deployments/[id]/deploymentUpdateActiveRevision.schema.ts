@@ -15,7 +15,7 @@ export type DeploymentUpdateActiveRevisionError = ErrorSchema;
 
 export const DeploymentUpdateActiveRevisionSchema: FastifySchema = {
   description: "Update deployment active revision.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

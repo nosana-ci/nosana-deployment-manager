@@ -9,7 +9,7 @@ export type JobDefinitionHandlerError = ErrorSchema;
 
 export const JobDefinitionHandlerSchema: FastifySchema = {
   description: "Returns the job definition for a job.",
-  tags: ["Deployments Jobs"],
+  tags: ["Deployments Jobs", "mcp"],
   headers: {
     $ref: "HostHeaders",
   },

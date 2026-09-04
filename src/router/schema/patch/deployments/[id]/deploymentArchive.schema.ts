@@ -14,7 +14,7 @@ export type DeploymentArchiveError = ErrorSchema;
 
 export const DeploymentArchiveSchema: FastifySchema = {
   description: "Archive a deployment",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

@@ -14,7 +14,7 @@ export type GetDeploymentEventsError = ErrorSchema;
 
 export const GetDeploymentEventsSchema: FastifySchema = {
   description: "Get events for a specific deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },
@@ -33,7 +33,7 @@ export const GetDeploymentEventsSchema: FastifySchema = {
       description: "List of events for the deployment with pagination.",
       content: {
         "application/json": {
-           schema: withPagination("events", Type.Ref("Event")),
+          schema: withPagination("events", Type.Ref("Event")),
         },
       },
     },

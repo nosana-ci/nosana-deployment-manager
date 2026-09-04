@@ -14,7 +14,7 @@ export type GetDeploymentScheduledTasksError = ErrorSchema;
 
 export const GetDeploymentScheduledTasksSchema: FastifySchema = {
   description: "Get scheduled tasks for a specific deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },
@@ -33,7 +33,7 @@ export const GetDeploymentScheduledTasksSchema: FastifySchema = {
       description: "List of scheduled tasks for the deployment with pagination.",
       content: {
         "application/json": {
-           schema: withPagination("tasks", Type.Ref("Task")),
+          schema: withPagination("tasks", Type.Ref("Task")),
         },
       },
     },

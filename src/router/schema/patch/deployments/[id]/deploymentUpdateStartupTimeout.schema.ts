@@ -14,7 +14,7 @@ export type DeploymentUpdateStartupTimeoutError = ErrorSchema;
 
 export const DeploymentUpdateStartupTimeoutSchema: FastifySchema = {
   description: "Update the startup timeout of an INFINITE deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

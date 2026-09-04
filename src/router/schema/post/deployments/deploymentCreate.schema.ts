@@ -85,7 +85,7 @@ export type DeploymentCreateError = ErrorSchema;
 
 export const DeploymentCreateSchema: FastifySchema = {
   description: "Create a new deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

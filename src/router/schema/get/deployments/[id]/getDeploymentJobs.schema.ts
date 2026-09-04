@@ -14,7 +14,7 @@ export type GetDeploymentJobsError = ErrorSchema;
 
 export const GetDeploymentJobsSchema: FastifySchema = {
   description: "Get jobs for a specific deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

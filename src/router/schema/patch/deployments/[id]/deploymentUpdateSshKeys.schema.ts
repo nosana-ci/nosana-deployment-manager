@@ -34,7 +34,7 @@ export type DeploymentUpdateSshKeysError = ErrorSchema;
 export const DeploymentUpdateSshKeysSchema: FastifySchema = {
   description:
     "Replace the deployment's SSH public keys. The new set is stored on the deployment (not on a revision — no new revision or restart) and injected into every job posted from now on. New keys are also authorized on the node of every job currently running; removed keys stop working only when a job restarts.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

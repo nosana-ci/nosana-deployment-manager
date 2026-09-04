@@ -16,7 +16,7 @@ export type DeploymentUpdateScheduleError = ErrorSchema;
 
 export const DeploymentUpdateScheduleSchema: FastifySchema = {
   description: "Update deployment schedule.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

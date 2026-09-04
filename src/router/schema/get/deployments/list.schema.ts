@@ -15,7 +15,7 @@ export type DeploymentsHandlerError = ErrorSchema;
 
 export const DeploymentsHandlerSchema: FastifySchema = {
   description: "List all user deployments.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

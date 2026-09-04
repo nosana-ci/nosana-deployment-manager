@@ -17,7 +17,7 @@ export type DeploymentCreateRevisionError = ErrorSchema;
 
 export const DeploymentCreateRevisionSchema: FastifySchema = {
   description: "Create a new deployment revision.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

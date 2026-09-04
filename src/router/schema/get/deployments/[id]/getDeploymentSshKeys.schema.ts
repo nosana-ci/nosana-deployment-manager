@@ -12,7 +12,7 @@ export type GetDeploymentSshKeysError = ErrorSchema;
 
 export const GetDeploymentSshKeysSchema: FastifySchema = {
   description: "Get the SSH public keys currently granted access to the deployment's jobs.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

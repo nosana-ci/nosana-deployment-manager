@@ -14,7 +14,7 @@ export type DeploymentUpdateReplicaCountError = ErrorSchema;
 
 export const DeploymentUpdateReplicaCountSchema: FastifySchema = {
   description: "Update the replica count of a deployment",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

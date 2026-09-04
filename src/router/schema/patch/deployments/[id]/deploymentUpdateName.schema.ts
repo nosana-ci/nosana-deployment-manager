@@ -14,7 +14,7 @@ export type DeploymentUpdateNameError = ErrorSchema;
 
 export const DeploymentUpdateNameSchema: FastifySchema = {
   description: "Update the name of a deployment",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

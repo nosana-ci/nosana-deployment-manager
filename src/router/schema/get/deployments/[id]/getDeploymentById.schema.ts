@@ -8,7 +8,7 @@ export type DeploymentByIdError = ErrorSchema;
 
 export const DeploymentByIdSchema: FastifySchema = {
   description: "Get a specific deployment by ID.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

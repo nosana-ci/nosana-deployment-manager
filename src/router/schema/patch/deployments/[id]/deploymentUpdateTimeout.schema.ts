@@ -14,7 +14,7 @@ export type DeploymentUpdateTimeoutError = ErrorSchema;
 
 export const DeploymentUpdateTimeoutSchema: FastifySchema = {
   description: "Update deployment timeout",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

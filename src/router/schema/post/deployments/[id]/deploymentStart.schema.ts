@@ -14,7 +14,7 @@ export type DeploymentStartError = ErrorSchema;
 
 export const DeploymentStartSchema: FastifySchema = {
   description: "Start an existing deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

@@ -12,7 +12,7 @@ export const StreamDeploymentEventsSchema: FastifySchema = {
     "the current deployment, its active jobs and its outstanding tasks, then " +
     "emits live changes. Historical jobs and events remain available through " +
     "their paginated endpoints.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

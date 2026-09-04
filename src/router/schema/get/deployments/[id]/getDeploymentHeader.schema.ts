@@ -8,7 +8,7 @@ export type GetDeploymentHeaderError = ErrorSchema;
 
 export const GetDeploymentHeaderSchema: FastifySchema = {
   description: "Get header for a specific deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

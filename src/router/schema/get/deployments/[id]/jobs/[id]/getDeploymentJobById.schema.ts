@@ -22,7 +22,7 @@ export type DeploymentJobByIdError = ErrorSchema;
 
 export const DeploymentJobByIdSchema: FastifySchema = {
   description: "Get a specific deployment job by ID.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

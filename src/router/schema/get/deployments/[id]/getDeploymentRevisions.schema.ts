@@ -14,7 +14,7 @@ export type GetDeploymentRevisionsError = ErrorSchema;
 
 export const GetDeploymentRevisionsSchema: FastifySchema = {
   description: "Get revisions for a specific deployment.",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },
@@ -33,7 +33,7 @@ export const GetDeploymentRevisionsSchema: FastifySchema = {
       description: "List of revisions for the deployment with pagination.",
       content: {
         "application/json": {
-           schema: withPagination("revisions", Type.Ref("Revision")),
+          schema: withPagination("revisions", Type.Ref("Revision")),
         },
       },
     },

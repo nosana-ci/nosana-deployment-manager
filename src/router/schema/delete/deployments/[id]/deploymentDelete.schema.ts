@@ -7,7 +7,7 @@ export type DeploymentDeleteError = ErrorSchema;
 
 export const DeploymentDeleteSchema: FastifySchema = {
   description: "Delete a deployment permanently",
-  tags: ["Deployments"],
+  tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
   },

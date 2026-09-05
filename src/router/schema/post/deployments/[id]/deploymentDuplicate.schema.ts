@@ -4,6 +4,10 @@ import { FastifySchema } from "fastify";
 import type { DeploymentSchema, ErrorSchema } from "../../../index.schema.js";
 
 export const DeploymentDuplicateBodySchema = Type.Object({
+  name: Type.Optional(Type.String({
+    minLength: 1,
+    description: "Name for the new deployment. Defaults to \"<source name> (copy)\".",
+  })),
   autostart: Type.Optional(Type.Boolean({
     description: "If true, the new deployment is started immediately after creation instead of being left as a DRAFT.",
   })),
@@ -15,7 +19,7 @@ export type DeploymentDuplicateError = ErrorSchema;
 
 export const DeploymentDuplicateSchema: FastifySchema = {
   description:
-    "Duplicate a deployment. Creates a new DRAFT deployment named \"(Duplicate) <source name>\" (or starts it right away with `autostart`) with the same vault, market, replicas, timeout, strategy, confidentiality and SSH keys, and the source's active revision as its first revision. The source is left untouched. The body may be omitted.",
+    "Duplicate a deployment. Creates a new DRAFT deployment named `name` (defaulting to \"<source name> (copy)\"), or starts it right away with `autostart`, with the same vault, market, replicas, timeout, strategy, confidentiality and SSH keys, and the source's active revision as its first revision. The source is left untouched. The body may be omitted.",
   tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",

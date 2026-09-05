@@ -124,7 +124,7 @@ describe("POST /deployments/:deployment/duplicate", () => {
     const body = res.json();
     expect(body).toMatchObject({
       id: NEW_ID,
-      name: "(Duplicate) orig",
+      name: "orig (copy)",
       vault: VAULT,
       market: MARKET,
       owner: OWNER,
@@ -181,6 +181,28 @@ describe("POST /deployments/:deployment/duplicate", () => {
     expect(db.deployments.insertOne.mock.invocationCallOrder[0]).toBeLessThan(
       db.deployments.updateOne.mock.invocationCallOrder[0]
     );
+  });
+
+  it("names the copy from the body when a name is given", async () => {
+    const res = await duplicate({ name: "renamed" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().name).toBe("renamed");
+    expect(db.deployments.insertOne).toHaveBeenCalledWith(expect.objectContaining({ name: "renamed" }));
+  });
+
+  it("rejects an empty name", async () => {
+    const res = await duplicate({ name: "" });
+
+    expect(res.statusCode).toBe(400);
+    expect(db.deployments.insertOne).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-string name", async () => {
+    const res = await duplicate({ name: 42 });
+
+    expect(res.statusCode).toBe(400);
+    expect(db.deployments.insertOne).not.toHaveBeenCalled();
   });
 
   it("accepts an empty body too", async () => {

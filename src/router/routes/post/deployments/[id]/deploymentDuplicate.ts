@@ -37,7 +37,7 @@ export const deploymentDuplicateHandler: RouteHandler<{
     const { deployment, revision } = await duplicateDeployment(
       source,
       active.job_definition,
-      `(Duplicate) ${source.name}`,
+      req.body.name ?? `${source.name} (copy)`,
       userId,
       created_at
     );
@@ -58,7 +58,7 @@ export const deploymentDuplicateHandler: RouteHandler<{
 
     // Auto-start: move DRAFT -> STARTING via an update so the change-stream
     // listener schedules the first LIST task (listeners only react to updates).
-    const status = req.body.autostart ? DeploymentStatus.STARTING : deployment.status;
+    const status = req.body.autostart ? DeploymentStatus.STARTING : DeploymentStatus.DRAFT;
     if (req.body.autostart) {
       await db.deployments.updateOne(
         { id: deployment.id, owner: userId },

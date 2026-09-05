@@ -37,6 +37,8 @@ export const ErrorMessages = {
     STARTUP_TIMEOUT_WITHOUT_ENDPOINTS:
       "Startup timeout requires the job definition to expose at least one port; without one the job can never report that it came online.",
     FAILED_TO_UPDATE_SSH_KEYS: "Failed to update deployment SSH keys.",
+    FAILED_TO_DUPLICATE: "Failed to duplicate deployment.",
+    FAILED_MARKET_UPDATE: "Failed to update deployment market.",
   },
   job: {
     NOT_FOUND: "Job not found.",

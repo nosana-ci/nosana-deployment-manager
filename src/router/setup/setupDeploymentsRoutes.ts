@@ -31,12 +31,14 @@ const {
   post: {
     deploymentCreateHandler,
     deploymentCreateRevisionHandler,
+    deploymentDuplicateHandler,
     deploymentStartHandler,
     deploymentStopHandler,
   },
   patch: {
     deploymentArchiveHandler,
     deploymentUpdateActiveRevisionHandler,
+    deploymentUpdateMarketHandler,
     deploymentUpdateNameHandler,
     deploymentUpdateReplicaCountHandler,
     deploymentUpdateScheduleHandler,
@@ -62,10 +64,17 @@ const {
     GetDeploymentEventsSchema,
     StreamDeploymentEventsSchema,
   },
-  post: { DeploymentCreateSchema, DeploymentCreateRevisionSchema, DeploymentStartSchema, DeploymentStopSchema },
+  post: {
+    DeploymentCreateSchema,
+    DeploymentCreateRevisionSchema,
+    DeploymentDuplicateSchema,
+    DeploymentStartSchema,
+    DeploymentStopSchema,
+  },
   patch: {
     DeploymentArchiveSchema,
     DeploymentUpdateActiveRevisionSchema,
+    DeploymentUpdateMarketSchema,
     DeploymentUpdateNameSchema,
     DeploymentUpdateReplicaCountSchema,
     DeploymentUpdateScheduleSchema,
@@ -189,6 +198,16 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     deploymentCreateRevisionHandler
   );
 
+  // The source may be ARCHIVED: duplicating reads it, never modifies it.
+  server.post(
+    `${API_PREFIX}/:deployment/duplicate`,
+    {
+      schema: DeploymentDuplicateSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    deploymentDuplicateHandler
+  );
+
   server.post(
     `${API_PREFIX}/:deployment/start`,
     {
@@ -243,6 +262,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentUpdateActiveRevisionHandler
+  );
+
+  server.patch(
+    `${API_PREFIX}/:deployment/update-market`,
+    {
+      schema: DeploymentUpdateMarketSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentUpdateMarketHandler
   );
 
   server.patch(

@@ -218,3 +218,48 @@ export async function createDeployment(
     }, revision
   };
 }
+
+/**
+ * Build a DRAFT copy of `source`: same vault, market, sizing, strategy,
+ * timeouts, confidentiality and SSH keys, with `jobDefinition` (the source's
+ * active revision as stored, so key-free) as revision 1. Routed through
+ * `createDeployment` so a duplicate is exactly what creating it from scratch
+ * would produce — a fresh id, endpoints derived for that id, and the definition
+ * re-pinned with the keys merged in.
+ */
+export function duplicateDeployment(
+  source: DeploymentDocument,
+  jobDefinition: JobDefinition,
+  name: string,
+  owner: string,
+  created_at: Date
+): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
+  const base = {
+    name,
+    market: source.market,
+    replicas: source.replicas,
+    timeout: source.timeout,
+    confidential: source.confidential,
+    ssh_public_keys: source.ssh_public_keys,
+    job_definition: jobDefinition,
+  };
+
+  let body: DeploymentCreateBody;
+  switch (source.strategy) {
+    case DeploymentStrategy.SCHEDULED:
+      body = { ...base, strategy: source.strategy, schedule: source.schedule };
+      break;
+    case DeploymentStrategy.INFINITE:
+      body = {
+        ...base,
+        strategy: source.strategy,
+        rotation_time: source.rotation_time,
+        startup_timeout: source.startup_timeout,
+      };
+      break;
+    default:
+      body = { ...base, strategy: source.strategy };
+  }
+
+  return createDeployment(body, source.vault, owner, created_at);
+}

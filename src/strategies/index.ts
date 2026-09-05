@@ -1,4 +1,5 @@
 import {
+  deploymentMarketUpdate,
   deploymentReplicaUpdate,
   deploymentRevisionUpdate,
   deploymentStatusStartingUpdate,
@@ -24,6 +25,7 @@ interface StrategyListeners {
 
 export const strategyListeners: StrategyListeners = {
   deployments: [
+    deploymentMarketUpdate,
     deploymentReplicaUpdate,
     deploymentRevisionUpdate,
     deploymentStatusStartingUpdate,

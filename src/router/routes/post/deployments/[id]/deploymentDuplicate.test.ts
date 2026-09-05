@@ -15,6 +15,7 @@ vi.mock("@solana/signers", () => ({
 }));
 
 import { addSchemas } from "../../../../schema/index.schema.js";
+import { defaultEmptyBodyMiddleware } from "../../../../middleware/defaultEmptyBody.js";
 import { DeploymentDuplicateSchema } from "../../../../schema/post/deployments/[id]/deploymentDuplicate.schema.js";
 import { deploymentDuplicateHandler } from "./deploymentDuplicate.js";
 
@@ -79,7 +80,11 @@ async function buildServer(): Promise<FastifyInstance> {
 
   server.post(
     "/deployments/:deployment/duplicate",
-    { schema: DeploymentDuplicateSchema, preHandler: [setDeployment] },
+    {
+      schema: DeploymentDuplicateSchema,
+      preValidation: [defaultEmptyBodyMiddleware],
+      preHandler: [setDeployment],
+    },
     deploymentDuplicateHandler
   );
   await server.ready();
@@ -102,12 +107,12 @@ describe("POST /deployments/:deployment/duplicate", () => {
     await server.close();
   });
 
-  const duplicate = (payload: unknown = { name: "copy" }) =>
+  const duplicate = (payload?: unknown) =>
     server.inject({
       method: "POST",
       url: `/deployments/${SOURCE}/duplicate`,
       headers: AUTH_HEADERS,
-      payload,
+      ...(payload !== undefined && { payload }),
     });
 
   it("creates a DRAFT copy from the source's active revision and returns it", async () => {
@@ -119,7 +124,7 @@ describe("POST /deployments/:deployment/duplicate", () => {
     const body = res.json();
     expect(body).toMatchObject({
       id: NEW_ID,
-      name: "copy",
+      name: "(Duplicate) orig",
       vault: VAULT,
       market: MARKET,
       owner: OWNER,
@@ -164,7 +169,7 @@ describe("POST /deployments/:deployment/duplicate", () => {
   });
 
   it("starts the copy right away with autostart, after inserting it as a DRAFT", async () => {
-    const res = await duplicate({ name: "copy", autostart: true });
+    const res = await duplicate({ autostart: true });
 
     expect(res.statusCode).toBe(200);
     expect(res.json().status).toBe("STARTING");
@@ -178,8 +183,15 @@ describe("POST /deployments/:deployment/duplicate", () => {
     );
   });
 
-  it("requires a name for the copy", async () => {
+  it("accepts an empty body too", async () => {
     const res = await duplicate({});
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe("DRAFT");
+  });
+
+  it("rejects a non-boolean autostart", async () => {
+    const res = await duplicate({ autostart: "yes" });
 
     expect(res.statusCode).toBe(400);
     expect(db.deployments.insertOne).not.toHaveBeenCalled();

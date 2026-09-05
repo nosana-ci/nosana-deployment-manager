@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 
 import {
+  defaultEmptyBodyMiddleware,
   getDeploymentMiddleware,
   validateActiveDeploymentMiddleware,
 } from "../middleware/index.js";
@@ -199,10 +200,12 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
   );
 
   // The source may be ARCHIVED: duplicating reads it, never modifies it.
+  // Every body field is optional, so the body itself may be omitted.
   server.post(
     `${API_PREFIX}/:deployment/duplicate`,
     {
       schema: DeploymentDuplicateSchema,
+      preValidation: [defaultEmptyBodyMiddleware],
       preHandler: [getDeploymentMiddleware],
     },
     deploymentDuplicateHandler

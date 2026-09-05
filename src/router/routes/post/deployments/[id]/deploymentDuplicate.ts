@@ -37,7 +37,7 @@ export const deploymentDuplicateHandler: RouteHandler<{
     const { deployment, revision } = await duplicateDeployment(
       source,
       active.job_definition,
-      req.body.name,
+      `(Duplicate) ${source.name}`,
       userId,
       created_at
     );

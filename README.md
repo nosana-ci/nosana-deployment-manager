@@ -153,7 +153,7 @@ curl -X GET http://localhost:3001/deployments \
 - `POST /deployments/create` - Create a new deployment
 - `POST /deployments/:deployment/start` - Start a deployment
 - `POST /deployments/:deployment/stop` - Stop a deployment
-- `POST /deployments/:deployment/duplicate` - Duplicate a deployment into a new DRAFT (same configuration, the active revision as revision 1); `autostart` starts it immediately
+- `POST /deployments/:deployment/duplicate` - Duplicate a deployment into a new DRAFT named "(Duplicate) <source name>" (same configuration, the active revision as revision 1); optional body `{ "autostart": true }` starts it immediately
 - `POST /deployments/:deployment/create-revision` - Create a new revision
 - `PATCH /deployments/:deployment/update-active-revision` - Update active revision
 - `PATCH /deployments/:deployment/update-market` - Change the market; a RUNNING deployment's jobs are stopped and relisted on the new one

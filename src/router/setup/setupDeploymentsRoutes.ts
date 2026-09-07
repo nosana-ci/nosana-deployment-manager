@@ -35,6 +35,7 @@ const {
     deploymentDuplicateHandler,
     deploymentStartHandler,
     deploymentStopHandler,
+    deploymentAddSshKeysHandler,
   },
   patch: {
     deploymentArchiveHandler,
@@ -43,12 +44,12 @@ const {
     deploymentUpdateNameHandler,
     deploymentUpdateReplicaCountHandler,
     deploymentUpdateScheduleHandler,
-    deploymentUpdateSshKeysHandler,
     deploymentUpdateStartupTimeoutHandler,
     deploymentUpdateTimeoutHandler,
   },
   delete: {
     deploymentDeleteHandler,
+    deploymentRevokeSshKeysHandler,
   },
 } = routes;
 
@@ -71,6 +72,7 @@ const {
     DeploymentDuplicateSchema,
     DeploymentStartSchema,
     DeploymentStopSchema,
+    DeploymentAddSshKeysSchema,
   },
   patch: {
     DeploymentArchiveSchema,
@@ -79,11 +81,10 @@ const {
     DeploymentUpdateNameSchema,
     DeploymentUpdateReplicaCountSchema,
     DeploymentUpdateScheduleSchema,
-    DeploymentUpdateSshKeysSchema,
     DeploymentUpdateStartupTimeoutSchema,
     DeploymentUpdateTimeoutSchema,
   },
-  delete: { DeploymentDeleteSchema },
+  delete: { DeploymentDeleteSchema, DeploymentRevokeSshKeysSchema },
 } = routeSchemas;
 
 export function setupDeploymentsRoutes(server: FastifyInstance) {
@@ -199,6 +200,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
     deploymentCreateRevisionHandler
   );
 
+  server.post(
+    `${API_PREFIX}/:deployment/ssh-keys`,
+    {
+      schema: DeploymentAddSshKeysSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentAddSshKeysHandler
+  );
+
   // The source may be ARCHIVED: duplicating reads it, never modifies it.
   // Every body field is optional, so the body itself may be omitted.
   server.post(
@@ -237,6 +247,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware],
     },
     deploymentDeleteHandler
+  );
+
+  server.delete(
+    `${API_PREFIX}/:deployment/ssh-keys`,
+    {
+      schema: DeploymentRevokeSshKeysSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentRevokeSshKeysHandler
   );
 
   // PATCH
@@ -292,15 +311,6 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentUpdateScheduleHandler
-  );
-
-  server.patch(
-    `${API_PREFIX}/:deployment/update-ssh-keys`,
-    {
-      schema: DeploymentUpdateSshKeysSchema,
-      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
-    },
-    deploymentUpdateSshKeysHandler
   );
 
   server.patch(

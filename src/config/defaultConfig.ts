@@ -13,7 +13,6 @@ const commonConfig: Omit<
   | "rpc_network"
   | "ws_network"
   | "frps_public_address"
-  | "dashboard_backend_url"
 > = {
   tasks_batch_size: process.env.TASKS_BATCH_SIZE
     ? parseInt(process.env.TASKS_BATCH_SIZE)
@@ -105,8 +104,6 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
       "https://rpc.ironforge.network/mainnet?apiKey=01J4RYMAWZC65B6CND9DTZZ5BK",
     ws_network: process.env.SOLANA_WS_NETWORK || undefined,
     frps_public_address: process.env.FRPS_ADDRESS ?? "node.k8s.prd.nos.ci",
-    dashboard_backend_url:
-      process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.prd.nos.ci",
     ...commonConfig,
   },
   devnet: {
@@ -116,9 +113,6 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
     rpc_network: process.env.SOLANA_NETWORK ?? "https://api.devnet.solana.com",
     ws_network: process.env.SOLANA_WS_NETWORK || undefined,
     frps_public_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
-    dashboard_backend_url:
-      process.env.DASHBOARD_BACKEND_URL || "https://dashboard.k8s.dev.nos.ci",
-
     ...commonConfig,
   },
   // Local Solana validator with Nosana programs pre-baked (@nosana/localnet).
@@ -135,7 +129,6 @@ export const defaultConfig: { [key: string]: DeploymentsConfig } = {
       process.env.SOLANA_NETWORK || "http://host.docker.internal:8899",
     ws_network: process.env.SOLANA_WS_NETWORK || "ws://host.docker.internal:8900",
     frps_public_address: process.env.FRPS_ADDRESS ?? "node.k8s.dev.nos.ci",
-    dashboard_backend_url: process.env.DASHBOARD_BACKEND_URL || undefined,
     ...commonConfig,
   },
 };

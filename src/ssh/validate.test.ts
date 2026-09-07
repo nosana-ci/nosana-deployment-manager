@@ -2,22 +2,23 @@ import { describe, it, expect } from "vitest";
 
 import type { JobDefinition } from "@nosana/kit";
 
-import {
-  isSshPublicKey,
-  validateSshPublicKeys,
-  validateJobDefinitionSshKeys,
-  MAX_SSH_PUBLIC_KEYS,
-} from "./validate.js";
+import { isValidSshPublicKey as isSshPublicKey } from "@nosana/kit";
+
+import { validateSshPublicKeys, validateJobDefinitionSshKeys, MAX_SSH_PUBLIC_KEYS } from "./validate.js";
 
 // A real ed25519 key: the blob embeds "ssh-ed25519" followed by 32 bytes.
 const ED25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB0XqCL4vLIsYRvd5VmtbOJ8IEKDJpjaVWQ5lmxWVTq5";
 
-/** Build a syntactically valid key for `algorithm` with `bodyBytes` of material. */
-function makeKey(algorithm: string, bodyBytes = 32, comment?: string): string {
+/**
+ * Build a syntactically valid key for `algorithm` with `bodyBytes` of material.
+ * `fill` sets the body byte, so distinct values produce distinct keys (distinct
+ * identities), which the set validators deduplicate by.
+ */
+function makeKey(algorithm: string, bodyBytes = 32, comment?: string, fill = 7): string {
   const name = Buffer.from(algorithm, "ascii");
   const length = Buffer.alloc(4);
   length.writeUInt32BE(name.length, 0);
-  const blob = Buffer.concat([length, name, Buffer.alloc(bodyBytes, 7)]).toString("base64");
+  const blob = Buffer.concat([length, name, Buffer.alloc(bodyBytes, fill)]).toString("base64");
   return `${algorithm} ${blob}${comment ? ` ${comment}` : ""}`;
 }
 
@@ -67,20 +68,20 @@ describe("validateSshPublicKeys", () => {
     expect(validateSshPublicKeys([ED25519, "garbage"])).toMatch(/public_keys\[1\]/);
   });
 
-  it("rejects duplicates", () => {
-    expect(validateSshPublicKeys([ED25519, ED25519])).toMatch(/duplicate/);
+  it("collapses keys that differ only by comment, like the node and the kit", () => {
+    expect(validateSshPublicKeys([ED25519, `${ED25519} laptop`])).toBeNull();
   });
 
   it("caps the number of keys like the node does", () => {
-    const keys = Array.from({ length: MAX_SSH_PUBLIC_KEYS + 1 }, (_, i) => makeKey("ssh-ed25519", 32, `k${i}`));
-    expect(validateSshPublicKeys(keys)).toMatch(/At most/);
+    const keys = Array.from({ length: MAX_SSH_PUBLIC_KEYS + 1 }, (_, i) => makeKey("ssh-ed25519", 32, `k${i}`, i));
+    expect(validateSshPublicKeys(keys)).toMatch(/at most/i);
     expect(validateSshPublicKeys(keys.slice(0, MAX_SSH_PUBLIC_KEYS))).toBeNull();
   });
 
   it("caps the total byte size like the node does", () => {
     // 9 keys × ~8 KiB each: each line stays under the per-line cap and the count
     // under the key cap, but together they blow the 64 KiB total.
-    const keys = Array.from({ length: 9 }, (_, i) => makeKey("ssh-rsa", 6000, `k${i}`));
+    const keys = Array.from({ length: 9 }, (_, i) => makeKey("ssh-rsa", 6000, `k${i}`, i));
     expect(validateSshPublicKeys(keys)).toMatch(/bytes in total/);
   });
 });

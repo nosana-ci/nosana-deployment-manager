@@ -16,11 +16,11 @@ export const getKit = (): NosanaClient => {
   const config = getConfig();
   const kitOptions: PartialClientConfig = {}
 
-  if (config.dashboard_backend_url) {
-    kitOptions.api = {
-      backend_url: config.dashboard_backend_url,
-    };
-  }
+  kitOptions.api = {
+    ...(config.client_manager_url && { client_manager_url: config.client_manager_url }),
+    // Nodes answer under the FRPS domain, like the deployment endpoints.
+    node_domain: config.frps_public_address,
+  };
 
   if (config.rpc_network) {
     kitOptions.solana = {

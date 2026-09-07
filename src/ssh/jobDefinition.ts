@@ -1,3 +1,5 @@
+import { getSshPublicKeys, withSshPublicKeys } from "@nosana/kit";
+
 import type { JobDefinition } from "@nosana/kit";
 
 /**
@@ -11,18 +13,17 @@ export function extractSsh(jobDefinition: JobDefinition): {
   jobDefinition: JobDefinition;
   public_keys?: string[];
 } {
-  const { ssh, ...rest } = jobDefinition;
-  const public_keys = ssh?.public_keys?.map((key) => key.trim()).filter(Boolean);
+  const public_keys = getSshPublicKeys(jobDefinition).map((key) => key.trim());
 
   return {
-    jobDefinition: rest,
-    ...(public_keys && public_keys.length > 0 ? { public_keys } : {}),
+    jobDefinition: stripSsh(jobDefinition),
+    ...(public_keys.length > 0 ? { public_keys } : {}),
   };
 }
 
 /** The definition with any `ssh` block removed (no-op when there is none). */
 export function stripSsh(jobDefinition: JobDefinition): JobDefinition {
-  return extractSsh(jobDefinition).jobDefinition;
+  return withSshPublicKeys(jobDefinition, []);
 }
 
 /**
@@ -31,7 +32,5 @@ export function stripSsh(jobDefinition: JobDefinition): JobDefinition {
  * untouched, so a deployment that never used SSH pins exactly what it always did.
  */
 export function injectSsh(jobDefinition: JobDefinition, public_keys: string[] | undefined): JobDefinition {
-  const base = stripSsh(jobDefinition);
-  if (!public_keys || public_keys.length === 0) return base;
-  return { ...base, ssh: { public_keys: [...public_keys] } };
+  return withSshPublicKeys(jobDefinition, public_keys ?? []);
 }

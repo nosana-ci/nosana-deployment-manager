@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({
   useNosanaApiKey: false,
   postMessage: vi.fn(),
   generate: vi.fn(async (message: string) => `wallet:${message}`),
-  signMessage: vi.fn(async (message: string) => `apikey:${message}`),
+  signHeader: vi.fn(async (message: string) => `apikey:${message}`),
 }));
 
 vi.mock("worker_threads", () => ({
@@ -17,7 +17,7 @@ vi.mock("worker_threads", () => ({
 
 type FakeSignKit = {
   authorization: { generate: (message: string, options: { includeTime: boolean }) => Promise<string> };
-  api: { auth: { signMessage: (message: string, options: { includeTime: boolean }) => Promise<string> } };
+  api: { auth: { signHeader: (message: string, options: { includeTime: boolean }) => Promise<string> } };
 };
 
 vi.mock("../../../../../../worker/Worker.js", () => ({
@@ -26,11 +26,11 @@ vi.mock("../../../../../../worker/Worker.js", () => ({
     useNosanaApiKey: state.useNosanaApiKey,
     kit: {
       authorization: { generate: state.generate },
-      api: { auth: { signMessage: state.signMessage } },
+      api: { auth: { signHeader: state.signHeader } },
     },
   })),
   signAuthHeader: (kit: FakeSignKit, useApi: boolean, message: string, options: { includeTime: boolean }) =>
-    useApi ? kit.api.auth.signMessage(message, options) : kit.authorization.generate(message, options),
+    useApi ? kit.api.auth.signHeader(message, options) : kit.authorization.generate(message, options),
 }));
 
 async function runWorker(
@@ -48,7 +48,7 @@ describe("getDeploymentHeaders worker", () => {
   beforeEach(() => {
     state.postMessage.mockClear();
     state.generate.mockClear();
-    state.signMessage.mockClear();
+    state.signHeader.mockClear();
   });
 
   it("signs DEPLOYMENT_HEADER when no message is provided", async () => {
@@ -62,14 +62,14 @@ describe("getDeploymentHeaders worker", () => {
     await runWorker({ includeTime: true, message: "custom message" });
 
     expect(state.generate).toHaveBeenCalledWith("custom message", { includeTime: true });
-    expect(state.signMessage).not.toHaveBeenCalled();
+    expect(state.signHeader).not.toHaveBeenCalled();
     expect(state.postMessage).toHaveBeenCalledWith({ event: "GENERATED", header: "wallet:custom message" });
   });
 
   it("signs the custom message with the API key when the vault holds one", async () => {
     await runWorker({ includeTime: false, message: "custom message" }, { useNosanaApiKey: true });
 
-    expect(state.signMessage).toHaveBeenCalledWith("custom message", { includeTime: false });
+    expect(state.signHeader).toHaveBeenCalledWith("custom message", { includeTime: false });
     expect(state.generate).not.toHaveBeenCalled();
     expect(state.postMessage).toHaveBeenCalledWith({ event: "GENERATED", header: "apikey:custom message" });
   });

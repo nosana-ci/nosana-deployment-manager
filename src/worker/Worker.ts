@@ -58,14 +58,14 @@ export async function prepareWorker<
   const clientConfig: Partial<PartialClientConfig> = useNosanaApiKey
     ? { api: { apiKey: key } }
     : {
-        solana: {
-          rpcEndpoint: config.rpc_network,
-          // localnet only (see config.ws_network): the kit's profile hardcodes
-          // ws://127.0.0.1:8900, unreachable from this container. Undefined for
-          // devnet/mainnet so the kit derives wss:// from the https rpc.
-          ...(config.ws_network && { wsEndpoint: config.ws_network }),
-        },
-      };
+      solana: {
+        rpcEndpoint: config.rpc_network,
+        // localnet only (see config.ws_network): the kit's profile hardcodes
+        // ws://127.0.0.1:8900, unreachable from this container. Undefined for
+        // devnet/mainnet so the kit derives wss:// from the https rpc.
+        ...(config.ws_network && { wsEndpoint: config.ws_network }),
+      },
+    };
   clientConfig.api = {
     ...clientConfig.api,
     ...(config.client_manager_url && {
@@ -79,8 +79,8 @@ export async function prepareWorker<
     wallet: useNosanaApiKey
       ? undefined
       : await createKeyPairSignerFromPrivateKeyBytes(
-          convertStringToUint8Array(key),
-        ),
+        convertStringToUint8Array(key),
+      ),
   });
 
   return {
@@ -103,7 +103,7 @@ export function signAuthHeader(
   options: { includeTime: boolean }
 ): Promise<string> {
   return useNosanaApiKey
-    ? kit.api!.auth.signMessage(message, options)
+    ? kit.api.auth.signHeader(message, options)
     : kit.authorization.generate(message, options);
 }
 

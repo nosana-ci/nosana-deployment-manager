@@ -230,13 +230,13 @@ export async function createDeployment(
 export function duplicateDeployment(
   source: DeploymentDocument,
   jobDefinition: JobDefinition,
-  name: string,
+  overrides: { name: string; market?: string },
   owner: string,
   created_at: Date
 ): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
   const base = {
-    name,
-    market: source.market,
+    name: overrides.name,
+    market: overrides.market ?? source.market,
     replicas: source.replicas,
     timeout: source.timeout,
     confidential: source.confidential,

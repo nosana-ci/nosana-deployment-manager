@@ -191,6 +191,22 @@ describe("POST /deployments/:deployment/duplicate", () => {
     expect(db.deployments.insertOne).toHaveBeenCalledWith(expect.objectContaining({ name: "renamed" }));
   });
 
+  it("places the copy on the market from the body when a market is given", async () => {
+    const OTHER_MARKET = "5".repeat(44);
+    const res = await duplicate({ market: OTHER_MARKET });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().market).toBe(OTHER_MARKET);
+    expect(db.deployments.insertOne).toHaveBeenCalledWith(expect.objectContaining({ market: OTHER_MARKET }));
+  });
+
+  it("rejects an empty market", async () => {
+    const res = await duplicate({ market: "" });
+
+    expect(res.statusCode).toBe(400);
+    expect(db.deployments.insertOne).not.toHaveBeenCalled();
+  });
+
   it("rejects an empty name", async () => {
     const res = await duplicate({ name: "" });
 

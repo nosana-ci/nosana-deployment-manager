@@ -37,7 +37,7 @@ export const deploymentDuplicateHandler: RouteHandler<{
     const { deployment, revision } = await duplicateDeployment(
       source,
       active.job_definition,
-      req.body.name ?? `${source.name} (copy)`,
+      { name: req.body.name ?? `${source.name} (copy)`, market: req.body.market },
       userId,
       created_at
     );

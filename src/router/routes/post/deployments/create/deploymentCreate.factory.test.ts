@@ -184,7 +184,7 @@ describe("duplicateDeployment", () => {
     const { deployment, revision } = await duplicateDeployment(
       { ...source, strategy: "SIMPLE" } as DeploymentDocument,
       storedDefinition,
-      "copy",
+      { name: "copy" },
       OWNER,
       created_at
     );
@@ -214,11 +214,23 @@ describe("duplicateDeployment", () => {
     expect(revision.job_definition.ssh).toBeUndefined();
   });
 
+  it("uses the market override instead of the source's market when given", async () => {
+    const { deployment } = await duplicateDeployment(
+      { ...source, strategy: "SIMPLE" } as DeploymentDocument,
+      storedDefinition,
+      { name: "copy", market: "N".repeat(43) },
+      OWNER,
+      created_at
+    );
+
+    expect(deployment.market).toBe("N".repeat(43));
+  });
+
   it("carries the SCHEDULED cron over", async () => {
     const { deployment } = await duplicateDeployment(
       { ...source, strategy: "SCHEDULED", schedule: "0 * * * *" } as DeploymentDocument,
       storedDefinition,
-      "copy",
+      { name: "copy" },
       OWNER,
       created_at
     );
@@ -230,7 +242,7 @@ describe("duplicateDeployment", () => {
     const { deployment } = await duplicateDeployment(
       { ...source, strategy: "INFINITE", rotation_time: 15, startup_timeout: 7 } as DeploymentDocument,
       storedDefinition,
-      "copy",
+      { name: "copy" },
       OWNER,
       created_at
     );
@@ -242,7 +254,7 @@ describe("duplicateDeployment", () => {
     await duplicateDeployment(
       { ...source, strategy: "SIMPLE", confidential: false } as DeploymentDocument,
       storedDefinition,
-      "copy",
+      { name: "copy" },
       OWNER,
       created_at
     );

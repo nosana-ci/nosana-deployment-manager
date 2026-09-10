@@ -19,7 +19,7 @@ export const deploymentsHandler: RouteHandler<{
   Reply: DeploymentsHandlerSuccess | DeploymentsHandlerError;
 }> = async (req, res) => {
   const userId = req.headers["x-user-id"];
-  const { search, status, strategy, id, name, vault, created_after, created_before, sort_order = 'desc', limit = 10, cursor } = req.query;
+  const { search, status, strategy, id, name, idempotency_key, vault, created_after, created_before, sort_order = 'desc', limit = 10, cursor } = req.query;
 
   const {
     findPaginated,
@@ -38,6 +38,7 @@ export const deploymentsHandler: RouteHandler<{
         buildMultiValueFilter(DeploymentDocumentFields.STRATEGY, strategy),
         buildMultiValueFilter(DeploymentDocumentFields.ID, id),
         buildSingleValueFilter(DeploymentDocumentFields.NAME, name),
+        buildSingleValueFilter(DeploymentDocumentFields.IDEMPOTENCY_KEY, idempotency_key),
         buildSingleValueFilter(DeploymentDocumentFields.VAULT, vault),
         buildDateRangeFilter(DeploymentDocumentFields.CREATED_AT, created_after, created_before)
       ],

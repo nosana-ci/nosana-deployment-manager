@@ -46,6 +46,7 @@ export const DeploymentDocumentFields: Record<
   Uppercase<keyof DeploymentDocument>,
   keyof DeploymentDocument
 > = {
+  IDEMPOTENCY_KEY: "idempotency_key",
   ID: "id",
   VAULT: "vault",
   MARKET: "market",
@@ -71,6 +72,8 @@ export const DeploymentDocumentFields: Record<
 export type DeploymentCollection = Collection<DeploymentDocument>;
 
 export type DeploymentDocumentBase = {
+  /** Internal create deduplication key; deliberately absent from response schemas. */
+  idempotency_key?: string;
   id: string; // Deployment PublicKey
   vault: string; // Vault PublicKey
   market: string; // Market PublicKey

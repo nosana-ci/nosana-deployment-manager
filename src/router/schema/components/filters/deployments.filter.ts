@@ -6,6 +6,7 @@ import { DeploymentStatus, DeploymentStrategy } from "../../../../types/index.js
  * Supports filtering by status, strategy, vault, ID, name, and date ranges
  */
 export const DeploymentsFilterSchema = Type.Object({
+  idempotency_key: Type.Optional(Type.String({ minLength: 1, maxLength: 128, description: "Exact owner-scoped creation key." })),
   search: Type.Optional(
     Type.String({
       description: "Search for partial matches in deployment ID or name (case-insensitive)"

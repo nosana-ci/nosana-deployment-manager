@@ -300,3 +300,10 @@ describe("API-only confidential hash initialization", () => {
     cachedHash.value = "QmConfidential";
   });
 });
+
+it.each([undefined, "create-request"])("stores the optional create key %s only on the deployment", async (key) => {
+  const { deployment, revision } = await create(makeBody({ idempotency_key: key }));
+  if (key) expect(deployment.idempotency_key).toBe(key);
+  else expect(deployment).not.toHaveProperty("idempotency_key");
+  expect(revision).not.toHaveProperty("idempotency_key");
+});

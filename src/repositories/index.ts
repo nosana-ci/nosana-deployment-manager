@@ -195,13 +195,8 @@ export async function withTransaction<T>(
   const session = client.startSession();
 
   try {
-    session.startTransaction();
-    const result = await operations(session);
-    await session.commitTransaction();
-    return result;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
+    // The driver retries transient write conflicts and ambiguous commit acknowledgements.
+    return await session.withTransaction(() => operations(session));
   } finally {
     await session.endSession();
   }

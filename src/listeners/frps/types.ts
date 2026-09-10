@@ -30,9 +30,11 @@ export type FRPSCloseReason = (typeof FRPSCloseReasons)[keyof typeof FRPSCloseRe
  * Metadata frpc attaches to a proxy when the node opens the tunnel.
  *
  * This is the only way to tell WHICH replica an event belongs to: the endpoint
- * hostname is derived from `getExposeIdHash(deploymentHash, opId, 0)` (see
- * `createDeploymentRevisionEndpoints`) and is therefore identical across every
- * replica of a deployment, so `proxyName` alone can never identify the job.
+ * hostname is derived from `getExposeIdHash(deploymentHash, opId, port)` (see
+ * `createDeploymentRevisionEndpoints`, where `port` is `0` for a single-port op
+ * and the actual port for a multi-port op) and so, for a given op/port, is
+ * identical across every replica of a deployment — so `proxyName` alone can
+ * never identify the job.
  */
 export interface FRPSEventMetaData {
   deploymentId: string;

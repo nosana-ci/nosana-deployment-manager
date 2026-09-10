@@ -1,6 +1,6 @@
 import { generateKeyPairSigner } from "@solana/signers";
-import { createHash, getExposeIdHash } from "@nosana/kit";
-import type { JobDefinition, OperationArgsMap } from "@nosana/kit";
+import { createHash, getExposeIdHash, getExposePorts } from "@nosana/kit";
+import type { JobDefinition, Operation, OperationArgsMap } from "@nosana/kit";
 
 import { getKit } from "../../../../../kit/index.js";
 import { getConfig } from "../../../../../config/index.js";
@@ -30,11 +30,17 @@ export function createDeploymentRevisionEndpoints(
 
       if (!expose) continue;
 
+      // When an op exposes more than one port, include the port in the hash so each
+      // port gets a distinct endpoint instead of colliding on a shared one.
+      const exposedPortCount = getExposePorts(
+        op as Operation<"container/run">
+      ).length;
+
       if (typeof expose === "number" || typeof expose === "string") {
         endpoints.push({
           opId: op.id,
           port: expose,
-          url: `https://${getExposeIdHash(deploymentHash, op.id, 0)}.${getConfig().frps_public_address}`,
+          url: `https://${getExposeIdHash(deploymentHash, op.id, exposedPortCount > 1 ? expose : 0)}.${getConfig().frps_public_address}`,
           online: false,
         });
       }
@@ -52,7 +58,7 @@ export function createDeploymentRevisionEndpoints(
           endpoints.push({
             opId: op.id,
             port,
-            url: `https://${getExposeIdHash(deploymentHash, op.id, 0)}.${getConfig().frps_public_address}`,
+            url: `https://${getExposeIdHash(deploymentHash, op.id, exposedPortCount > 1 ? port : 0)}.${getConfig().frps_public_address}`,
             online: false,
           });
         }

@@ -159,7 +159,8 @@ export async function createDeployment(
     timeout,
     rotation_time,
     startup_timeout,
-    ssh_public_keys
+    ssh_public_keys,
+    idempotency_key
   }: DeploymentCreateBody,
   vault: string,
   owner: string,
@@ -169,6 +170,7 @@ export async function createDeployment(
 
   const baseFields: Omit<DeploymentDocumentBase, "endpoints"> = {
     id: address.toString(),
+    ...(idempotency_key && { idempotency_key }),
     vault,
     name,
     market: market.trim(),

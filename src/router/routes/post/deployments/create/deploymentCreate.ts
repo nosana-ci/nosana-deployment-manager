@@ -1,3 +1,4 @@
+import { withTransaction } from "../../../../../repositories/index.js";
 import typia from "typia";
 import { RouteHandler } from "fastify";
 import { DeploymentStatus, DeploymentStrategy, type JobDefinition } from "@nosana/kit";
@@ -93,38 +94,36 @@ export const deploymentCreateHandler: RouteHandler<{
       created_at
     );
 
-    const { acknowledged: revisionAcknowledged } = await db.revisions.insertOne(revision);
+    // Insert both documents atomically: a duplicate key or failed revision leaves neither.
+    await withTransaction(async (session) => {
+      await db.deployments.insertOne(deployment, { session });
+      await db.revisions.insertOne(revision, { session });
 
-    if (!revisionAcknowledged) {
-      res.status(500).send({ error: ErrorMessages.deployments.FAILED_TO_CREATE_NEW_REVISION });
-      return;
-    }
+      // Keep the DRAFT -> STARTING update: the listener schedules work from updates.
+      if (req.body.autostart) {
+        await db.deployments.updateOne(
+          { id: deployment.id, owner: userId },
+          { $set: { status: DeploymentStatus.STARTING, updated_at: created_at } },
+          { session },
+        );
+      }
+    });
 
-    const { acknowledged } = await db.deployments.insertOne(deployment);
+    if (req.body.autostart) deployment.status = DeploymentStatus.STARTING;
 
-    if (!acknowledged) {
-      res.status(500).send({ error: ErrorMessages.deployments.FAILED_TO_CREATE });
-      return;
-    }
-
-    // Auto-start: move DRAFT -> STARTING via an update so the change-stream
-    // listener schedules the first LIST task (listeners only react to updates).
-    if (req.body.autostart) {
-      await db.deployments.updateOne(
-        { id: deployment.id, owner: userId },
-        { $set: { status: DeploymentStatus.STARTING, updated_at: created_at } }
-      );
-      deployment.status = DeploymentStatus.STARTING;
-    }
-
+    const response = { ...deployment };
+    delete response.idempotency_key;
     res.status(200);
     return {
-      ...deployment,
+      ...response,
       active_jobs: 0,
       created_at: created_at.toISOString(),
       updated_at: created_at.toISOString(),
     };
   } catch (error) {
+    if (req.body.idempotency_key && (error as { code?: number }).code === 11000) {
+      return res.status(409).send({ error: "A deployment with this idempotency key already exists" });
+    }
     res.log.error("Error creating deployment: %s", String(error));
     res.status(500).send({ error: ErrorMessages.generic.INTERNAL_SERVER_ERROR });
   }

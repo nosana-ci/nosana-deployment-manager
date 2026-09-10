@@ -9,6 +9,7 @@ import { SshPublicKeysSchema } from "../../components/ssh.schema.js";
 
 export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
+    idempotency_key: Type.Optional(Type.String({ minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9:/_.-]+$", description: "Optional owner-scoped create key. A duplicate returns 409; omit for independent creates. Deleting the deployment releases the key." })),
     name: Type.String(),
     market: Type.String(),
     replicas: Type.Number({ minimum: 1 }),
@@ -120,6 +121,10 @@ export const DeploymentCreateSchema: FastifySchema = {
           },
         },
       },
+    },
+    409: {
+      description: "A deployment with this creation key already exists.",
+      content: { "application/json": { schema: { $ref: "Error" } } },
     },
     500: {
       description: "Internal Server Error.",

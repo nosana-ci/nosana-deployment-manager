@@ -3,7 +3,8 @@ import { createHash, getExposeIdHash, getExposePorts } from "@nosana/kit";
 import type { JobDefinition, Operation, OperationArgsMap } from "@nosana/kit";
 
 import { getKit } from "../../../../../kit/index.js";
-import { getConfig } from "../../../../../config/index.js";
+import { createConfidentialJobDefinition } from "../../../../../definitions/confidential.jobdefinition.js";
+import { getConfig, setConfig } from "../../../../../config/index.js";
 import { extractSsh, injectSsh } from "../../../../../ssh/index.js";
 import { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
 
@@ -94,7 +95,7 @@ export function hasExposedPorts(jobDefinition: JobDefinition): boolean {
  * them later doesn't create a revision. For a NON-confidential deployment the
  * revision's PIN does carry them: what gets pinned (and later posted by LIST)
  * is the definition with the effective keys merged in. A confidential
- * deployment's pin stays key-free — nothing of its definition may live on
+ * deployment's pin contains only retrieval logistics — none of its definition may live on
  * public IPFS; nodes get definition + keys from the authenticated
  * job-definition route instead. `currentPublicKeys` is the deployment's
  * existing set, kept when the submitted definition doesn't mention keys.
@@ -125,9 +126,14 @@ export async function createNewDeploymentRevision(
   }
 
   const ssh_public_keys = public_keys?.length ? public_keys : undefined;
-  const newIpfsHash = await kit.ipfs.pin(
-    options.confidential ? finalJobDefinition : injectSsh(finalJobDefinition, ssh_public_keys)
-  );
+  // API-only processes do not initialize the placeholder at startup.
+  if (options.confidential && !getConfig().confidential_ipfs_pin) {
+    setConfig("confidential_ipfs_pin", await kit.ipfs.pin(createConfidentialJobDefinition()));
+  }
+  const newIpfsHash = options.confidential
+    ? getConfig().confidential_ipfs_pin
+    : await kit.ipfs.pin(injectSsh(finalJobDefinition, ssh_public_keys));
+  if (!newIpfsHash) throw new Error("Confidential IPFS hash is not initialized");
 
   return {
     revision: {

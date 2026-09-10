@@ -3,11 +3,15 @@ import type { JobDefinition } from "@nosana/kit";
 
 import type { DeploymentCreateBody } from "../../../../schema/post/index.schema.js";
 
+const cachedHash = vi.hoisted(() => ({ value: "QmConfidential" }));
 const pin = vi.fn(async () => "QmPinned");
 vi.mock("../../../../../kit/index.js", () => ({ getKit: () => ({ ipfs: { pin } }) }));
 vi.mock("../../../../../config/index.js", () => ({
+  setConfig: (_key: string, value: string) => { cachedHash.value = value; },
   getConfig: () => ({
     confidential_by_default: false,
+    confidential_ipfs_pin: cachedHash.value,
+    base_url: "https://deployment-manager.example",
     frps_public_address: "node.k8s.test.nos.ci",
     default_minutes_before_timeout: 20,
   }),
@@ -16,7 +20,7 @@ vi.mock("@solana/signers", () => ({
   generateKeyPairSigner: async () => ({ address: "D".repeat(44) }),
 }));
 
-import { createDeployment, duplicateDeployment, hasExposedPorts } from "./deploymentCreate.factory.js";
+import { createDeployment, createNewDeploymentRevision, duplicateDeployment, hasExposedPorts } from "./deploymentCreate.factory.js";
 
 const OWNER = "1".repeat(44);
 const VAULT = "3".repeat(44);
@@ -130,14 +134,13 @@ describe("createDeployment ssh keys", () => {
     expect(pin).toHaveBeenCalledWith(expect.objectContaining({ ssh: { public_keys: [KEY_B] } }));
   });
 
-  it("a confidential deployment stores the keys but pins a key-free definition", async () => {
+  it("a confidential deployment stores keys without pinning its definition", async () => {
     const { deployment } = await create(
       makeBody({ confidential: true, ssh_public_keys: [KEY_A] })
     );
 
     expect(deployment.ssh_public_keys).toEqual([KEY_A]);
-    expect(pin).toHaveBeenCalledTimes(1);
-    expect(pin.mock.calls[0][0]).not.toHaveProperty("ssh");
+    expect(pin).not.toHaveBeenCalled();
   });
 
   it("stores no ssh field when no keys are supplied anywhere", async () => {
@@ -260,5 +263,40 @@ describe("duplicateDeployment", () => {
     );
 
     expect(pin).toHaveBeenCalledWith(expect.objectContaining({ ssh: { public_keys: [KEY_A] } }));
+  });
+});
+
+describe("confidential revision publication", () => {
+  it.each([0, 1])("reuses the confidential hash for revision after %i, retaining the real definition in the database", async (previous) => {
+    pin.mockClear();
+    const submitted = { version: "0.1", type: "container", ops: [{ id: "private-operation", type: "container/run", args: {
+      image: "private-image", env: { API_KEY: "test-secret-never-publish" }, cmd: ["private-command"],
+    } }] } as JobDefinition;
+    const { revision } = await createNewDeploymentRevision(previous, "deployment", VAULT, submitted, { confidential: true });
+    expect(pin).not.toHaveBeenCalled();
+    expect(revision.job_definition.ops).toEqual(submitted.ops);
+    expect(revision.revision).toBe(previous + 1);
+    expect(revision.ipfs_definition_hash).toBe("QmConfidential");
+  });
+});
+
+describe("API-only confidential hash initialization", () => {
+  beforeEach(() => { cachedHash.value = ""; pin.mockReset(); pin.mockResolvedValue("QmPinned"); });
+  it("pins only the placeholder on demand, then reuses its hash", async () => {
+    const first = await create(makeBody({ confidential: true }));
+    const second = await create(makeBody({ confidential: true }));
+    expect(pin).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ ops: [], logistics: expect.any(Object) }));
+    expect(pin.mock.calls[0][0]).not.toHaveProperty("deployment_id");
+    expect(first.revision.ipfs_definition_hash).toBe("QmPinned");
+    expect(second.revision.ipfs_definition_hash).toBe("QmPinned");
+    cachedHash.value = "QmConfidential";
+  });
+  it("does not cache a failed pin and retries on the next request", async () => {
+    pin.mockRejectedValueOnce(new Error("IPFS unavailable"));
+    await expect(create(makeBody({ confidential: true }))).rejects.toThrow("IPFS unavailable");
+    expect(cachedHash.value).toBe("");
+    await expect(create(makeBody({ confidential: true }))).resolves.toBeDefined();
+    expect(pin).toHaveBeenCalledTimes(2);
+    cachedHash.value = "QmConfidential";
   });
 });

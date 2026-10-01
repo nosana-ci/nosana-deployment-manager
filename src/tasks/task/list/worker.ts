@@ -29,7 +29,10 @@ import type { WorkerData } from "../../../types/index.js";
 try {
   const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0, target } =
     await prepareWorker<WorkerData>(workerData);
-  const { market, timeout } = task.deployment;
+  // LIST is being replaced by the reservation path, which supplies the node and
+  // market itself; a requirements deployment (market null) never reaches it.
+  const market = task.deployment.market!;
+  const { timeout } = task.deployment;
 
   // Resolved + frozen by the parent before the worker is spawned (see
   // resolveDefinitionHash.ts): the shared confidential placeholder pin for a

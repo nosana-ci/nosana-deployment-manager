@@ -4,11 +4,13 @@ import { address } from '@nosana/kit';
 import { deployerClient } from '../../setup.js';
 
 export function joinMarketQueue(
-  getMarketAddress: () => string,
+  getMarketAddress: () => string | null,
   options: { verifyQueued?: boolean } = {}
 ) {
   return async () => {
-    const marketAddress = address(getMarketAddress());
+    const market = getMarketAddress();
+    if (market === null) throw new Error('deployment has no market queue to join (requirements deployment)');
+    const marketAddress = address(market);
     const { verifyQueued = true } = options;
 
     // Try to join the queue

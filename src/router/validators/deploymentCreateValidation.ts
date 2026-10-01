@@ -15,6 +15,13 @@ export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
 
     return (data: unknown) => {
       const body = data as DeploymentCreateBody;
+
+      // TypeBox's errors for the market/requirements union are noisy, so the
+      // exactly-one rule is checked up front with a plain message.
+      if ((body?.market === undefined) === (body?.requirements === undefined)) {
+        return { error: new Error("exactly one of market or requirements is required") };
+      }
+
       // 1. Validate top-level fields using the metadata-only schema
       // This automatically ignores the job_definition field
       const metadataErrors = [...Value.Errors(DeploymentMetadataSchema, data)];

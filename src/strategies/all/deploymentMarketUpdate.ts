@@ -39,6 +39,9 @@ import {
 export const deploymentMarketUpdate: StrategyListener<DeploymentDocument> = [
   OnEvent.UPDATE,
   async ({ id, status, strategy, market }, db) => {
+    // No market (a requirements deployment): no job can be on the "wrong" one.
+    if (market === null) return;
+
     const displaced = await JobsRepository.findAll(
       {
         deployment: id,

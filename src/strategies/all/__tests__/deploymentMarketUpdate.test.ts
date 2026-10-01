@@ -71,6 +71,13 @@ describe("deploymentMarketUpdate — behavior", () => {
     );
   });
 
+  it("does nothing for a deployment without a market (requirements mode)", async () => {
+    await handler({ ...deployment(DeploymentStrategy.SIMPLE), market: null }, db);
+
+    expect(jobsFindAll).not.toHaveBeenCalled();
+    expect(scheduleTask).not.toHaveBeenCalled();
+  });
+
   it("does nothing when every active job is already on the new market", async () => {
     jobsFindAll.mockResolvedValueOnce([]);
 

@@ -33,7 +33,7 @@ export async function onListConfirmed(
       $setOnInsert: {
         job,
         tx: signature,
-        market: task.deployment.market,
+        market: task.deployment.market!,
         node: null,
         state: JobState.QUEUED,
         deployment: task.deploymentId,

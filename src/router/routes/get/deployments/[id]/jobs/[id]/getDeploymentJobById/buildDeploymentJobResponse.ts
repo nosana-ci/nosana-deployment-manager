@@ -52,7 +52,8 @@ export async function buildDeploymentJobResponse(
   return {
     confidential: deployment.confidential,
     revision: job.revision,
-    market: deployment.market,
+    // The market the job was actually listed on — a requirements deployment has none of its own.
+    market: job.market,
     node,
     state,
     // The node-reported status only the dashboard indexer knew; we no longer ask it.

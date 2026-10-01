@@ -12,7 +12,9 @@ vi.mock("../../execution/orchestrate/index.js", () => ({
   reconcileUnits: (...a: unknown[]) => reconcileUnits(...a),
 }));
 vi.mock("../../../repositories/index.js", () => ({
-  getRepository: () => ({ collection: { updateOne: (...a: unknown[]) => tasksUpdateOne(...a) } }),
+  getRepository: () => ({
+    collection: { updateOne: (...a: unknown[]) => tasksUpdateOne(...a) },
+  }),
 }));
 vi.mock("../../../worker/Worker.js", () => ({
   VaultWorker: vi.fn(),

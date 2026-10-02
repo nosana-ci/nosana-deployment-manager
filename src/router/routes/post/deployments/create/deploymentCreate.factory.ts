@@ -174,7 +174,7 @@ export async function createDeployment(
     ...(idempotency_key && { idempotency_key }),
     vault,
     name,
-    market: market?.trim() ?? null,
+    market: market.trim(),
     requirements: requirements ?? null,
     owner,
     status: DeploymentStatus.DRAFT,
@@ -236,13 +236,12 @@ export async function createDeployment(
 }
 
 /**
- * Build a DRAFT copy of `source`: same vault, market or requirements, sizing, strategy,
+ * Build a DRAFT copy of `source`: same vault, market, requirements, sizing, strategy,
  * timeouts, confidentiality and SSH keys, with `jobDefinition` (the source's
  * active revision as stored, so key-free) as revision 1. Routed through
  * `createDeployment` so a duplicate is exactly what creating it from scratch
  * would produce — a fresh id, endpoints derived for that id, and the definition
- * re-pinned with the keys merged in. A `market` override switches the copy to
- * market mode, dropping the source's requirements.
+ * re-pinned with the keys merged in.
  */
 export function duplicateDeployment(
   source: DeploymentDocument,
@@ -251,17 +250,10 @@ export function duplicateDeployment(
   owner: string,
   created_at: Date
 ): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
-  const market = overrides.market ?? source.market;
-  const placement = market !== null
-    ? { market }
-    : source.requirements
-      ? { requirements: source.requirements }
-      : undefined;
-  if (!placement) throw new Error(`Deployment ${source.id} has neither a market nor requirements`);
-
   const base = {
     name: overrides.name,
-    ...placement,
+    market: overrides.market ?? source.market,
+    requirements: source.requirements ?? undefined,
     replicas: source.replicas,
     timeout: source.timeout,
     confidential: source.confidential,

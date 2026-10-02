@@ -18,8 +18,17 @@ export type OrchestrateResult = {
 };
 
 export type OrchestrateHandlers = {
-  /** Idempotent bookkeeping for a confirmed unit (e.g. upsert the job). */
-  onConfirmed: (unit: number, signature: string, job?: string, run?: string) => void | Promise<void>;
+  /**
+   * Idempotent bookkeeping for a confirmed unit (e.g. upsert the job). `node` is
+   * the node the job was assigned to, when the unit recorded one.
+   */
+  onConfirmed: (
+    unit: number,
+    signature: string,
+    job?: string,
+    run?: string,
+    reserved?: { node: string; market: string }
+  ) => void | Promise<void>;
   /**
    * Record a failed unit (event + flag deployment). `signature` is present when
    * the failure is a landed-but-reverted tx, so the event can record it for

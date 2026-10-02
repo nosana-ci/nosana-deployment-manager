@@ -1,5 +1,7 @@
 import { IdempotencyCode, isNosanaApiError } from "@nosana/kit";
 
+import { HostManagerError } from "../../client/hostManager/index.js";
+
 /**
  * The Credit Manager's idempotency control codes, re-exported from the kit so the
  * DM branches on the single source of truth. The kit keeps these in lockstep with
@@ -40,4 +42,21 @@ export function classifyApiError(error: unknown): IdempotencyAction {
   // A definitive HTTP response with no (or an unrecognised) code: 5xx is
   // transient (retry), any other 4xx is a definitive client error (fatal).
   return error.statusCode >= 500 ? "RETRY" : "FATAL";
+}
+
+/**
+ * What the caller should do with a failed host-manager reservation.
+ *   - IN_PROGRESS — 409, the same key is still in flight: re-issue the SAME key
+ *                   shortly (an in-flight wait, no cooldown, no epoch bump).
+ *   - RETRY       — 5xx (503 chain unavailable) or no response at all, which may
+ *                   be a lost success: re-issue the SAME key after the cooldown.
+ *   - FATAL       — any other 4xx (422 bad requirements, 404 unknown market): the
+ *                   deployment itself is wrong, so retrying cannot help.
+ */
+export type ReservationAction = "IN_PROGRESS" | "RETRY" | "FATAL";
+
+export function classifyReservationError(error: unknown): ReservationAction {
+  if (!(error instanceof HostManagerError)) return "RETRY";
+  if (error.status === 409) return "IN_PROGRESS";
+  return error.status >= 500 ? "RETRY" : "FATAL";
 }

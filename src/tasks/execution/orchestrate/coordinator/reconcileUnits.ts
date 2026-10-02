@@ -19,8 +19,12 @@ export async function reconcileUnits(args: {
   target: number;
   signal: AbortSignal;
   handlers: OrchestrateHandlers;
-  /** Builds the signer worker for `count` fresh units starting at `startUnit`. */
-  makeWorker: (count: number, startUnit: number) => Worker;
+  /**
+   * Builds the signer worker for `count` fresh units starting at `startUnit`.
+   * May be async (LIST reserves nodes first) and may return null when there is
+   * nothing to sign this run.
+   */
+  makeWorker: (count: number, startUnit: number) => Worker | null | Promise<Worker | null>;
 }): Promise<OrchestrateResult> {
   const { tasks, taskId, existing, target, signal, handlers, makeWorker } = args;
 
@@ -36,7 +40,7 @@ export async function reconcileUnits(args: {
     tasks,
     taskId,
     existing: [],
-    worker: makeWorker(needed, existing.length),
+    worker: await makeWorker(needed, existing.length),
     signal,
     handlers,
   });

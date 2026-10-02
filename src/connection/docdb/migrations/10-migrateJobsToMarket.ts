@@ -10,8 +10,6 @@ export default async function migrateJobsToMarket(db: Db) {
   const deployments = await deploymentsCollection.find().toArray();
 
   for (const deployment of deployments) {
-    if (deployment.market === null) continue; // requirements deployment: its jobs carry their own market
-
     await jobsCollection.updateMany(
       {
         deployment: deployment.id,

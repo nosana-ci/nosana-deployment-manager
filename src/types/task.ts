@@ -65,12 +65,38 @@ export type TxRecord = {
   /** Public run addresses, index-aligned with `jobs` (recorded for LIST). */
   runs?: string[];
   /**
+   * Reserved node each job was assigned to, index-aligned with `jobs` (LIST,
+   * self-custody). With the task's `reservation` it is the record of which
+   * reserved nodes were already used, so no node is assigned twice.
+   */
+  nodes?: string[];
+  /** Each node's market, index-aligned with `nodes` (recorded for assigned jobs). */
+  markets?: string[];
+  /**
    * @deprecated Pre-bulking single-job shape. Read through `recordJobs`/
    * `recordRuns` so a record persisted by an older replica still resolves its
    * job(s) across a rolling deploy; never written going forward.
    */
   job?: string;
   run?: string;
+};
+
+/** A node host-manager holds for a LIST task, and the market it is queued in. */
+export type ReservedNode = { node: string; market: string };
+
+/**
+ * The latest host-manager reservation of a LIST task, persisted before anything
+ * is signed. Within the hold a reclaim reuses these nodes (same key) instead of
+ * reserving again; once every node is used or the hold lapsed, the next
+ * reservation walks to `epoch + 1` so host-manager hands out fresh nodes.
+ */
+export type TaskReservation = {
+  /** Idempotency key sent to host-manager: `${taskId}:reserve:${epoch}`. */
+  key: string;
+  epoch: number;
+  /** When host-manager releases the hold; null when nothing was reserved. */
+  expiresAt: Date | null;
+  nodes: ReservedNode[];
 };
 
 export type TaskDocument = {
@@ -129,6 +155,8 @@ export type TaskDocument = {
    * the same definition.
    */
   ipfs_definition_hash?: string;
+  /** Latest node reservation of a LIST task (self-custody). */
+  reservation?: TaskReservation;
 };
 
 export type TasksCollection = Collection<TaskDocument>;

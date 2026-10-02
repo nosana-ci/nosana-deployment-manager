@@ -40,6 +40,8 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
             blob: msg.blob,
             jobs: msg.jobs,
             runs: msg.runs,
+            nodes: msg.nodes,
+            markets: msg.markets,
           };
           outcomes.push(
             (async () => {
@@ -49,12 +51,13 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
           );
         } else if (msg.event === "CONFIRMED") {
           // API-key path (self-custody never emits CONFIRMED). Record the job
-          // FIRST, then persist the slot's CONFIRMED record so a reclaim skips
-          // re-issuing it — ordering keeps "slot recorded" ⊆ "job recorded".
+          // FIRST, then persist the unit's CONFIRMED record so a reclaim skips
+          // re-issuing it — ordering keeps "unit recorded" ⊆ "job recorded".
           const unit = msg.unit ?? 0;
           // A terminal no-op confirmation carries no tx (nothing was sent on-chain);
-          // record it as "" so the slot still counts as done and is never re-issued.
+          // record it as "" so the unit still counts as done and is never re-issued.
           const signature = msg.tx ?? "";
+          const reserved = msg.node && msg.market ? { node: msg.node, market: msg.market } : undefined;
           const record: TxRecord = {
             unit,
             signature,
@@ -62,10 +65,11 @@ export async function runWorkerMessages(ctx: UnitContext, worker: Worker): Promi
             status: "CONFIRMED",
             jobs: msg.job ? [msg.job] : [],
             runs: msg.run ? [msg.run] : [],
+            ...(reserved && { nodes: [reserved.node], markets: [reserved.market] }),
           };
           outcomes.push(
             (async () => {
-              await ctx.handlers.onConfirmed(unit, signature, msg.job, msg.run);
+              await ctx.handlers.onConfirmed(unit, signature, msg.job, msg.run, reserved);
               await persistConfirmedRecord(ctx, record);
               return { result: "CONFIRMED", signature };
             })()

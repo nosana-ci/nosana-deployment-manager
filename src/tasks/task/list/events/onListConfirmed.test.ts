@@ -34,6 +34,28 @@ describe("onListConfirmed", () => {
     expect(insertOne.mock.calls[0][0]).toMatchObject({ type: "JOB_LIST_CONFIRMED", tx: "sig-1" });
   });
 
+  it("records an assigned job's reserved node and its own market", async () => {
+    const { jobs, events, updateOne } = fakes(1);
+
+    await onListConfirmed(jobs, events, task, "sig-1", "job-1", { node: "node-1", market: "mkt-reserved" });
+
+    expect(updateOne.mock.calls[0]).toEqual([
+      { job: "job-1" },
+      expect.objectContaining({
+        $setOnInsert: expect.objectContaining({ job: "job-1", market: "mkt-reserved", node: "node-1" }),
+      }),
+      { upsert: true },
+    ]);
+  });
+
+  it("a listed job (no reservation) sits in the deployment's market with no node yet", async () => {
+    const { jobs, events, updateOne } = fakes(1);
+
+    await onListConfirmed(jobs, events, task, "sig-1", "job-1");
+
+    expect(updateOne.mock.calls[0][1]).toMatchObject({ $setOnInsert: { market: "mkt-1", node: null } });
+  });
+
   it("does NOT emit a duplicate event on an idempotent replay (job already recorded)", async () => {
     const { jobs, events, updateOne, insertOne } = fakes(0);
 

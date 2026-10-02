@@ -9,6 +9,7 @@ import {
   JobsCollection,
   EventsCollection,
   OutstandingTasksDocument,
+  ReservedNode,
 } from "../../../../types/index.js";
 
 /**
@@ -19,13 +20,17 @@ import {
  * The event is emitted only when the job is *newly* inserted: an idempotent CM
  * replay on reclaim re-confirms the same job, and we must not log (or `tx`-trace)
  * a second JOB_LIST_CONFIRMED for a job that was already recorded.
+ *
+ * An assigned job records the reserved node and its market; a record from
+ * before assignment carries neither and falls back to the deployment's market.
  */
 export async function onListConfirmed(
   jobs: JobsCollection,
   events: EventsCollection,
   task: OutstandingTasksDocument,
   signature: string,
-  job: string
+  job: string,
+  reserved?: ReservedNode
 ) {
   const result = await jobs.updateOne(
     { job },
@@ -33,8 +38,8 @@ export async function onListConfirmed(
       $setOnInsert: {
         job,
         tx: signature,
-        market: task.deployment.market!,
-        node: null,
+        market: reserved?.market ?? task.deployment.market,
+        node: reserved?.node ?? null,
         state: JobState.QUEUED,
         deployment: task.deploymentId,
         revision: task.deployment.active_revision,

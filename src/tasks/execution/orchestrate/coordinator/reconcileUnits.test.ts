@@ -74,6 +74,17 @@ describe("reconcileUnits", () => {
     expect(result.aborted).toBe(true);
   });
 
+  it("awaits an async worker factory and runs no top-up worker when it returns null", async () => {
+    orchestrateUnits.mockResolvedValueOnce({ confirmed: 0, errored: 0, aborted: false, retry: false });
+    const makeWorker = vi.fn(async () => null);
+
+    const { promise } = run({ existing: [], target: 4, makeWorker });
+    await promise;
+
+    expect(makeWorker).toHaveBeenCalledWith(4, 0);
+    expect(orchestrateUnits).toHaveBeenCalledWith(expect.objectContaining({ worker: null }));
+  });
+
   it("with no prior records, signs the full target starting at unit 0", async () => {
     orchestrateUnits.mockResolvedValueOnce({ confirmed: 10, errored: 0, aborted: false });
 

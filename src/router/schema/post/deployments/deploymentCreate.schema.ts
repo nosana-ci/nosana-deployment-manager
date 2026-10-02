@@ -12,6 +12,8 @@ export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
     idempotency_key: Type.Optional(Type.String({ minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9:/_.-]+$", description: "Optional owner-scoped create key. A duplicate returns 409; omit for independent creates. Deleting the deployment releases the key." })),
     name: Type.String(),
+    market: PublicKeySchema,
+    requirements: Type.Optional(RequirementsSchema),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     confidential: Type.Optional(Type.Boolean()),
@@ -40,18 +42,6 @@ export const DeploymentCreateBodySchema = Type.Intersect([
         description: "If true, a brand-new vault is created for this deployment instead of reusing the owner's shared (oldest) vault.",
       })),
       vault: Type.Optional(Type.Never()),
-    }),
-  ]),
-  // A deployment targets either a fixed market or nodes matching `requirements`
-  // — exactly one of the two, enforced the same way as the vault source above.
-  Type.Union([
-    Type.Object({
-      market: PublicKeySchema,
-      requirements: Type.Optional(Type.Never()),
-    }),
-    Type.Object({
-      requirements: RequirementsSchema,
-      market: Type.Optional(Type.Never()),
     }),
   ]),
   Type.Union([
@@ -91,8 +81,7 @@ export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   startup_timeout?: number; // Optional, infinite strategy only
   vault?: string; // Only for the existing-vault variant
   new_vault?: boolean; // Only for the new-vault variant
-  market?: string; // Only for the market variant
-  requirements?: DeploymentRequirements; // Only for the requirements variant
+  requirements?: DeploymentRequirements;
 };
 
 export type DeploymentCreateSuccess = DeploymentSchema;

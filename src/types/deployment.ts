@@ -79,8 +79,7 @@ export type DeploymentDocumentBase = {
   idempotency_key?: string;
   id: string; // Deployment PublicKey
   vault: string; // Vault PublicKey
-  market: string | null; // Market PublicKey; null when the deployment targets `requirements`
-  /** Node requirements (metric key → value) instead of a market; absent on older documents (market mode). */
+  market: string; // Market PublicKey
   requirements: DeploymentRequirements | null;
   owner: string; // Owners PublicKey
   name: string;

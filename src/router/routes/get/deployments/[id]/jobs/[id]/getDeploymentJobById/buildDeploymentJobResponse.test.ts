@@ -63,9 +63,9 @@ describe("buildDeploymentJobResponse", () => {
     expect(retrieve).not.toHaveBeenCalled();
   });
 
-  it("reports the market the job was listed on, even when the deployment has none (requirements mode)", async () => {
+  it("reports the market the job was posted on, not the deployment's current one", async () => {
     const response = await buildDeploymentJobResponse(
-      { ...deployment, market: null }, record({ market: "listed-market" }), revision, null, account()
+      { ...deployment, market: "current-market" }, record({ market: "listed-market" }), revision, null, account()
     );
 
     expect(response.market).toBe("listed-market");

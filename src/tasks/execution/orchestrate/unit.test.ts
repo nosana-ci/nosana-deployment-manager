@@ -105,7 +105,7 @@ describe("applyOutcome", () => {
 
     expect(out).toEqual({ result: "CONFIRMED", signature: "sig-1", jobCount: 1 });
     expect(updateOne).toHaveBeenCalledOnce();
-    expect(onConfirmed).toHaveBeenCalledWith(1, "sig-1", "job-1", "run-1");
+    expect(onConfirmed).toHaveBeenCalledWith(1, "sig-1", "job-1", "run-1", undefined);
   });
 
   it("CONFIRMED: fans onConfirmed out once per packed job and reports the job count", async () => {
@@ -121,8 +121,33 @@ describe("applyOutcome", () => {
     // One record patch (status/blob), one onConfirmed per job in the bucket.
     expect(updateOne).toHaveBeenCalledOnce();
     expect(onConfirmed).toHaveBeenCalledTimes(3);
-    expect(onConfirmed).toHaveBeenNthCalledWith(1, 4, "sig-bulk", "j-a", "r-a");
-    expect(onConfirmed).toHaveBeenNthCalledWith(3, 4, "sig-bulk", "j-c", "r-c");
+    expect(onConfirmed).toHaveBeenNthCalledWith(1, 4, "sig-bulk", "j-a", "r-a", undefined);
+    expect(onConfirmed).toHaveBeenNthCalledWith(3, 4, "sig-bulk", "j-c", "r-c", undefined);
+  });
+
+  it("CONFIRMED: hands each job its assigned node from the index-aligned record", async () => {
+    const { ctx, onConfirmed } = fakeCtx();
+
+    await applyOutcome(
+      ctx,
+      record({
+        unit: 2,
+        jobs: ["j-a", "j-b"],
+        runs: ["r-a", "r-b"],
+        nodes: ["n-a", "n-b"],
+        markets: ["m-a", "m-b"],
+      }),
+      { result: "CONFIRMED", signature: "sig-assign" }
+    );
+
+    expect(onConfirmed).toHaveBeenNthCalledWith(1, 2, "sig-assign", "j-a", "r-a", {
+      node: "n-a",
+      market: "m-a",
+    });
+    expect(onConfirmed).toHaveBeenNthCalledWith(2, 2, "sig-assign", "j-b", "r-b", {
+      node: "n-b",
+      market: "m-b",
+    });
   });
 
   it("CONFIRMED: tolerates the legacy single-job record shape", async () => {
@@ -134,7 +159,7 @@ describe("applyOutcome", () => {
     });
 
     expect(out).toEqual({ result: "CONFIRMED", signature: "sig-old", jobCount: 1 });
-    expect(onConfirmed).toHaveBeenCalledWith(9, "sig-old", "old-job", "old-run");
+    expect(onConfirmed).toHaveBeenCalledWith(9, "sig-old", "old-job", "old-run", undefined);
   });
 
   it("ERROR: marks SENT and runs onError", async () => {

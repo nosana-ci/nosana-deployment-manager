@@ -29,28 +29,26 @@ describe("deploymentCreateValidation market / requirements", () => {
     expect(validate(body({ market: MARKET })).error).toBeUndefined();
   });
 
-  it("accepts requirements only", () => {
-    expect(validate(body({ requirements: REQUIREMENTS })).error).toBeUndefined();
+  it("accepts a market with requirements", () => {
+    expect(validate(body({ market: MARKET, requirements: REQUIREMENTS })).error).toBeUndefined();
   });
 
-  it("rejects both with a clear message", () => {
-    expect(validate(body({ market: MARKET, requirements: REQUIREMENTS })).error?.message).toBe(
-      "exactly one of market or requirements is required"
-    );
+  it("rejects requirements without a market", () => {
+    expect(validate(body({ requirements: REQUIREMENTS })).error?.message).toContain("market: Expected required property");
   });
 
-  it("rejects neither with a clear message", () => {
-    expect(validate(body({})).error?.message).toBe("exactly one of market or requirements is required");
+  it("rejects neither with a market-required error", () => {
+    expect(validate(body({})).error?.message).toContain("market: Expected required property");
   });
 
   it("rejects empty requirements", () => {
-    expect(validate(body({ requirements: {} })).error).toBeInstanceOf(Error);
+    expect(validate(body({ market: MARKET, requirements: {} })).error).toBeInstanceOf(Error);
   });
 
   it.each([{ nested: { a: 1 } }, { list: [1, 2] }, { missing: null }])(
     "rejects a non-scalar requirement value %j",
     (requirements) => {
-      expect(validate(body({ requirements })).error).toBeInstanceOf(Error);
+      expect(validate(body({ market: MARKET, requirements })).error).toBeInstanceOf(Error);
     }
   );
 

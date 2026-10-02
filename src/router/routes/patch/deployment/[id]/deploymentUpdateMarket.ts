@@ -9,7 +9,7 @@ import type {
 } from "../../../../schema/patch/index.schema.js";
 
 /**
- * Only writes the new market (clearing any requirements). Moving a RUNNING deployment's jobs onto it is the
+ * Only writes the new market. Moving a RUNNING deployment's jobs onto it is the
  * worker's job — see `deploymentMarketUpdate`, which reacts to this write.
  */
 export const deploymentUpdateMarketHandler: RouteHandler<{
@@ -34,8 +34,6 @@ export const deploymentUpdateMarketHandler: RouteHandler<{
       {
         $set: {
           market,
-          // Setting a market switches a requirements deployment to market mode.
-          requirements: null,
           updated_at,
         },
       }

@@ -1,7 +1,7 @@
 import { Deployment, DeploymentStatus } from "@nosana/kit";
 
 import { createFlow, createState } from "../../utils/index.js";
-import { createDeployment, waitForDeploymentEvent, waitForDeploymentHasTask, startDeployment, waitForDeploymentStatus } from "../../common/index.js";
+import { createDeployment, joinMarketQueue, waitForDeploymentEvent, waitForDeploymentHasTask, startDeployment, waitForDeploymentStatus } from "../../common/index.js";
 import { TaskType } from "../../../../src/types/index.js";
 
 // NOTE: a transient list failure now RETRIES (escalating cooldown) instead of
@@ -17,6 +17,10 @@ createFlow('List Error', (step) => {
     schedule: '*/1 * * * *',
     market: "invalid-market"
   }))
+
+  // The DM reserves before it posts; with a node handed out, the invalid market
+  // fails at signing — a transient LIST error, retried.
+  step("join the test market queue", joinMarketQueue(() => process.env.TEST_MARKET!));
 
   step("start deployment", startDeployment(deployment));
 

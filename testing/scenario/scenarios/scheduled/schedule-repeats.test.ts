@@ -1,5 +1,5 @@
 import { Deployment } from '@nosana/api';
-import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
+import { DeploymentStatus, DeploymentStrategy, JobState } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import {
@@ -10,7 +10,10 @@ import {
   startDeployment,
   stopDeployment,
   waitForDeploymentStatus,
-  waitForSeconds
+  waitForSeconds,
+  finishJob,
+  joinMarketQueue,
+  waitForJobState,
 } from '../../common/index.js';
 import { testRunId } from "../../setup.js";
 
@@ -32,6 +35,8 @@ createFlow('Schedule repeats', (step) => {
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
+  step('join market queue before starting deployment', joinMarketQueue(() => deployment.get().market));
+
   step('start deployment', startDeployment(deployment));
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
@@ -41,6 +46,14 @@ createFlow('Schedule repeats', (step) => {
     { expectedJobsCount: 1 },
     ({ jobs }) => firstJob.set(jobs[0].job)
   ));
+
+  // One node runs one job at a time: it must finish and rejoin the queue to be
+  // assigned the next tick's job.
+  step('wait for first job to be running', waitForJobState(firstJob, { expectedState: JobState.RUNNING }));
+
+  step('node finishes the first job', finishJob(() => firstJob.get()));
+
+  step('node rejoins the market queue', joinMarketQueue(() => deployment.get().market));
 
   step('wait for 1 minute to allow schedule to repeat', waitForSeconds(ONE_MINUTE_IN_SECONDS));
 

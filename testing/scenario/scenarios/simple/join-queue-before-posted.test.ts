@@ -29,7 +29,6 @@ createFlow('Join Queue Before Job Posted', (step) => {
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => {
-      // @ts-expect-error Job state is not yet reflected in kit types
       expect(jobs.some((job) => job.state !== JobState.STOPPED)).toBeTruthy();
     }
   ));

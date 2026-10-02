@@ -2,15 +2,14 @@ import { expect } from 'vitest';
 import { address } from '@nosana/kit';
 
 import { deployerClient } from '../../setup.js';
+import { hostManagerMock } from '../../mocks/hostManagerMock.js';
 
 export function joinMarketQueue(
-  getMarketAddress: () => string | null,
+  getMarketAddress: () => string,
   options: { verifyQueued?: boolean } = {}
 ) {
   return async () => {
-    const market = getMarketAddress();
-    if (market === null) throw new Error('deployment has no market queue to join (requirements deployment)');
-    const marketAddress = address(market);
+    const marketAddress = address(getMarketAddress());
     const { verifyQueued = true } = options;
 
     // Try to join the queue
@@ -33,14 +32,16 @@ export function joinMarketQueue(
       }
     }
 
+    const nodeAddress = deployerClient.wallet!.address.toString();
     if (verifyQueued) {
       // Verify the market account is accessible (node should be in queue now)
       const marketAfter = await deployerClient.jobs.market(marketAddress);
       // Verify our node address is in the queue
-      const nodeAddress = deployerClient.wallet!.address.toString();
       const queueAddresses = marketAfter.queue.map((addr) => addr.toString());
       expect(queueAddresses).toContain(nodeAddress);
     }
+    // The mocked host-manager hands out what the tests say is queued.
+    await hostManagerMock.enqueue(nodeAddress);
   };
 }
 

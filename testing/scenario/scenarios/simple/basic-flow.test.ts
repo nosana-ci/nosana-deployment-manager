@@ -9,6 +9,7 @@ import {
   checkSufficientVaultBalance, 
   createDeployment, 
   deleteDeployment, 
+  joinMarketQueue,
   startDeployment, 
   stopDeployment, 
   waitForDeploymentStatus 
@@ -28,6 +29,8 @@ createFlow('Basic Flow', (step) => {
   ));
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
+
+  step('join market queue before starting deployment', joinMarketQueue(() => deployment.get().market));
 
   step('start deployment', startDeployment(deployment));
 

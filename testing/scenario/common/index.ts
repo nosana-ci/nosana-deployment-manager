@@ -22,6 +22,10 @@ export * from "./jobs/checkJobsTimeout.js";
 export * from "./jobs/joinMarketQueue.js";
 export * from "./jobs/waitForJobState.js";
 
+// Host-manager (mock) actions
+export * from "./hostManager/planReservations.js";
+export * from "./hostManager/waitForReservations.js";
+
 // Node actions
 export * from "./node/finishJob.js";
 export * from "./node/verifyJobAssignedToNode.js";

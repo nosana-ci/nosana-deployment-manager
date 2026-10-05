@@ -1,5 +1,5 @@
 import { Deployment } from '@nosana/api';
-import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
+import { DeploymentStatus, DeploymentStrategy, JobState } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import {
@@ -12,7 +12,10 @@ import {
   topupVault,
   waitForDeploymentStatus,
   waitForSeconds,
-  withdrawFundsFromVault
+  withdrawFundsFromVault,
+  finishJob,
+  joinMarketQueue,
+  waitForJobState,
 } from '../../common/index.js';
 import { providedVaultAddress, testRunId } from "../../setup.js";
 
@@ -37,6 +40,8 @@ if(!providedVaultAddress || providedVaultAddress === "undefined") {
 
     step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
+    step('join market queue before starting deployment', joinMarketQueue(() => deployment.get().market));
+
     step('start deployment', startDeployment(deployment));
 
     step('wait for deployment to be running', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.RUNNING}));
@@ -46,6 +51,13 @@ if(!providedVaultAddress || providedVaultAddress === "undefined") {
       {expectedJobsCount: 1},
       ({jobs}) => firstJob.set(jobs[0].job)
     ));
+
+    // The node must be queued again for the next tick to attempt an assign at all.
+    step('wait for first job to be running', waitForJobState(firstJob, { expectedState: JobState.RUNNING }));
+
+    step('node finishes the first job', finishJob(() => firstJob.get()));
+
+    step('node rejoins the market queue', joinMarketQueue(() => deployment.get().market));
 
     step('withdraw funds from vault to create a transaction error', withdrawFundsFromVault());
 

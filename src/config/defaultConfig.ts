@@ -44,6 +44,8 @@ const commonConfig: Omit<
     ? parseInt(process.env.DEFAULT_MINUTES_BEFORE_TIMEOUT)
     : 20,
   client_manager_url: process.env.CLIENT_MANAGER_URL || undefined,
+  host_manager_url: process.env.HOST_MANAGER_URL || undefined,
+  host_manager_api_key: process.env.HOST_MANAGER_API_KEY || undefined,
   rapid_completion_job_count: process.env.RAPID_COMPLETION_JOB_COUNT
     ? parseInt(process.env.RAPID_COMPLETION_JOB_COUNT)
     : 3,

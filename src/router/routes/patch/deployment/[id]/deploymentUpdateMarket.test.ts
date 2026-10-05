@@ -65,7 +65,7 @@ describe("PATCH /deployments/:deployment/update-market", () => {
       payload,
     });
 
-  it("writes the new market, scoped to the owner, and echoes it back", async () => {
+  it("writes only the new market (requirements untouched), scoped to the owner, and echoes it back", async () => {
     const res = await update({ market: NEW_MARKET });
 
     expect(res.statusCode).toBe(200);

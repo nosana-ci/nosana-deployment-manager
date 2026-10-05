@@ -99,6 +99,22 @@ describe("createDeployment startup_timeout", () => {
   });
 });
 
+describe("createDeployment market / requirements", () => {
+  const requirements = { name: "NVIDIA GeForce RTX 4090", ram_gb: 64 };
+
+  it("stores requirements alongside the market", async () => {
+    const { deployment } = await create(makeBody({ requirements }));
+
+    expect(deployment).toMatchObject({ market: "M".repeat(43), requirements });
+  });
+
+  it("stores the trimmed market with null requirements", async () => {
+    const { deployment } = await create(makeBody({ market: ` ${"M".repeat(43)} ` }));
+
+    expect(deployment).toMatchObject({ market: "M".repeat(43), requirements: null });
+  });
+});
+
 describe("createDeployment ssh keys", () => {
   beforeEach(() => {
     pin.mockClear();
@@ -227,6 +243,31 @@ describe("duplicateDeployment", () => {
     );
 
     expect(deployment.market).toBe("N".repeat(43));
+  });
+
+  it("copies the source's market and requirements", async () => {
+    const requirements = { name: "NVIDIA GeForce RTX 4090", ram_gb: 64 };
+    const { deployment } = await duplicateDeployment(
+      { ...source, strategy: "SIMPLE", requirements } as DeploymentDocument,
+      storedDefinition,
+      { name: "copy" },
+      OWNER,
+      created_at
+    );
+
+    expect(deployment).toMatchObject({ market: source.market, requirements });
+  });
+
+  it("a market override keeps the source's requirements", async () => {
+    const { deployment } = await duplicateDeployment(
+      { ...source, strategy: "SIMPLE", requirements: { ram_gb: 64 } } as DeploymentDocument,
+      storedDefinition,
+      { name: "copy", market: "N".repeat(43) },
+      OWNER,
+      created_at
+    );
+
+    expect(deployment).toMatchObject({ market: "N".repeat(43), requirements: { ram_gb: 64 } });
   });
 
   it("carries the SCHEDULED cron over", async () => {

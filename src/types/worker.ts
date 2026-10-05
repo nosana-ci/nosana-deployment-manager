@@ -1,4 +1,4 @@
-import type { OutstandingTasksDocument } from "./task.js";
+import type { OutstandingTasksDocument, ReservedNode } from "./task.js";
 
 /**
  * Worker-thread IPC protocol: the messages a signer worker posts back to the
@@ -37,6 +37,10 @@ export type SignedUnitMessage = {
   jobs?: string[];
   /** Run addresses, index-aligned with `jobs` (LIST). */
   runs?: string[];
+  /** Assigned node addresses, index-aligned with `jobs` (LIST). */
+  nodes?: string[];
+  /** Each assigned node's market, index-aligned with `nodes` (LIST). */
+  markets?: string[];
 };
 
 export type ConfirmedUnitMessage = {
@@ -50,6 +54,9 @@ export type ConfirmedUnitMessage = {
    * carries no `tx`. A genuine LIST/EXTEND/STOP that landed always has one.
    */
   tx?: string;
+  /** Reserved node the job was assigned to, and its market (LIST). */
+  node?: string;
+  market?: string;
 };
 
 export type ErrorUnitMessage = {
@@ -105,15 +112,22 @@ export type WorkerData = {
   /** Unit index to assign to the first produced unit (for reclaim top-up). */
   startUnit?: number;
   /**
-   * Fixed total replica slots for the task (LIST). The API path issues only the
-   * slots in `0..target-1` that have no CONFIRMED record yet, so a partial-success
-   * reclaim re-issues just the unconfirmed slots instead of every slot.
-   */
-  target?: number;
-  /**
    * Frozen ordered set of job addresses a STOP task targets (from the task's
    * `stop_targets`). The API batch path sends this exact set under one stable
    * idempotency key; the self-custody path stops each in turn.
    */
   stopTargets?: string[];
+  /**
+   * Reserved nodes the LIST signer assigns, one job each in the node's own
+   * market. Reserved and persisted by the parent before the worker is spawned.
+   * Self-custody gets the hold's unused nodes; the API-key path gets the whole
+   * hold (see `reservationEpoch`).
+   */
+  nodes?: ReservedNode[];
+  /**
+   * Epoch of the reservation `nodes` came from (LIST, API-key path). The batch
+   * idempotency key is scoped to it, so a same-key resend within one hold always
+   * carries the same payload.
+   */
+  reservationEpoch?: number;
 };

@@ -14,7 +14,7 @@ const PLACEHOLDER = "11111111111111111111111111111111";
 const LISTED_AT = new Date("2026-08-22T10:00:00.000Z");
 
 const record = (overrides: Partial<JobsDocument> = {}): JobsDocument =>
-  ({ job: "j", revision: 2, state: JobState.QUEUED, node: null, time_start: 0, created_at: LISTED_AT, ...overrides }) as JobsDocument;
+  ({ job: "j", market: "market", revision: 2, state: JobState.QUEUED, node: null, time_start: 0, created_at: LISTED_AT, ...overrides }) as JobsDocument;
 
 const account = (overrides: Partial<Job> = {}): Job =>
   ({ state: 1, node: NODE, timeStart: 100, timeEnd: 0, ipfsResult: null, ...overrides }) as Job;
@@ -61,6 +61,14 @@ describe("buildDeploymentJobResponse", () => {
       listedAt: Math.floor(LISTED_AT.getTime() / 1000),
     });
     expect(retrieve).not.toHaveBeenCalled();
+  });
+
+  it("reports the market the job was posted on, not the deployment's current one", async () => {
+    const response = await buildDeploymentJobResponse(
+      { ...deployment, market: "current-market" }, record({ market: "listed-market" }), revision, null, account()
+    );
+
+    expect(response.market).toBe("listed-market");
   });
 
   it("serves results the node reported without touching IPFS", async () => {

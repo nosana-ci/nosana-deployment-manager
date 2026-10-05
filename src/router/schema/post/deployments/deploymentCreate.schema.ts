@@ -6,12 +6,14 @@ import { PublicKeySchema, type DeploymentSchema, type ErrorSchema } from "../../
 import { DeploymentStrategy } from "../../../../types/index.js";
 import { DeploymentScheduleSchema } from "../../components/deploymentSchedule.schema.js";
 import { SshPublicKeysSchema } from "../../components/ssh.schema.js";
+import { RequirementsSchema, type DeploymentRequirements } from "../../components/requirements.schema.js";
 
 export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
     idempotency_key: Type.Optional(Type.String({ minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9:/_.-]+$", description: "Optional owner-scoped create key. A duplicate returns 409; omit for independent creates. Deleting the deployment releases the key." })),
     name: Type.String(),
-    market: Type.String(),
+    market: PublicKeySchema,
+    requirements: Type.Optional(RequirementsSchema),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     confidential: Type.Optional(Type.Boolean()),
@@ -79,6 +81,7 @@ export type DeploymentCreateBody = Static<typeof DeploymentCreateBodySchema> & {
   startup_timeout?: number; // Optional, infinite strategy only
   vault?: string; // Only for the existing-vault variant
   new_vault?: boolean; // Only for the new-vault variant
+  requirements?: DeploymentRequirements;
 };
 
 export type DeploymentCreateSuccess = DeploymentSchema;

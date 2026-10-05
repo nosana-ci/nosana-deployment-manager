@@ -38,6 +38,10 @@ export type DeploymentsConfig = {
   deployment_manager_port: number;
   vault_key: string | undefined;
   client_manager_url: string | undefined;
+  /** Host manager base URL; LIST tasks reserve nodes from its `POST /reservations`. */
+  host_manager_url: string | undefined;
+  /** Shared key the host manager expects in `authorization` on `POST /reservations`. */
+  host_manager_api_key: string | undefined;
   docdb: {
     hostname: string;
     port: string | number;

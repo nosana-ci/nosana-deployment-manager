@@ -53,7 +53,15 @@ export async function applyOutcome(
       const jobs = recordJobs(record);
       const runs = recordRuns(record);
       for (let i = 0; i < jobs.length; i++) {
-        await ctx.handlers.onConfirmed(record.unit, outcome.signature, jobs[i], runs[i]);
+        const node = record.nodes?.[i];
+        const market = record.markets?.[i];
+        await ctx.handlers.onConfirmed(
+          record.unit,
+          outcome.signature,
+          jobs[i],
+          runs[i],
+          node && market ? { node, market } : undefined
+        );
       }
       return { ...outcome, jobCount: jobs.length };
     }

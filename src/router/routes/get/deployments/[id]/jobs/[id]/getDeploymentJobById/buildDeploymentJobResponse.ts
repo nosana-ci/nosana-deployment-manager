@@ -52,7 +52,7 @@ export async function buildDeploymentJobResponse(
   return {
     confidential: deployment.confidential,
     revision: job.revision,
-    market: deployment.market,
+    market: job.market,
     node,
     state,
     // The node-reported status only the dashboard indexer knew; we no longer ask it.

@@ -151,6 +151,7 @@ export async function createDeployment(
   {
     name,
     market,
+    requirements,
     job_definition,
     replicas,
     strategy,
@@ -174,6 +175,7 @@ export async function createDeployment(
     vault,
     name,
     market: market.trim(),
+    requirements: requirements ?? null,
     owner,
     status: DeploymentStatus.DRAFT,
     replicas,
@@ -234,7 +236,7 @@ export async function createDeployment(
 }
 
 /**
- * Build a DRAFT copy of `source`: same vault, market, sizing, strategy,
+ * Build a DRAFT copy of `source`: same vault, market, requirements, sizing, strategy,
  * timeouts, confidentiality and SSH keys, with `jobDefinition` (the source's
  * active revision as stored, so key-free) as revision 1. Routed through
  * `createDeployment` so a duplicate is exactly what creating it from scratch
@@ -251,6 +253,7 @@ export function duplicateDeployment(
   const base = {
     name: overrides.name,
     market: overrides.market ?? source.market,
+    requirements: source.requirements ?? undefined,
     replicas: source.replicas,
     timeout: source.timeout,
     confidential: source.confidential,

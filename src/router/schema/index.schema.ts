@@ -32,6 +32,7 @@ export * from "./components/task.schema.js";
 export * from "./components/vault.schema.js";
 export * from "./components/revision.schema.js";
 export * from "./components/ssh.schema.js";
+export * from "./components/requirements.schema.js";
 
 import * as getSchemas from "./get/index.schema.js";
 import * as postSchemas from "./post/index.schema.js";

@@ -2,6 +2,7 @@ import { Static, Type } from "@sinclair/typebox";
 
 import { PublicKeySchema } from "./publicKey.schema.js";
 import { EndpointSchema } from "./endpoint.schema.js";
+import { RequirementsSchema } from "./requirements.schema.js";
 
 import { DeploymentStatus, DeploymentStrategy } from "../../../types/index.js";
 
@@ -23,13 +24,14 @@ export const DeploymentSchema = Type.Intersect([
     name: Type.String(),
     vault: PublicKeySchema,
     market: PublicKeySchema,
+    requirements: Type.Union([RequirementsSchema, Type.Null()]),
     owner: PublicKeySchema,
     status: DeploymentStatusSchema,
     replicas: Type.Number({ minimum: 0 }),
     timeout: Type.Number({ minimum: 1 }),
     endpoints: Type.Array(EndpointSchema),
     confidential: Type.Boolean(),
-    active_revision: Type.Number({ minimum: 1 }),
+    active_revision: Type.Number({ minimum: 0 }),
     active_jobs: Type.Number({ minimum: 0 }),
     created_at: Type.String({ format: "date-time" }),
     updated_at: Type.String({ format: "date-time" }),

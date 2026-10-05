@@ -18,7 +18,7 @@
     "test:scenarios": "vitest run --config testing/scenario/vitest.scenarios.config.ts",
     "localnet:up": "docker compose -f node_modules/@nosana/localnet/docker/docker-compose.yml up -d --wait",
     "localnet:down": "docker compose -f node_modules/@nosana/localnet/docker/docker-compose.yml down -v",
-    "scenario:proxy": "node testing/scenario/api-prefix-proxy.mjs",
+    "scenario:proxy": "node --no-warnings --loader ts-node/esm testing/scenario/apiPrefixProxy.ts",
     "ci:test": "vitest run --coverage --reporter=junit --outputFile=./test-report.xml"
   },
   "author": "",
@@ -44,7 +44,7 @@
     "@fastify/middie": "^9.0.3",
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
-    "@nosana/kit": "^2.13.2",
+    "@nosana/kit": "^2.15.0",
     "@sinclair/typebox": "^0.34.38",
     "@solana/addresses": "^5.0.0",
     "@solana/signers": "^5.0.0",

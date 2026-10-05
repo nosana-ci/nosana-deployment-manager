@@ -1,5 +1,7 @@
 import type { Collection } from "mongodb";
 
+import type { DeploymentRequirements } from "../router/schema/components/requirements.schema.js";
+
 export const DeploymentStatus = {
   DRAFT: "DRAFT",
   ERROR: "ERROR",
@@ -50,6 +52,7 @@ export const DeploymentDocumentFields: Record<
   ID: "id",
   VAULT: "vault",
   MARKET: "market",
+  REQUIREMENTS: "requirements",
   OWNER: "owner",
   NAME: "name",
   STATUS: "status",
@@ -77,6 +80,7 @@ export type DeploymentDocumentBase = {
   id: string; // Deployment PublicKey
   vault: string; // Vault PublicKey
   market: string; // Market PublicKey
+  requirements: DeploymentRequirements | null;
   owner: string; // Owners PublicKey
   name: string;
   status: DeploymentStatus;

@@ -34,6 +34,8 @@ export default () => {
         },
       },
       setupFiles: ['./testing/scenario/setup.ts'],
+      // The host-manager mock the DM reserves nodes from, for the whole run.
+      globalSetup: ['./testing/scenario/mocks/hostManagerMock.ts'],
       env: {
         NETWORK: process.env.NETWORK ?? "devnet",
         // Default to localnet (@nosana/localnet): local validator, no throttling
@@ -45,6 +47,9 @@ export default () => {
         TEST_DEPLOYER_KEY_PATH: process.env.TEST_DEPLOYER_KEY_PATH ?? "~/.nosana/nosana_key.json",
         TEST_NODE_KEY_PATH: process.env.TEST_NODE_KEY_PATH ?? "~/.nosana/nosana_key.json",
         TEST_MARKET: process.env.TEST_MARKET ?? "9MGKqixvtLJgL46Bp38ZrD3MxTMRt57VL3rQtQY64zj4",
+        // Where the tests reach the host-manager mock (mocks/hostManagerMock.ts, port HOST_MANAGER_MOCK_PORT).
+        HOST_MANAGER_MOCK_URL: process.env.HOST_MANAGER_MOCK_URL ?? "http://localhost:3006",
+        HOST_MANAGER_MOCK_KEY: process.env.HOST_MANAGER_MOCK_KEY ?? "scenario-host-manager-key",
       },
     },
   });

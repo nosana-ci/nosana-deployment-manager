@@ -2,7 +2,7 @@ import { Deployment } from '@nosana/api';
 import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
+import { checkAllJobsStopped, checkDeploymentJobs, checkSufficientVaultBalance, createDeployment, joinMarketQueue, startDeployment, stopDeployment, waitForDeploymentStatus } from '../../common/index.js';
 import { testRunId } from "../../setup.js";
 
 createFlow('Basic Flow', (step) => {
@@ -20,6 +20,8 @@ createFlow('Basic Flow', (step) => {
   });
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
+
+  step('join market queue before starting deployment', joinMarketQueue(() => deployment.get().market));
 
   step('start deployment', startDeployment(deployment));
 

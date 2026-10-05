@@ -9,6 +9,7 @@ import { eatMarketQueue } from './utils/eatMarketQueue.js';
 import { ensureStakeAccount } from './utils/ensureStakeAccount.js';
 import { QueryClient } from '@nosana/api/dist/client/index.js';
 import { createApiClient } from './utils/createApiClient.js';
+import { hostManagerMock } from './mocks/hostManagerMock.js';
 
 export let deployerClient: NosanaClient;
 export let nodeClient: NosanaClient;
@@ -62,6 +63,10 @@ beforeAll(async () => {
   }
 
   apiClient = createApiClient(deployerClient);
+
+  // Fresh mocked host-manager per test file (started for the run by globalSetup):
+  // the DM reserves nodes from it, and joinMarketQueue tells it which node is queued.
+  await hostManagerMock.reset();
 
   if (process.env.EAT === 'true') {
     await eatMarketQueue(process.env.TEST_MARKET!, nodeClient)

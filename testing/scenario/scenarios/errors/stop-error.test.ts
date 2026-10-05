@@ -1,7 +1,7 @@
 import { Deployment, DeploymentStatus } from "@nosana/kit";
 
 import { createFlow, createState } from "../../utils/index.js";
-import { createDeployment, startDeployment, waitForDeploymentStatus, checkDeploymentJobs, withdrawFundsFromVault, stopDeployment, waitForDeploymentEvent, waitForDeploymentHasTask, checkDeploymentStatusNot, topupVault } from "../../common/index.js";
+import { createDeployment, joinMarketQueue, startDeployment, waitForDeploymentStatus, checkDeploymentJobs, withdrawFundsFromVault, stopDeployment, waitForDeploymentEvent, waitForDeploymentHasTask, checkDeploymentStatusNot, topupVault } from "../../common/index.js";
 import { TaskType } from "../../../../src/types/index.js";
 import { topup_balance } from "../../setup.js";
 
@@ -19,6 +19,8 @@ createFlow('Stop Error', (step) => {
   // Self-sufficient under the `errors` aggregator: an earlier flow may have
   // drained the shared vault, so ensure there are funds to post a job.
   step("ensure vault is funded", topupVault(topup_balance));
+
+  step('join market queue before starting deployment', joinMarketQueue(() => deployment.get().market));
 
   step("start deployment", startDeployment(deployment));
 

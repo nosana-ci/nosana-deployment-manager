@@ -18,7 +18,7 @@
     "test:scenarios": "vitest run --config testing/scenario/vitest.scenarios.config.ts",
     "localnet:up": "docker compose -f node_modules/@nosana/localnet/docker/docker-compose.yml up -d --wait",
     "localnet:down": "docker compose -f node_modules/@nosana/localnet/docker/docker-compose.yml down -v",
-    "scenario:proxy": "node testing/scenario/api-prefix-proxy.mjs",
+    "scenario:proxy": "node --no-warnings --loader ts-node/esm testing/scenario/apiPrefixProxy.ts",
     "ci:test": "vitest run --coverage --reporter=junit --outputFile=./test-report.xml"
   },
   "author": "",

@@ -14,6 +14,10 @@ x-dm-env: &dm-env
   RAPID_COMPLETION_MAX_STREAK: "${RAPID_COMPLETION_MAX_STREAK:-8}"
   RAPID_COMPLETION_COOLDOWN_BASE_MS: "${RAPID_COMPLETION_COOLDOWN_BASE_MS:-60000}"
   CONFIDENTIAL_BY_DEFAULT: "${CONFIDENTIAL_BY_DEFAULT:-true}"
+  # LIST reserves nodes from host-manager. The defaults point at the scenario
+  # mock (testing/scenario/mocks/hostManagerMock.ts), started by the scenario run on the host.
+  HOST_MANAGER_URL: "${HOST_MANAGER_URL:-http://host.docker.internal:3006}"
+  HOST_MANAGER_API_KEY: "${HOST_MANAGER_API_KEY:-scenario-host-manager-key}"
   DEPLOYMENT_MANAGER_PORT: "${DEPLOYMENT_MANAGER_PORT:-3000}"
   # No value: pass through from the host only when set. `"${SOLANA_NETWORK}"`
   # would pass an empty string when unset, which defeats the `??` fallbacks in

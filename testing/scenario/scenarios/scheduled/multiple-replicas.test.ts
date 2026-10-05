@@ -1,18 +1,22 @@
-import {Deployment} from '@nosana/api';
-import {DeploymentStatus, DeploymentStrategy} from '@nosana/kit';
+import { Deployment } from '@nosana/api';
+import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
-import {createState, createFlow} from '../../utils/index.js';
+import { createState, createFlow } from '../../utils/index.js';
+import { testRunId } from '../../setup.js';
 import {
   checkAllJobsStopped,
   checkDeploymentJobs,
   checkSufficientVaultBalance,
   createDeployment,
+  joinMarketQueue,
   startDeployment,
   stopDeployment,
+  waitForDeploymentEvent,
   waitForDeploymentStatus
 } from '../../common/index.js';
-import {testRunId} from "../../setup.js";
 
+// Two replicas, one queued node: one job is assigned and the second replica is
+// reported as a shortfall until another node queues up.
 createFlow('Multiple Replicas', (step) => {
   const deployment = createState<Deployment>();
 
@@ -30,14 +34,18 @@ createFlow('Multiple Replicas', (step) => {
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
+  step('one node joins the market queue', joinMarketQueue(() => deployment.get().market));
+
   step('start deployment', startDeployment(deployment));
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, {expectedStatus: DeploymentStatus.RUNNING}));
 
-  step('wait for jobs to be posted (one per replica)', checkDeploymentJobs(
+  step('one job is posted to the only node', checkDeploymentJobs(
     deployment,
-    {expectedJobsCount: 2}
+    {expectedJobsCount: 1}
   ));
+
+  step('the second replica is reported as a shortfall', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_SHORTFALL' }));
 
   step('stop deployment', stopDeployment(deployment));
 
@@ -45,4 +53,3 @@ createFlow('Multiple Replicas', (step) => {
 
   step('check if all jobs are stopped', checkAllJobsStopped(deployment));
 });
-

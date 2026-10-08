@@ -43,6 +43,7 @@ const {
     deploymentUpdateMarketHandler,
     deploymentUpdateNameHandler,
     deploymentUpdateReplicaCountHandler,
+    deploymentUpdateRequirementsHandler,
     deploymentUpdateScheduleHandler,
     deploymentUpdateStartupTimeoutHandler,
     deploymentUpdateTimeoutHandler,
@@ -80,6 +81,7 @@ const {
     DeploymentUpdateMarketSchema,
     DeploymentUpdateNameSchema,
     DeploymentUpdateReplicaCountSchema,
+    DeploymentUpdateRequirementsSchema,
     DeploymentUpdateScheduleSchema,
     DeploymentUpdateStartupTimeoutSchema,
     DeploymentUpdateTimeoutSchema,
@@ -302,6 +304,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
     },
     deploymentUpdateReplicaCountHandler
+  );
+
+  server.patch(
+    `${API_PREFIX}/:deployment/update-requirements`,
+    {
+      schema: DeploymentUpdateRequirementsSchema,
+      preHandler: [getDeploymentMiddleware, validateActiveDeploymentMiddleware],
+    },
+    deploymentUpdateRequirementsHandler
   );
 
   server.patch(

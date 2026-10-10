@@ -53,6 +53,10 @@ vi.mock("../../../client/hostManager/index.js", async (importOriginal) => ({
 vi.mock("../../scheduleTask.js", () => ({
   scheduleTask: (...a: unknown[]) => scheduleTask(...a),
 }));
+const checkTaskWanted = vi.fn(async () => true);
+vi.mock("../../queue/wanted/index.js", () => ({
+  checkTaskWanted: (...a: unknown[]) => checkTaskWanted(...a),
+}));
 const resolveListDefinitionHash = vi.fn(() => "QmDefinition");
 vi.mock("./resolveDefinitionHash.js", () => ({
   resolveListDefinitionHash: (...a: unknown[]) => resolveListDefinitionHash(...a),
@@ -95,6 +99,7 @@ function makeTask(over: {
   reservation?: TaskReservation;
   reservation_request?: TaskReservationRequest;
   transactions?: TxRecord[];
+  assign_posted_at?: Date;
 }): OutstandingTasksDocument {
   return {
     _id: new ObjectId(),
@@ -105,6 +110,7 @@ function makeTask(over: {
     reservation_request: over.reservation_request,
     job: over.job,
     active_revision: over.active_revision,
+    assign_posted_at: over.assign_posted_at,
     transactions: over.transactions ?? [],
     jobs: over.jobs ?? [],
     deployment: {
@@ -172,6 +178,7 @@ beforeEach(() => {
   scheduleTask.mockReset().mockResolvedValue(true);
   vi.mocked(VaultWorker).mockClear();
   resolveListDefinitionHash.mockReset().mockReturnValue("QmDefinition");
+  checkTaskWanted.mockReset().mockResolvedValue(true);
   vaultKey.value = "solana-secret-key";
 });
 
@@ -222,6 +229,31 @@ describe("runListTask target", () => {
       { $set: { target_count: 8, ipfs_definition_hash: "QmDefinition" } }
     );
     expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 8 }));
+  });
+
+  it.each([
+    [DeploymentStrategy.SIMPLE, 2],
+    [DeploymentStrategy["SIMPLE-EXTEND"], 2],
+    [DeploymentStrategy.INFINITE, 2],
+    // Each cron firing posts a full set.
+    [DeploymentStrategy.SCHEDULED, 3],
+  ])("%s: brings the task's own revision up to replicas, whatever other revisions still run", async (strategy, target) => {
+    // A swap to revision 2: two revision-1 jobs are being retired, one revision-2 job is up.
+    const jobs = [{ revision: 1 }, { revision: 1 }, { revision: 2 }];
+    const task = makeTask({ replicas: 3, strategy, jobs, active_revision: 2 });
+
+    await runListTask(db, task, signal());
+
+    expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target }));
+  });
+
+  it("an explicit limit is the target as given", async () => {
+    const task = makeTask({ replicas: 3, jobs: [{ revision: 1 }], active_revision: 1 });
+    task.limit = 1;
+
+    await runListTask(db, task, signal());
+
+    expect(reconcileUnits).toHaveBeenCalledWith(expect.objectContaining({ target: 1 }));
   });
 
   it("resolves and persists only the missing hash on a task frozen before the hash existed", async () => {
@@ -701,6 +733,116 @@ describe("runListTask reservation (self-custody)", () => {
   });
 });
 
+describe("runListTask once no longer wanted (drain)", () => {
+  it("is judged again before reserving, and then requests, signs and hands off nothing", async () => {
+    checkTaskWanted.mockResolvedValue(false);
+    reconcileFresh({ confirmed: 0, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2, reservation_request: pendingRequest() });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(checkTaskWanted).toHaveBeenCalledWith(task);
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(scheduleTask).not.toHaveBeenCalled();
+    expect(onListExit).not.toHaveBeenCalled(); // no next cron firing either
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 0 });
+  });
+
+  it("keeps what its resumed transactions confirmed and completes", async () => {
+    checkTaskWanted.mockResolvedValue(false);
+    reconcileUnits.mockImplementation(async ({ makeWorker }: { makeWorker: (count: number, startUnit: number) => unknown }) => {
+      await makeWorker(1, 2); // two units resumed and confirmed, one short
+      return { confirmed: 2, errored: 0, aborted: false, retry: false };
+    });
+    const task = makeTask({ target_count: 3, ipfs_definition_hash: "Qm", replicas: 3 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(scheduleTask).not.toHaveBeenCalled(); // the shortfall is not handed off
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 2 });
+  });
+
+  it("does not retry a handled error while draining", async () => {
+    checkTaskWanted.mockResolvedValue(false);
+    reconcileUnits.mockImplementation(
+      async ({ makeWorker, handlers }: { makeWorker: (c: number, s: number) => unknown; handlers: { onError: (u: number, e: string) => void } }) => {
+        await handlers.onError(0, "Transaction simulation failed");
+        await makeWorker(1, 1);
+        return { confirmed: 0, errored: 1, aborted: false, retry: false };
+      }
+    );
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(result.outcome).toBe("COMPLETED");
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled(); // no retry state stamped
+  });
+
+  describe("API-key path", () => {
+    beforeEach(() => {
+      vaultKey.value = "nos_api_key";
+    });
+
+    const posted = () =>
+      makeTask({
+        target_count: 2,
+        ipfs_definition_hash: "Qm",
+        replicas: 2,
+        assign_posted_at: new Date(),
+        reservation: {
+          expiresAt: new Date(Date.now() - 1000), // a lapsed hold is re-sent all the same
+          nodes: [
+            { node: "n1", market: "m" },
+            { node: "n2", market: "m" },
+          ],
+        },
+      });
+
+    it("re-sends the batch it posted, whole and under the same key, to record what landed", async () => {
+      checkTaskWanted.mockResolvedValue(false);
+      reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
+
+      const result = await runListTask(db, posted(), signal());
+
+      expect(requestReservation).not.toHaveBeenCalled();
+      expect(spawnedNodes()).toEqual([
+        [
+          { node: "n1", market: "m" },
+          { node: "n2", market: "m" },
+        ],
+      ]);
+      expect(result).toEqual({ outcome: "COMPLETED", successCount: 2 });
+    });
+
+    it("comes back while the batch is still confirming", async () => {
+      checkTaskWanted.mockResolvedValue(false);
+      reconcileFresh({ confirmed: 0, errored: 0, aborted: false, retry: true, retryAfterMs: 3000 });
+
+      const result = await runListTask(db, posted(), signal());
+
+      expect(result).toEqual({ outcome: "RETRY", successCount: 0, retryAfterMs: 3000 });
+    });
+
+    it("sends nothing when it never posted a batch", async () => {
+      checkTaskWanted.mockResolvedValue(false);
+      reconcileFresh();
+      const task = makeTask({
+        target_count: 1,
+        ipfs_definition_hash: "Qm",
+        replicas: 1,
+        reservation: { expiresAt: inAMinute(), nodes: [{ node: "n1", market: "m" }] }, // filled by the webhook, never posted
+      });
+
+      await runListTask(db, task, signal());
+
+      expect(VaultWorker).not.toHaveBeenCalled();
+    });
+  });
+});
+
 describe("runListTask API-key path", () => {
   beforeEach(() => {
     vaultKey.value = "nos_api_key";
@@ -722,6 +864,9 @@ describe("runListTask API-key path", () => {
       { key: task._id.toHexString(), market: "m", requirements: { gpu: "RTX 4090" }, count: 2, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
+    // From the post on, its jobs can land unseen: marked before the worker is spawned.
+    expect(tasksUpdateOne).toHaveBeenLastCalledWith({ _id: task._id }, { $set: { assign_posted_at: expect.any(Date) } });
+    expect(order.slice(-2)).toEqual(["persist", "spawn"]);
     expect(spawnedNodes()).toEqual([
       [
         { node: "n1", market: "m" },

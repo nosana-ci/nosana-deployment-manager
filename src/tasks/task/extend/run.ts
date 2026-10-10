@@ -3,6 +3,7 @@ import type { Db } from "mongodb";
 import { VaultWorker } from "../../../worker/Worker.js";
 import { getRepository } from "../../../repositories/index.js";
 import { reconcileUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
+import { checkTaskWanted } from "../../queue/wanted/index.js";
 import { onExtendConfirmed, onExtendError } from "./events/index.js";
 import {
   RetrySignal,
@@ -44,7 +45,10 @@ export async function runExtendTask(
       ),
   };
 
-  // EXTEND is a single unit (target = 1).
+  // EXTEND is a single unit (target = 1). It is judged wanted again right
+  // before it signs: the stop route flips the status without the deployment
+  // lock. One no longer wanted signs nothing and ends here.
+  let unwanted = false;
   const result = await reconcileUnits({
     tasks,
     taskId: task._id,
@@ -52,8 +56,12 @@ export async function runExtendTask(
     target: 1,
     signal,
     handlers,
-    makeWorker: (count, startUnit) =>
-      new VaultWorker<WorkerData>("../tasks/task/extend/worker.js", {
+    makeWorker: async (count, startUnit) => {
+      if (!(await checkTaskWanted(task))) {
+        unwanted = true;
+        return null;
+      }
+      return new VaultWorker<WorkerData>("../tasks/task/extend/worker.js", {
         workerData: {
           task,
           taskId: task._id.toHexString(),
@@ -61,9 +69,11 @@ export async function runExtendTask(
           count,
           startUnit,
         },
-      }),
+      });
+    },
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
+  if (unwanted) return { outcome: "COMPLETED", successCount: result.confirmed };
   // Negative CM balance = foul-play claw-back: archive the whole owner, don't retry.
   if (retrySignal?.negativeBalance) {
     await archiveBannedOwner(db, task.deployment.owner);

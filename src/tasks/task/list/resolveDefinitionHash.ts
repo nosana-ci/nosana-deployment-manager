@@ -4,8 +4,9 @@ import type { OutstandingTasksDocument } from "../../../types/index.js";
 
 /**
  * The IPFS hash a LIST task posts — the confidential placeholder pin, or the
- * active revision's own `ipfs_definition_hash`, which the write paths keep
- * ready (the deployment's SSH keys are already merged into it when set).
+ * own `ipfs_definition_hash` of the revision the task lists (the active one
+ * when it runs: the task is dropped once a swap supersedes it), which the
+ * write paths keep ready (the deployment's SSH keys are already merged into it when set).
  *
  * The caller freezes the result on the task (`ipfs_definition_hash`, alongside
  * `target_count`): a key rotation re-pins the active revision's hash in place,
@@ -17,8 +18,9 @@ export function resolveListDefinitionHash(task: OutstandingTasksDocument): strin
 
   if (confidential) return getConfig().confidential_ipfs_pin;
 
-  const activeRevision = task.revisions.find(({ revision }) => revision === active_revision);
-  if (!activeRevision) throw new Error("Active revision not found");
+  const listed = task.active_revision ?? active_revision;
+  const revision = task.revisions.find(({ revision }) => revision === listed);
+  if (!revision) throw new Error("Active revision not found");
 
-  return activeRevision.ipfs_definition_hash;
+  return revision.ipfs_definition_hash;
 }

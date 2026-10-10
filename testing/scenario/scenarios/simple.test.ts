@@ -5,4 +5,5 @@ describe('Simple Strategy Scenarios', async () => {
   await import('./simple/finish-job-prematurely.test.js');
   await import('./simple/join-queue-before-posted.test.js');
   await import('./simple/multiple-replicas.test.js');
+  await import('./simple/revision-on-stopped.test.js');
 });

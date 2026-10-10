@@ -135,14 +135,33 @@ export async function releaseTaskToPending(
 
 /**
  * Count a real dispatch, fenced on the lease holder so a consumer that lost its
- * lease never bumps another consumer's task.
+ * lease never bumps another consumer's task. False when the fence matched
+ * nothing — the task was deleted (a stop swept it) or reclaimed by another
+ * consumer since it was claimed — and the caller must not dispatch it.
  */
 export async function incrementAttempt(
   tasks: Collection<TaskDocument>,
   id: ObjectId,
   consumerId: string
+): Promise<boolean> {
+  const { matchedCount } = await tasks.updateOne({ _id: id, claimed_by: consumerId }, { $inc: { attempts: 1 } });
+  return matchedCount > 0;
+}
+
+/**
+ * Drop a task whose intent no longer holds (see `isTaskWanted`): delete it,
+ * fenced on the lease holder, which also cancels a LIST's reservation request.
+ * Not a failure: the deployment is left as it is.
+ */
+export async function dropUnwantedTask(
+  tasks: TaskDeleter,
+  task: Pick<WithId<TaskDocument>, "_id" | "task" | "deploymentId">,
+  consumerId: string
 ): Promise<void> {
-  await tasks.updateOne({ _id: id, claimed_by: consumerId }, { $inc: { attempts: 1 } });
+  console.log(
+    `[tasks] dropping ${task.task} task ${task._id.toHexString()} for deployment ${task.deploymentId}: no longer wanted`
+  );
+  await tasks.delete({ _id: task._id, claimed_by: consumerId });
 }
 
 /**

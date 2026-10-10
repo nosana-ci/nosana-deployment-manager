@@ -69,7 +69,7 @@ describe("PATCH /deployments/:deployment/update-active-revision", () => {
     deploymentDoc.ssh_public_keys = undefined;
     db.revisions.findOne.mockReset().mockResolvedValue({ revision: 1, job_definition: DEFINITION });
     db.revisions.updateOne.mockReset().mockResolvedValue({ acknowledged: true });
-    db.deployments.updateOne.mockReset().mockResolvedValue({ acknowledged: true });
+    db.deployments.updateOne.mockReset().mockResolvedValue({ acknowledged: true, matchedCount: 1 });
     server = await buildServer();
   });
 
@@ -130,6 +130,27 @@ describe("PATCH /deployments/:deployment/update-active-revision", () => {
     expect(res.statusCode).toBe(200);
     expect(pin).not.toHaveBeenCalled();
     expect(db.revisions.updateOne).not.toHaveBeenCalled();
+  });
+
+  it("rejects activating the active revision without re-pinning it", async () => {
+    db.revisions.findOne.mockResolvedValue({ revision: 2, job_definition: DEFINITION });
+
+    const res = await activate(2);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "The specified revision is already active." });
+    expect(pin).not.toHaveBeenCalled();
+    expect(db.revisions.updateOne).not.toHaveBeenCalled();
+    expect(db.deployments.updateOne).not.toHaveBeenCalled();
+  });
+
+  it("answers 400, not 200, when a concurrent request activated it first", async () => {
+    db.deployments.updateOne.mockResolvedValue({ acknowledged: true, matchedCount: 0 });
+
+    const res = await activate();
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({ error: "The specified revision is already active." });
   });
 
   it("rejects an unknown revision", async () => {

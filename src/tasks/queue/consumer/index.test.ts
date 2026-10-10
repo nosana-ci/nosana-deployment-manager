@@ -21,6 +21,11 @@ vi.mock("../../task/stop/run.js", () => ({ runStopTask: (...a: unknown[]) => run
 vi.mock("../../task/extend/run.js", () => ({
   runExtendTask: (...a: unknown[]) => runExtendTask(...a),
 }));
+const checkTaskWanted = vi.fn();
+vi.mock("../wanted/index.js", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  checkTaskWanted: (...a: unknown[]) => checkTaskWanted(...a),
+}));
 vi.mock("../lock/index.js", () => ({
   getDeploymentLocks: () => ({}),
   acquireDeploymentLock: (...a: unknown[]) => acquireDeploymentLock(...a),
@@ -71,8 +76,9 @@ describe("startTaskCollectionListener", () => {
     runExtendTask.mockReset().mockResolvedValue({ outcome: "COMPLETED", successCount: 1 } as TaskRunResult);
     acquireDeploymentLock.mockReset().mockResolvedValue(true);
     releaseDeploymentLock.mockReset().mockResolvedValue(undefined);
+    checkTaskWanted.mockReset().mockResolvedValue(true);
     deleteTasks = vi.fn(async () => ({ acknowledged: true, deletedCount: 1 }));
-    updateOne = vi.fn(async () => ({ acknowledged: true }));
+    updateOne = vi.fn(async () => ({ acknowledged: true, matchedCount: 1 }));
     deploymentsUpdateOne = vi.fn(async () => ({ acknowledged: true }));
   });
 
@@ -141,6 +147,42 @@ describe("startTaskCollectionListener", () => {
       { $set: { status: "ERROR" } }
     );
     expect(runListTask).not.toHaveBeenCalled();
+
+    await handle.stop();
+  });
+
+  it.each([
+    ["the crash-loop attempts cap", { attempts: 99 }],
+    ["the in-flight retry cap", { inflight_retries: 99 }],
+  ])("drops a task over %s that is no longer wanted, without flagging the deployment ERROR", async (_cap, over) => {
+    const task = { ...baseTask(TaskType.LIST), ...over };
+    claimTasks.mockResolvedValueOnce([task]);
+    checkTaskWanted.mockResolvedValueOnce(false);
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(deleteTasks).toHaveBeenCalledWith({ _id: task._id, claimed_by: expect.any(String) });
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled();
+    expect(runListTask).not.toHaveBeenCalled();
+
+    await handle.stop();
+  });
+
+  it("drops a draining LIST at a cap without flagging ERROR: ERROR only means a wanted task failed", async () => {
+    const task = {
+      ...baseTask(TaskType.LIST),
+      inflight_retries: 99,
+      assign_posted_at: new Date(), // in flight: at dispatch it would drain, never be dropped
+    };
+    claimTasks.mockResolvedValueOnce([task]);
+    checkTaskWanted.mockResolvedValueOnce(false);
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(deleteTasks).toHaveBeenCalledWith({ _id: task._id, claimed_by: expect.any(String) });
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled();
 
     await handle.stop();
   });
@@ -241,6 +283,58 @@ describe("startTaskCollectionListener", () => {
       { _id: task._id, claimed_by: expect.any(String) },
       { $inc: { attempts: 1 } }
     );
+    expect(runListTask).toHaveBeenCalledOnce();
+
+    await handle.stop();
+  });
+
+  it("does not dispatch a task whose claim fence fails (deleted or reclaimed since)", async () => {
+    const task = baseTask(TaskType.LIST);
+    claimTasks.mockResolvedValueOnce([task]);
+    enrichClaimedTasks.mockResolvedValueOnce([task]);
+    updateOne.mockResolvedValueOnce({ acknowledged: true, matchedCount: 0 });
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(runListTask).not.toHaveBeenCalled();
+    expect(deleteTasks).not.toHaveBeenCalled();
+    expect(releaseDeploymentLock).toHaveBeenCalledWith({}, task.deploymentId, expect.any(String));
+
+    await handle.stop();
+  });
+
+  it("drops a task that is no longer wanted, once the lock is held, without flagging the deployment", async () => {
+    const task = baseTask(TaskType.LIST);
+    claimTasks.mockResolvedValueOnce([task]);
+    enrichClaimedTasks.mockResolvedValueOnce([task]);
+    checkTaskWanted.mockResolvedValueOnce(false);
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(acquireDeploymentLock).toHaveBeenCalled();
+    expect(checkTaskWanted).toHaveBeenCalledWith(task);
+    expect(runListTask).not.toHaveBeenCalled();
+    expect(deleteTasks).toHaveBeenCalledWith({ _id: task._id, claimed_by: expect.any(String) });
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled();
+    expect(releaseDeploymentLock).toHaveBeenCalled();
+
+    await handle.stop();
+  });
+
+  it.each([
+    ["a signed transaction", { transactions: [{ unit: 0, signature: "s", lastValidBlockHeight: 1, status: "SIGNED", blob: "b" }] }],
+    ["a posted API batch", { assign_posted_at: new Date() }],
+  ])("runs an unwanted LIST holding %s, to drain it", async (_label, inFlight) => {
+    const task = { ...baseTask(TaskType.LIST), ...inFlight };
+    claimTasks.mockResolvedValueOnce([task]);
+    enrichClaimedTasks.mockResolvedValueOnce([task]);
+    checkTaskWanted.mockResolvedValue(false);
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
     expect(runListTask).toHaveBeenCalledOnce();
 
     await handle.stop();

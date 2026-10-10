@@ -112,7 +112,8 @@ describe("deploymentMarketUpdate — behavior", () => {
         "dep-1",
         DeploymentStatus.RUNNING,
         expect.any(Date),
-        { limit: 2 }
+        // A duplicate change event while it is pending queues nothing more.
+        { limit: 2, reason: "market", idempotent: true }
       );
       expect(scheduleTask.mock.calls.slice(1).map((call) => call[1])).toEqual([
         TaskType.STOP,

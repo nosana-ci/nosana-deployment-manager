@@ -30,6 +30,12 @@ describe("onListExit", () => {
     expect(insertOne).toHaveBeenCalledWith(expect.objectContaining({ task: "LIST", deploymentId: "dep-1" }));
   });
 
+  it("the next firing lists the same revision in the same run", async () => {
+    await onListExit(scheduledTask({ active_revision: 3, run: 2 }));
+
+    expect(insertOne).toHaveBeenCalledWith(expect.objectContaining({ active_revision: 3, run: 2 }));
+  });
+
   it("does not for a hand-off: its source task already did", async () => {
     await onListExit(scheduledTask({ handoff_of: new ObjectId() }));
 

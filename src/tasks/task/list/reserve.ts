@@ -146,7 +146,12 @@ async function submitRequest(
   return { kind: "reserved", reservation, nodes: reservation.nodes };
 }
 
-/** Stamp when host-manager first queued the request, and say so once per request (not per renewal). */
+/**
+ * Stamp when host-manager first queued the request, and say so once per request
+ * (not per renewal). An INFINITE rotation (`job` set) waiting is no capacity
+ * problem: the job it replaces keeps running, and its node frees up at the
+ * latest when that job ends.
+ */
 async function noteWaiting(
   tasks: TasksCollection,
   events: EventsCollection,
@@ -163,7 +168,9 @@ async function noteWaiting(
     deploymentId: task.deploymentId,
     category: "Deployment",
     type: "JOB_RESERVE_WAITING",
-    message: `Waiting for ${terms.count} matching node(s) in market ${terms.market}`,
+    message: task.job
+      ? `Rotation of job ${task.job}: no spare node yet, it is replaced as soon as one frees up (at the latest when the job ends)`
+      : `Waiting for ${terms.count} matching node(s) in market ${terms.market}`,
     created_at: new Date(),
   });
 }

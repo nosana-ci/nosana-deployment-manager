@@ -48,10 +48,10 @@ beforeEach(() => {
 });
 
 describe("jobAllActiveJobsStop", () => {
-  it("drops the settled job's own pending tasks", async () => {
+  it("drops the settled job's own pending tasks, but not a LIST keyed on it (an INFINITE rotation may replace it)", async () => {
     await handler(job, db);
 
-    expect(deleteTasks).toHaveBeenCalledWith({ deploymentId: "dep-1", job: { $eq: "j1" } });
+    expect(deleteTasks).toHaveBeenCalledWith({ deploymentId: "dep-1", job: { $eq: "j1" }, task: { $ne: TaskType.LIST } });
   });
 
   it("flips a RUNNING SIMPLE deployment to STOPPED once nothing is active and nothing is queued to list", async () => {

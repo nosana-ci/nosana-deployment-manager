@@ -42,7 +42,8 @@ export async function onListConfirmed(
         node: reserved?.node ?? null,
         state: JobState.QUEUED,
         deployment: task.deploymentId,
-        revision: task.deployment.active_revision,
+        // The revision this task lists, whose definition the job runs.
+        revision: task.active_revision ?? task.deployment.active_revision,
         time_start: 0,
         created_at: new Date(),
       },

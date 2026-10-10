@@ -2,6 +2,7 @@ import type { Db } from "mongodb";
 
 import { getRepository } from "../../../repositories/index.js";
 import { scheduleTask } from "../../scheduleTask.js";
+import { LIST_IN_FLIGHT } from "../../queue/wanted/index.js";
 import { DeploymentStatus, TaskType } from "../../../types/index.js";
 
 /**
@@ -33,12 +34,13 @@ export async function archiveBannedOwner(db: Db, owner: string): Promise<void> {
   const ids = owned.map(({ id }) => id);
 
   // Stop provisioning churn immediately; keep STOP tasks so an in-flight stop can
-  // still finish (the enqueue below is idempotent against them).
-  await tasks.delete({ deploymentId: { $in: ids }, task: { $ne: TaskType.STOP } });
+  // still finish (the enqueue below is idempotent against them), and a LIST in
+  // flight, which drains to record the jobs that land so the STOP can delist them.
+  await tasks.delete({ deploymentId: { $in: ids }, task: { $ne: TaskType.STOP }, $nor: LIST_IN_FLIGHT });
 
   // Delist each deployment's on-chain jobs via the STOP worker.
   for (const { id, status } of owned) {
-    await scheduleTask(db, TaskType.STOP, id, status, new Date(), { idempotent: true });
+    await scheduleTask(db, TaskType.STOP, id, status, new Date(), { reason: "stop", idempotent: true });
   }
 
   // Terminal — the fenced finalizers keep the delist from reverting it.

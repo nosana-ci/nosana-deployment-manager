@@ -3,6 +3,7 @@ import type { Db } from "mongodb";
 import { VaultWorker } from "../../../worker/Worker.js";
 import { getRepository } from "../../../repositories/index.js";
 import { scheduleTask } from "../../scheduleTask.js";
+import { LIST_IN_FLIGHT } from "../../queue/wanted/index.js";
 import { orchestrateUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
 import { selectJobsToStop } from "./selectJobsToStop.js";
 import { onStopConfirmed, onStopError, onStopExit } from "./events/index.js";
@@ -32,13 +33,18 @@ export async function runStopTask(
   const deployments = getRepository("deployments").collection;
   const events = getRepository("events").collection;
 
-  // Full-stop housekeeping: drop other pending tasks for this deployment so a
-  // stop is not immediately undone by a queued LIST/EXTEND.
-  if (!task.limit && !task.job) {
+  // A STOP without a limit or a job retires a whole scope until it is empty:
+  // every active job (a full stop), or every job of another revision (a
+  // revision stop, `active_revision` set). A full stop also drops the
+  // deployment's other pending tasks so a queued LIST/EXTEND does not undo it,
+  // sparing a LIST in flight, which drains to record what landed. A revision
+  // stop touches no task: a LIST of a superseded revision is dropped when due.
+  const retiresScope = !task.limit && !task.job;
+  if (retiresScope && !task.active_revision) {
     await getRepository("tasks").delete({
       deploymentId: task.deploymentId,
-      task: { $ne: "STOP" },
-      ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),
+      task: { $ne: TaskType.STOP },
+      $nor: LIST_IN_FLIGHT,
     });
   }
 
@@ -111,22 +117,36 @@ export async function runStopTask(
     return { outcome: "RETRY", successCount: stoppedJobs.length, retryAfterMs: delayMs };
   }
 
-  // Full-stop self-heal: a LIST already in flight when the stop began can list a
-  // job AFTER the stop-set was frozen. That straggler — an active job NOT in the
-  // frozen targets — isn't in this batch, so reschedule the stop (idempotently) to
-  // sweep it; `jobAllActiveJobsStop` then flips the deployment to STOPPED once the
-  // count hits zero. Bounded: the housekeeping + STOPPING status block new LIST
-  // tasks, so stragglers come only from already-in-flight lists and drain.
-  // Excluding the frozen targets avoids looping on just-stopped jobs whose DB
-  // state still lags behind the on-chain settle.
-  if (!task.limit && !task.job) {
-    const stragglers = await jobsCollection.countDocuments({
-      deployment: task.deploymentId,
-      state: { $in: [JobState.QUEUED, JobState.RUNNING] },
-      job: { $nin: stopTargets },
-    });
-    if (stragglers > 0) {
-      await scheduleTask(db, TaskType.STOP, task.deploymentId, task.deployment.status, new Date(), {
+  // Self-heal: a LIST already in flight when the stop began can record a job
+  // AFTER the stop-set was frozen. That straggler — an active job in this
+  // stop's scope NOT in the frozen targets — isn't in this batch, and a LIST
+  // still draining may record more; either reschedules the stop (idempotently,
+  // once the drain is due) to sweep them. `jobAllActiveJobsStop` then flips a
+  // stopping deployment to STOPPED once the count hits zero. Bounded: nothing
+  // new is listed once the deployment stops or the revision is superseded, so
+  // stragglers come only from lists already in flight. Excluding the frozen
+  // targets avoids looping on just-stopped jobs whose DB state still lags
+  // behind the on-chain settle. A revision stop's scope is the other
+  // revisions, so the new revision's jobs and lists never count.
+  if (retiresScope) {
+    const otherRevisions = task.active_revision ? { $ne: task.active_revision } : undefined;
+    const [stragglers, draining] = await Promise.all([
+      jobsCollection.countDocuments({
+        deployment: task.deploymentId,
+        state: { $in: [JobState.QUEUED, JobState.RUNNING] },
+        job: { $nin: stopTargets },
+        ...(otherRevisions && { revision: otherRevisions }),
+      }),
+      tasks.findOne(
+        { deploymentId: task.deploymentId, $or: LIST_IN_FLIGHT, ...(otherRevisions && { active_revision: otherRevisions }) },
+        { sort: { due_at: 1 }, projection: { due_at: 1 } }
+      ),
+    ]);
+    if (stragglers > 0 || draining) {
+      const due = new Date(Math.max(Date.now(), draining?.due_at.getTime() ?? 0));
+      await scheduleTask(db, TaskType.STOP, task.deploymentId, task.deployment.status, due, {
+        active_revision: task.active_revision || undefined,
+        reason: task.active_revision ? "revision" : "stop",
         idempotent: true,
       });
     }

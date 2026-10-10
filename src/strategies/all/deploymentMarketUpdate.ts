@@ -27,7 +27,8 @@ import {
  * the deployment's market at claim time, so whatever lists next posts on the
  * new one:
  *   - SIMPLE / SIMPLE-EXTEND have no reconciliation of their own, so one LIST
- *     for the stopped count is queued here, ahead of the stops.
+ *     for the stopped count is queued here, ahead of the stops — once, however
+ *     often the change event is delivered while it is pending.
  *   - INFINITE refills each stopped replica through
  *     `infiniteJobStateCompletedOrStopUpdate`; a LIST here would overshoot.
  *   - SCHEDULED lists on its cron; the pending firing picks up the new market.
@@ -56,6 +57,8 @@ export const deploymentMarketUpdate: StrategyListener<DeploymentDocument> = [
     ) {
       await scheduleTask(db, TaskType.LIST, id, status, new Date(), {
         limit: displaced.length,
+        reason: "market",
+        idempotent: true,
       });
     }
 

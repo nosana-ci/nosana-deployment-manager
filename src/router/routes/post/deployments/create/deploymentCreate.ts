@@ -11,6 +11,7 @@ import { getOrCreateVault, storeVaultDocument, VaultNotFoundError } from "../../
 import {
   createDeployment,
   hasExposedPorts,
+  startDeploymentUpdate,
 } from "./deploymentCreate.factory.js";
 
 import type {
@@ -103,7 +104,7 @@ export const deploymentCreateHandler: RouteHandler<{
       if (req.body.autostart) {
         await db.deployments.updateOne(
           { id: deployment.id, owner: userId },
-          { $set: { status: DeploymentStatus.STARTING, updated_at: created_at } },
+          startDeploymentUpdate(created_at),
           { session },
         );
       }

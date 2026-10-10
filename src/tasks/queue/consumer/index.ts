@@ -6,10 +6,12 @@ import { getRepository } from "../../../repositories/index.js";
 import { runTask } from "./runTask.js";
 import { claimTasks, enrichClaimedTasks } from "../claim/index.js";
 import { acquireDeploymentLock, getDeploymentLocks, releaseDeploymentLock } from "../lock/index.js";
+import { checkTaskWanted, isListInFlight } from "../wanted/index.js";
 import {
   abandonOverCap,
   abandonInflightExhausted,
   deleteCompletedTask,
+  dropUnwantedTask,
   incrementAttempt,
   parkTask,
   releaseTaskToPending,
@@ -153,16 +155,19 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       // `attempts` is the count of prior real dispatches (bumped post-lock), so
       // the cap is `>=`: a task that has already run `task_max_attempts` times is
       // abandoned rather than dispatched again.
-      if (task.attempts >= task_max_attempts) {
-        await abandonOverCap(tasksRepository, deployments, task);
-        continue;
-      }
+      const overCap = task.attempts >= task_max_attempts;
       // Separate, more generous bound on legitimate in-flight retries / retryable
       // task errors (which don't touch `attempts`): exhausting a *finite* cap
       // abandons the deployment to ERROR. `0` disables the cap — retry forever at
       // the capped cooldown.
-      if (task_max_inflight_retries > 0 && (task.inflight_retries ?? 0) >= task_max_inflight_retries) {
-        await abandonInflightExhausted(tasksRepository, deployments, task);
+      const exhausted =
+        task_max_inflight_retries > 0 && (task.inflight_retries ?? 0) >= task_max_inflight_retries;
+      if (overCap || exhausted) {
+        // ERROR means a wanted task failed. One the deployment no longer wants
+        // (a drain included) says nothing about it: dropped, status untouched.
+        if (!(await checkTaskWanted(task))) await dropUnwantedTask(tasksRepository, task, consumerId);
+        else if (overCap) await abandonOverCap(tasksRepository, deployments, task);
+        else await abandonInflightExhausted(tasksRepository, deployments, task);
         continue;
       }
       survivors.push(task);
@@ -189,8 +194,21 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
 
       // Count the attempt only now that the lock is held and we will actually
       // run it, so lock contention never burns an attempt (no undo needed) and
-      // `attempts` means exactly "real dispatches".
-      await incrementAttempt(collection, task._id, consumerId);
+      // `attempts` means exactly "real dispatches". The write is fenced on our
+      // claim: a task deleted or reclaimed since is not ours to run.
+      if (!(await incrementAttempt(collection, task._id, consumerId))) {
+        await releaseDeploymentLock(locks, task.deploymentId, consumerId).catch(() => {});
+        continue;
+      }
+
+      // Judged still wanted against the deployment as it is now, with the lock
+      // held. A LIST in flight runs anyway, to record what landed: it re-checks
+      // before signing anything new, and drains instead.
+      if (!isListInFlight(task) && !(await checkTaskWanted(task))) {
+        await dropUnwantedTask(tasksRepository, task, consumerId);
+        await releaseDeploymentLock(locks, task.deploymentId, consumerId).catch(() => {});
+        continue;
+      }
 
       dispatch(task);
     }

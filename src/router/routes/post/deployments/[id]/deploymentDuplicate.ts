@@ -10,7 +10,7 @@ import type {
   DeploymentDuplicateSuccess,
 } from "../../../../schema/post/index.schema.js";
 
-import { duplicateDeployment } from "../create/deploymentCreate.factory.js";
+import { duplicateDeployment, startDeploymentUpdate } from "../create/deploymentCreate.factory.js";
 
 export const deploymentDuplicateHandler: RouteHandler<{
   Body: DeploymentDuplicateBody;
@@ -62,7 +62,7 @@ export const deploymentDuplicateHandler: RouteHandler<{
     if (req.body.autostart) {
       await db.deployments.updateOne(
         { id: deployment.id, owner: userId },
-        { $set: { status, updated_at: created_at } }
+        startDeploymentUpdate(created_at)
       );
     }
 

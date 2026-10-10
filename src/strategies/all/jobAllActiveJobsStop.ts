@@ -8,24 +8,28 @@ import { isSimpleOrSimpleExtendedDeployment } from "../utils/isSimpleOrSimpleExt
 import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFields, JobState, TaskDocument, TaskType } from "../../types/index.js";
 
 /**
- * Housekeeping when a job settles: drops the job's own pending tasks, and for
- * SIMPLE / SIMPLE-EXTEND (or any deployment being STOPPING) flips the
- * deployment to STOPPED once no active job is left.
+ * Housekeeping when a job settles: drops the job's own pending EXTEND/STOP
+ * tasks, and for SIMPLE / SIMPLE-EXTEND (or any deployment being STOPPING)
+ * flips the deployment to STOPPED once no active job is left.
  *
  * A RUNNING deployment with a LIST still queued or in flight is NOT flipped:
  * replacements are on their way (a market swap, a revision swap, an upscale)
  * and would otherwise land in a deployment already marked STOPPED. Only
  * RUNNING is guarded — a STOPPING deployment swept its lists in the STOP
  * task's housekeeping, and must still settle to STOPPED.
+ *
+ * A LIST keyed on the job (an INFINITE rotation) is left alone: it may be about
+ * to replace the job, which `infiniteJobStateCompletedOrStopUpdate` decides.
  */
 export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
   async ({ job, deployment: jobDeployment }, db) => {
-    TasksRepository.delete({
+    await TasksRepository.delete({
       deploymentId: jobDeployment,
       job: {
         $eq: job,
       },
+      task: { $ne: TaskType.LIST },
     });
 
     const deployment = await findDeployment(db, jobDeployment);

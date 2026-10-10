@@ -6,9 +6,10 @@ vi.mock("../../../config/index.js", () => ({ getConfig: () => ({ confidential_ip
 
 import { resolveListDefinitionHash } from "./resolveDefinitionHash.js";
 
-function makeTask(over: { confidential?: boolean }): OutstandingTasksDocument {
+function makeTask(over: { confidential?: boolean; active_revision?: number }): OutstandingTasksDocument {
   return {
     deploymentId: "dep-1",
+    active_revision: over.active_revision,
     deployment: { confidential: over.confidential ?? false, active_revision: 2 },
     revisions: [
       { revision: 1, ipfs_definition_hash: "QmRev1" },
@@ -24,6 +25,11 @@ describe("resolveListDefinitionHash", () => {
 
   it("uses the active revision's pin (which already embeds any SSH keys)", () => {
     expect(resolveListDefinitionHash(makeTask({}))).toBe("QmRev2");
+  });
+
+  it("uses the pin of the revision the task lists, never another one's", () => {
+    // The deployment moved to revision 2 after this task froze revision 1.
+    expect(resolveListDefinitionHash(makeTask({ active_revision: 1 }))).toBe("QmRev1");
   });
 
   it("fails when the active revision is missing", () => {

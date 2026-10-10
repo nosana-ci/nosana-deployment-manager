@@ -2,6 +2,7 @@ import type { RouteHandler } from "fastify";
 
 import { ErrorMessages } from "../../../../../errors/index.js";
 import { DeploymentStatus } from "../../../../../types/index.js";
+import { startDeploymentUpdate } from "../create/deploymentCreate.factory.js";
 
 import type {
   DeploymentStartSuccess,
@@ -32,12 +33,7 @@ export const deploymentStartHandler: RouteHandler<{
     const updated_at = new Date();
     const { acknowledged } = await db.deployments.updateOne(
       { id: { $eq: deployment.id }, owner: { $eq: userId } },
-      {
-        $set: {
-          status: DeploymentStatus.STARTING,
-          updated_at,
-        },
-      }
+      startDeploymentUpdate(updated_at)
     );
 
     if (!acknowledged) {

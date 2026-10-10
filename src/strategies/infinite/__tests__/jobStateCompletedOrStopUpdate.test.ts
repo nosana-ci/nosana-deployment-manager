@@ -8,6 +8,7 @@ vi.mock('../../../repositories/index.js', () => ({
   DeploymentsRepository: { update: vi.fn(), collection: { updateOne: vi.fn() } },
   EventsRepository: { create: vi.fn() },
   JobsRepository: { findAll: vi.fn(), count: vi.fn() },
+  TasksRepository: { delete: vi.fn(), findOne: vi.fn(), collection: { updateOne: vi.fn() } },
   withTransaction: vi.fn(async (fn: (session: unknown) => Promise<unknown>) => fn({ __fakeSession: true })),
 }));
 
@@ -16,7 +17,7 @@ import { DeploymentStrategy, DeploymentStatus, JobState, TaskType, JobsDocumentF
 import type { Db } from 'mongodb';
 
 import { scheduleTask } from '../../../tasks/scheduleTask.js';
-import { DeploymentsRepository, EventsRepository, JobsRepository, withTransaction } from '../../../repositories/index.js';
+import { DeploymentsRepository, EventsRepository, JobsRepository, TasksRepository, withTransaction } from '../../../repositories/index.js';
 
 import { OnEvent } from '../../../client/listener/types.js';
 
@@ -43,6 +44,9 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
   const mockedJobsFindAll = vi.mocked(JobsRepository.findAll);
   const mockedJobsCount = vi.mocked(JobsRepository.count);
   const mockedWithTransaction = vi.mocked(withTransaction);
+  const mockedTasksDelete = vi.mocked(TasksRepository.delete);
+  const mockedTasksUpdateOne = vi.mocked(TasksRepository.collection.updateOne);
+  const mockedTasksFindOne = vi.mocked(TasksRepository.findOne);
 
   const mockJobDocument: JobsDocument = {
     job: 'job-123',
@@ -54,7 +58,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
     time_start: Math.floor(mockNow.getTime() / 1000),
     created_at: new Date(),
     updated_at: new Date(),
-    revision: 0
+    revision: 1
   }
 
   const baseDeployment = {
@@ -90,6 +94,10 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
     // Update succeeds by default — return a sentinel doc so the `if (!updated)` guard passes
     mockedDeploymentsUpdate.mockResolvedValue({ id: testDeployment } as never);
     mockedEventsCreate.mockResolvedValue({} as never);
+    // No rotation LIST pending for the job by default.
+    mockedTasksFindOne.mockResolvedValue(null);
+    mockedTasksUpdateOne.mockResolvedValue({ matchedCount: 1 } as never);
+    mockedTasksDelete.mockResolvedValue({ deletedCount: 0 } as never);
   });
 
   afterEach(() => {
@@ -176,7 +184,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 1 }
+          { limit: 1, reason: 'refill' }
         );
       });
 
@@ -191,7 +199,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 1 }
+          { limit: 1, reason: 'refill' }
         );
       });
 
@@ -206,7 +214,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 1 }
+          { limit: 1, reason: 'refill' }
         );
       });
 
@@ -217,10 +225,35 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
         expect(mockedJobsCount).toHaveBeenCalledWith({
           deployment: testJobDeployment,
+          revision: 1,
           state: {
             $in: [JobState.QUEUED, JobState.RUNNING],
           },
         });
+      });
+
+      it("refills the slot with the job's rotation LIST, made due now, rather than a second LIST", async () => {
+        mockedJobsCount.mockResolvedValue(2);
+        const rotationId = 'rotation-id';
+        mockedTasksFindOne.mockResolvedValue({ _id: rotationId, task: TaskType.LIST, active_revision: 1 } as never);
+
+        await handler(mockJobDocument, mockDb);
+
+        expect(mockedTasksFindOne).toHaveBeenCalledWith({ deploymentId: testDeployment, task: TaskType.LIST, job: 'job-123' });
+        expect(mockedTasksUpdateOne).toHaveBeenCalledWith({ _id: rotationId }, { $set: { due_at: mockNow } });
+        expect(scheduleTask).not.toHaveBeenCalled();
+        expect(mockedTasksDelete).not.toHaveBeenCalled();
+      });
+
+      it("does not count on a rotation the deployment no longer wants (from before a restart): it lists anew", async () => {
+        mockedJobsCount.mockResolvedValue(2);
+        mockFindOne.mockResolvedValue({ ...baseDeployment, strategy: DeploymentStrategy.INFINITE, run: 5 });
+        mockedTasksFindOne.mockResolvedValue({ _id: 'rotation-id', task: TaskType.LIST, active_revision: 1, run: 4 } as never);
+
+        await handler(mockJobDocument, mockDb);
+
+        expect(mockedTasksUpdateOne).not.toHaveBeenCalled();
+        expect(scheduleTask).toHaveBeenCalledWith(mockDb, TaskType.LIST, testDeployment, DeploymentStatus.RUNNING, mockNow, { limit: 1, reason: 'refill' });
       });
     });
 
@@ -233,6 +266,20 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         expect(scheduleTask).not.toHaveBeenCalled();
       });
 
+      it("withdraws the job's pending rotation LIST: its slot is gone", async () => {
+        mockedJobsCount.mockResolvedValue(3);
+
+        await handler(mockJobDocument, mockDb);
+
+        expect(mockedTasksDelete).toHaveBeenCalledWith({
+          deploymentId: testDeployment,
+          task: TaskType.LIST,
+          job: 'job-123',
+          status: 'PENDING',
+        });
+        expect(mockedTasksUpdateOne).not.toHaveBeenCalled();
+      });
+
       it('should NOT schedule task when running jobs exceed replicas', async () => {
         mockedJobsCount.mockResolvedValue(5); // 5 jobs, 3 replicas
 
@@ -240,6 +287,29 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
 
         expect(scheduleTask).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('a job of an older revision', () => {
+    beforeEach(() => {
+      mockFindOne.mockResolvedValue({ ...baseDeployment, strategy: DeploymentStrategy.INFINITE, active_revision: 2 });
+    });
+
+    it('is not refilled: the revision swap lists the new set', async () => {
+      mockedJobsCount.mockResolvedValue(0);
+
+      await handler(mockJobDocument, mockDb);
+
+      expect(scheduleTask).not.toHaveBeenCalled();
+      expect(mockedTasksUpdateOne).not.toHaveBeenCalled();
+    });
+
+    it('is not a startup failure, so repeated swaps cannot trip the fail-safe', async () => {
+      await handler({ ...mockJobDocument, state: JobState.STOPPED, startup_deadline: new Date(mockNow.getTime() - 60_000) }, mockDb);
+
+      expect(mockedDeploymentsUpdate).not.toHaveBeenCalled();
+      expect(mockedEventsCreate).not.toHaveBeenCalled();
+      expect(scheduleTask).not.toHaveBeenCalled();
     });
   });
 
@@ -267,6 +337,13 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
       // The rapid heuristic reads COMPLETED jobs only, and these are STOPPED —
       // asking it would always answer "not rapid".
       expect(mockedJobsFindAll).not.toHaveBeenCalled();
+      // The throttled LIST replaces the job, so its rotation is withdrawn.
+      expect(mockedTasksDelete).toHaveBeenCalledWith({
+        deploymentId: testDeployment,
+        task: TaskType.LIST,
+        job: 'job-123',
+        status: 'PENDING',
+      });
       expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
         { id: testDeployment },
         { rapid_streak: 1, next_retry_at: new Date(mockNow.getTime() + 60_000) },
@@ -294,7 +371,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         testDeployment,
         DeploymentStatus.RUNNING,
         due,
-        { limit: 1, idempotent: true },
+        { limit: 1, reason: 'refill', idempotent: true },
       );
     });
 
@@ -331,7 +408,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         testDeployment,
         DeploymentStatus.RUNNING,
         mockNow,
-        { limit: 1 },
+        { limit: 1, reason: 'refill' },
       );
     });
   });
@@ -380,7 +457,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         testDeployment,
         DeploymentStatus.RUNNING,
         due,
-        { limit: 1, idempotent: true },
+        { limit: 1, reason: 'refill', idempotent: true },
       );
       expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
         { id: testDeployment },
@@ -412,7 +489,7 @@ describe('infiniteJobStateCompletedOrStopUpdate', () => {
         testDeployment,
         DeploymentStatus.RUNNING,
         due,
-        { limit: 1, idempotent: true },
+        { limit: 1, reason: 'refill', idempotent: true },
       );
       expect(mockedDeploymentsUpdate).toHaveBeenCalledWith(
         { id: testDeployment },

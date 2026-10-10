@@ -1,4 +1,5 @@
 import { generateKeyPairSigner } from "@solana/signers";
+import type { UpdateFilter } from "mongodb";
 import { createHash, getExposeIdHash, getExposePorts } from "@nosana/kit";
 import type { JobDefinition, Operation, OperationArgsMap } from "@nosana/kit";
 
@@ -16,6 +17,15 @@ import {
   type DeploymentDocument,
   type DeploymentDocumentBase,
 } from "../../../../../types/index.js";
+
+/**
+ * The write that starts a deployment: STARTING and a new run (see
+ * `DeploymentDocumentBase.run`), in one atomic update. Every path that starts
+ * a deployment uses it, so no start can leave the run behind.
+ */
+export function startDeploymentUpdate(updated_at: Date): UpdateFilter<DeploymentDocument> {
+  return { $set: { status: DeploymentStatus.STARTING, updated_at }, $inc: { run: 1 } };
+}
 
 export function createDeploymentRevisionEndpoints(
   deployment: string,

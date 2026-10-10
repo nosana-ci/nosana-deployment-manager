@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 
-import { createCollectionListener } from "./index.js";
+import { createCollectionListener, RESUME_TOKENS_COLLECTION, RESUME_TOKEN_SAVE_INTERVAL_MS } from "./index.js";
 
 import type { Db } from "mongodb";
 
@@ -53,9 +53,27 @@ function createFakeStream(): FakeStream {
   return stream;
 }
 
-function createFakeDb(stream: FakeStream): Db {
-  const watch = vi.fn(() => stream);
-  return { collection: () => ({ watch }) } as unknown as Db;
+/** The resume-token checkpoints: none saved unless a test says otherwise. */
+function createFakeCheckpoints(initial?: unknown) {
+  const saved = { token: initial };
+  return {
+    findOne: vi.fn(async () => (saved.token === undefined ? null : { _id: "deployments", token: saved.token })),
+    updateOne: vi.fn(async () => ({ acknowledged: true })),
+    deleteOne: vi.fn(async () => {
+      saved.token = undefined;
+      return { acknowledged: true };
+    }),
+  };
+}
+
+function createFakeDb(
+  stream: FakeStream,
+  checkpoints = createFakeCheckpoints(),
+  watch = vi.fn<(...args: unknown[]) => FakeStream>(() => stream)
+): Db {
+  return {
+    collection: (name: string) => (name === RESUME_TOKENS_COLLECTION ? checkpoints : { watch }),
+  } as unknown as Db;
 }
 
 async function flush(): Promise<void> {
@@ -299,6 +317,140 @@ describe("createCollectionListener", () => {
     stream.fail(new Error("upstream failure"));
 
     await expect(started).rejects.toThrow("upstream failure");
+  });
+
+  it("keeps running when a callback fails, so a failing event can never crash-loop a resumed stream", async () => {
+    const stream = createFakeStream();
+    const db = createFakeDb(stream);
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const after = vi.fn();
+    const listener = createCollectionListener("deployments", db);
+    listener.addListener("insert", async () => {
+      throw new Error("callback failure");
+    });
+    listener.addListener("insert", () => {
+      throw new Error("sync failure");
+    });
+    listener.addListener("insert", after);
+
+    const started = listener.start();
+    stream.push({ operationType: "insert", fullDocument: { _id: "a" } });
+    stream.push({ operationType: "insert", fullDocument: { _id: "b" } });
+    await flush();
+
+    expect(after).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenCalledWith("[listener] a deployments callback failed", expect.any(Error));
+
+    await listener.stop();
+    await started;
+    error.mockRestore();
+  });
+
+  describe("resume tokens", () => {
+    // The fake stream exposes the driver's `resumeToken`: the position delivered so far.
+    const withToken = (stream: FakeStream, token: unknown) => Object.assign(stream, { resumeToken: token });
+
+    it("resumes after the checkpointed position", async () => {
+      const stream = createFakeStream();
+      const watch = vi.fn<(...args: unknown[]) => FakeStream>(() => stream);
+      const db = createFakeDb(stream, createFakeCheckpoints({ _data: "t1" }), watch);
+
+      const listener = createCollectionListener("deployments", db);
+      const started = listener.start();
+      await flush();
+
+      expect(watch).toHaveBeenCalledWith([], { fullDocument: "updateLookup", resumeAfter: { _data: "t1" } });
+
+      await listener.stop();
+      await started;
+    });
+
+    it("starts from now when there is no checkpoint", async () => {
+      const stream = createFakeStream();
+      const watch = vi.fn<(...args: unknown[]) => FakeStream>(() => stream);
+      const db = createFakeDb(stream, createFakeCheckpoints(), watch);
+
+      const listener = createCollectionListener("deployments", db);
+      const started = listener.start();
+      await flush();
+
+      expect(watch).toHaveBeenCalledWith([], { fullDocument: "updateLookup" });
+
+      await listener.stop();
+      await started;
+    });
+
+    it("checkpoints the delivered position on an interval and on stop, only when it moved", async () => {
+      vi.useFakeTimers();
+      const stream = withToken(createFakeStream(), { _data: "t2" });
+      const checkpoints = createFakeCheckpoints();
+      const db = createFakeDb(stream, checkpoints);
+
+      const listener = createCollectionListener("deployments", db);
+      const started = listener.start();
+      await vi.advanceTimersByTimeAsync(RESUME_TOKEN_SAVE_INTERVAL_MS);
+
+      expect(checkpoints.updateOne).toHaveBeenCalledExactlyOnceWith(
+        { _id: "deployments" },
+        { $set: { token: { _data: "t2" }, updated_at: expect.any(Date) } },
+        { upsert: true }
+      );
+
+      await vi.advanceTimersByTimeAsync(RESUME_TOKEN_SAVE_INTERVAL_MS);
+      expect(checkpoints.updateOne).toHaveBeenCalledOnce(); // nothing new delivered
+
+      withToken(stream, { _data: "t3" });
+      await listener.stop();
+      await started;
+      expect(checkpoints.updateOne).toHaveBeenLastCalledWith(
+        { _id: "deployments" },
+        { $set: { token: { _data: "t3" }, updated_at: expect.any(Date) } },
+        { upsert: true }
+      );
+      vi.useRealTimers();
+    });
+
+    it("starts from now, dropping the checkpoint, when the stream can no longer resume from it", async () => {
+      const stale = createFakeStream();
+      const fresh = createFakeStream();
+      const watch = vi.fn().mockReturnValueOnce(stale).mockReturnValueOnce(fresh);
+      const checkpoints = createFakeCheckpoints({ _data: "expired" });
+      const db = createFakeDb(fresh, checkpoints, watch);
+      const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const onInsert = vi.fn();
+      const listener = createCollectionListener("deployments", db);
+      listener.addListener("insert", onInsert);
+      const started = listener.start();
+      stale.fail(Object.assign(new Error("resume point may no longer be in the oplog"), { code: 286 }));
+      await flush();
+
+      expect(checkpoints.deleteOne).toHaveBeenCalledWith({ _id: "deployments" });
+      expect(watch).toHaveBeenLastCalledWith([], { fullDocument: "updateLookup" });
+
+      fresh.push({ operationType: "insert", fullDocument: { _id: "a" } });
+      await flush();
+      expect(onInsert).toHaveBeenCalledOnce();
+
+      await listener.stop();
+      await expect(started).resolves.toBeUndefined();
+      error.mockRestore();
+    });
+
+    it("still fails on an error after events were delivered", async () => {
+      const stream = createFakeStream();
+      const db = createFakeDb(stream, createFakeCheckpoints({ _data: "t1" }));
+
+      const listener = createCollectionListener("deployments", db);
+      listener.addListener("insert", vi.fn());
+      const started = listener.start();
+      stream.push({ operationType: "insert", fullDocument: { _id: "a" } });
+      await flush();
+      stream.fail(new Error("upstream failure"));
+
+      await expect(started).rejects.toThrow("upstream failure");
+    });
   });
 
   it("rejects construction with an invalid collection name", () => {

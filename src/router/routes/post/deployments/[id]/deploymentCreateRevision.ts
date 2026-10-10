@@ -23,10 +23,17 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
   const userId = req.headers["x-user-id"];
 
   try {
+    // Numbered after the highest revision there is, not the active one: after
+    // a rollback the active revision's successor already exists.
+    const latest = await db.revisions.findOne(
+      { deployment: deployment.id },
+      { sort: { revision: -1 }, projection: { revision: 1 } }
+    );
+
     // `ssh` never lands on the revision: keys submitted with the definition are
     // applied to the deployment instead (omitted = keep the current keys, whose
     // merged pin is recomputed against this new definition).
-    const { revision, endpoints, ssh_public_keys } = await createNewDeploymentRevision(deployment.active_revision, deployment.id, deployment.vault, jobDefinition, {
+    const { revision, endpoints, ssh_public_keys } = await createNewDeploymentRevision(latest?.revision ?? deployment.active_revision, deployment.id, deployment.vault, jobDefinition, {
       confidential: deployment.confidential,
       currentPublicKeys: deployment.ssh_public_keys,
     });
@@ -40,7 +47,7 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
     }
 
     const updated_at = new Date();
-    const { acknowledged } = await db.deployments.updateOne(
+    const { matchedCount } = await db.deployments.updateOne(
       {
         id: { $eq: deployment.id },
         owner: { $eq: userId },
@@ -55,9 +62,11 @@ export const deploymentCreateRevisionHandler: RouteHandler<{
       }
     );
 
-    if (!acknowledged) {
-      res.status(500).send({
-        error: ErrorMessages.deployments.FAILED_TO_UPDATE_SCHEDULE,
+    // The deployment went away under the request: so does its new revision.
+    if (matchedCount === 0) {
+      await db.revisions.deleteOne({ deployment: deployment.id, revision: revision.revision });
+      res.status(404).send({
+        error: ErrorMessages.deployments.NOT_FOUND,
       });
       return;
     }

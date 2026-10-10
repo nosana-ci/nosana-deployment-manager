@@ -11,10 +11,12 @@ import {
   type JobsDocument,
   JobsDocumentFields,
   JobState,
+  TaskStatus,
   TaskType,
 } from "../../types/index.js";
-import { DeploymentsRepository, EventsRepository, JobsRepository, withTransaction } from "../../repositories/index.js";
+import { DeploymentsRepository, EventsRepository, JobsRepository, TasksRepository, withTransaction } from "../../repositories/index.js";
 import { allJobsRapid } from "./utils/allJobsRapid.js";
+import { isTaskWanted } from "../../tasks/queue/wanted/index.js";
 import { getConfig } from "../../config/index.js";
 /**
  * Listener triggered when an infinite deployment job completes or stops.
@@ -34,11 +36,22 @@ import { getConfig } from "../../config/index.js";
  * deployment-initiated. The marker is the evidence: `armStartupDeadline` sets it
  * when the clock starts and `disarmStartupDeadline` clears it the moment the
  * tunnel comes up, so it survives to here only on a job that never came online.
+ *
+ * Only a job of the active revision is replaced. One of an older revision ends
+ * because a revision swap retires it: the swap's own LIST lists the new set, so
+ * it is neither refilled nor a startup failure.
+ *
+ * The ending job's slot is refilled by the job's own rotation LIST when one is
+ * still wanted (see `infiniteJobRunningUpdate`): made due now, its reservation
+ * request keeps its place in host-manager's queue, so a rotation that was
+ * waiting for a spare node takes the node this job frees. When the slot is not
+ * refilled that way (throttled, or no longer wanted after a downscale), the
+ * rotation LIST goes with the job.
  */
 export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocument> =
   [
     OnEvent.UPDATE,
-    async ({ deployment: jobDeployment, startup_deadline }, db) => {
+    async ({ deployment: jobDeployment, job, revision, startup_deadline }, db) => {
       const {
         rapid_completion_job_count,
         rapid_completion_threshold_minutes,
@@ -46,6 +59,12 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       } = getConfig();
       const deployment = await findDeployment(db, jobDeployment);
       if (!deployment || !isActiveInfiniteDeployment(deployment)) return;
+      if (revision !== deployment.active_revision) return;
+
+      // This job's rotation LIST. Withdrawn only while pending, so one already
+      // running is never pulled from under its consumer.
+      const rotation = { deploymentId: deployment.id, task: TaskType.LIST, job };
+      const pendingRotation = { ...rotation, status: TaskStatus.PENDING };
 
       // Still armed on a settled job: it was stopped for never opening its tunnel.
       // Counts as a round on its own, so the query below is skipped.
@@ -65,6 +84,9 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
       })
 
       if (startupFailed || allJobsRapid(recentJobs)) {
+        // The round's throttled LIST below replaces this job instead.
+        await TasksRepository.delete(pendingRotation);
+
         const streak = deployment.rapid_streak ?? 0;
 
         // One round per throttled LIST: the idempotent insert is the round
@@ -77,6 +99,7 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
         const due = new Date(Date.now() + delayMs);
         const created = await scheduleTask(db, TaskType.LIST, deployment.id, deployment.status, due, {
           limit: 1,
+          reason: "refill",
           idempotent: true,
         });
         if (!created) return;
@@ -135,22 +158,34 @@ export const infiniteJobStateCompletedOrStopUpdate: StrategyListener<JobsDocumen
         );
       }
 
-      // --- Schedule replacement job if under-provisioned ---
+      // --- Refill the slot if under-provisioned ---
       const runningJobsCount = await JobsRepository.count({
         deployment: jobDeployment,
+        revision: deployment.active_revision,
         state: { $in: [JobState.QUEUED, JobState.RUNNING] },
       });
 
-      if (runningJobsCount < deployment.replicas) {
-        scheduleTask(
-          db,
-          TaskType.LIST,
-          deployment.id,
-          deployment.status,
-          new Date(),
-          { limit: 1 },
-        );
+      if (runningJobsCount >= deployment.replicas) {
+        await TasksRepository.delete(pendingRotation);
+        return;
       }
+
+      // The rotation refills the slot only while it is still wanted (one from
+      // before a restart is not); one already running refills it as it is.
+      const existing = await TasksRepository.findOne(rotation);
+      if (existing && isTaskWanted(existing, deployment, true)) {
+        await TasksRepository.collection.updateOne({ _id: existing._id }, { $set: { due_at: new Date() } });
+        return;
+      }
+
+      await scheduleTask(
+        db,
+        TaskType.LIST,
+        deployment.id,
+        deployment.status,
+        new Date(),
+        { limit: 1, reason: "refill" },
+      );
     },
     {
       fields: [JobsDocumentFields.STATE],

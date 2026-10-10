@@ -14,6 +14,19 @@ export const TaskType = {
 export type TaskType = (typeof TaskType)[keyof typeof TaskType];
 
 /**
+ * Why a task without a job was scheduled, so an idempotent re-schedule only
+ * collapses into a task of the same purpose (a trim never absorbs a market
+ * swap's LIST because both happen to list one job). A task keyed on its `job`
+ * needs none: the job already says what it is for.
+ *   - stop      — a full stop: the deployment is stopping or torn down.
+ *   - revision  — a revision swap (its STOP and its LIST).
+ *   - market    — jobs replaced on a new market.
+ *   - overcount — an INFINITE deployment trimmed back to `replicas`.
+ *   - refill    — an ended INFINITE job's slot refilled.
+ */
+export type TaskReason = "stop" | "revision" | "market" | "overcount" | "refill";
+
+/**
  * Lifecycle status of a task document.
  *
  * Phase 1 uses only PENDING (claimable) and PROCESSING (claimed, lease held).
@@ -112,7 +125,21 @@ export type TaskDocument = {
   due_at: Date;
   deploymentId: string;
   tx: string | undefined | null;
+  /**
+   * The revision the task acts for, fixed when it is scheduled. A LIST always
+   * carries one (`scheduleTask` takes the deployment's active revision when the
+   * caller passes none) and lists that revision's definition under its label;
+   * a STOP carrying one retires the jobs of every OTHER revision. The task is
+   * wanted only while its revision is the active one (see `isTaskWanted`).
+   */
   active_revision?: number;
+  /**
+   * The deployment run a LIST was scheduled in (see `DeploymentDocument.run`),
+   * stamped by `scheduleTask`. The LIST is wanted only in that run.
+   */
+  run?: number;
+  /** See {@link TaskReason}. Part of the idempotency key. */
+  reason?: TaskReason;
   limit?: number;
   job?: string;
   /**
@@ -163,6 +190,13 @@ export type TaskDocument = {
    * the same definition.
    */
   ipfs_definition_hash?: string;
+  /**
+   * When the API path first posted this LIST's assign batch, persisted before
+   * the post. From then on its jobs may land whatever happens to the
+   * deployment, so the task is drained to record them rather than dropped
+   * (see `isListInFlight`).
+   */
+  assign_posted_at?: Date;
   /** Latest node reservation of a LIST task (self-custody). */
   reservation?: TaskReservation;
   /** Pending reservation request of a LIST task, cleared once it is fulfilled. */
@@ -197,6 +231,7 @@ export type DeploymentLocksCollection = Collection<DeploymentLockDocument>;
  */
 export type OutstandingTasksDocument = Document &
   TaskDocument & {
+    _id: ObjectId;
     deployment: Omit<DeploymentDocument, "vault"> & {
       vault: VaultDocument;
     };

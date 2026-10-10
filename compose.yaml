@@ -18,6 +18,9 @@ x-dm-env: &dm-env
   # mock (testing/scenario/mocks/hostManagerMock.ts), started by the scenario run on the host.
   HOST_MANAGER_URL: "${HOST_MANAGER_URL:-http://host.docker.internal:3006}"
   HOST_MANAGER_API_KEY: "${HOST_MANAGER_API_KEY:-scenario-host-manager-key}"
+  # How long a LIST parks on a waiting reservation request before renewing it.
+  # The missed-webhook scenario wants it short (e.g. 10000).
+  RESERVATION_RENEW_MS: "${RESERVATION_RENEW_MS:-840000}"
   DEPLOYMENT_MANAGER_PORT: "${DEPLOYMENT_MANAGER_PORT:-3000}"
   # No value: pass through from the host only when set. `"${SOLANA_NETWORK}"`
   # would pass an empty string when unset, which defeats the `??` fallbacks in

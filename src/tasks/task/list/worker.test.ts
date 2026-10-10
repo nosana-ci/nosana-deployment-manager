@@ -38,7 +38,6 @@ async function runWorker(
   {
     useNosanaApiKey = false,
     nodes = [] as { node: string; market: string }[],
-    reservationEpoch = undefined as number | undefined,
     transactions = [] as unknown[],
   } = {}
 ): Promise<void> {
@@ -51,7 +50,6 @@ async function runWorker(
     count: nodes.length,
     startUnit: 3,
     nodes,
-    reservationEpoch,
   });
   state.useNosanaApiKey = useNosanaApiKey;
   vi.resetModules();
@@ -133,7 +131,7 @@ describe("LIST worker", () => {
     ]);
   });
 
-  it("API-key path has client-manager assign the whole hold under a reservation-scoped key", async () => {
+  it("API-key path has client-manager assign the whole hold under the task's assign key", async () => {
     state.assignBatch.mockResolvedValue({
       items: [
         { index: 0, status: "confirmed", tx: "tx-1", job: "job-1", run: "run-1" },
@@ -143,7 +141,6 @@ describe("LIST worker", () => {
 
     await runWorker(MARKET_A, {
       useNosanaApiKey: true,
-      reservationEpoch: 2,
       nodes: [
         { node: NODE_1, market: MARKET_A },
         { node: NODE_2, market: MARKET_B },
@@ -157,7 +154,7 @@ describe("LIST worker", () => {
           { ipfsHash: "QmDefinition", market: MARKET_B, timeout: 3600, node: NODE_2 },
         ],
       },
-      { idempotencyKey: "task-1:assign-2:0" }
+      { idempotencyKey: "task-1:assign:0" }
     );
     expect(state.assignMany).not.toHaveBeenCalled();
     expect(state.postMessage.mock.calls.map(([message]) => message)).toEqual([
@@ -177,7 +174,6 @@ describe("LIST worker", () => {
 
     await runWorker(MARKET_A, {
       useNosanaApiKey: true,
-      reservationEpoch: 0,
       nodes: [
         { node: NODE_1, market: MARKET_A },
         { node: NODE_2, market: MARKET_A },

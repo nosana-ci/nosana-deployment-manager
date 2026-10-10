@@ -84,7 +84,7 @@ export async function disarmStartupDeadline(
   deploymentId: string,
   job: string
 ): Promise<{ cancelled: boolean; startup: boolean }> {
-  const { deletedCount } = await TasksRepository.collection.deleteOne({
+  const { deletedCount } = await TasksRepository.delete({
     task: TaskType.STOP,
     deploymentId,
     job,

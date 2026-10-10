@@ -1,5 +1,6 @@
 import { findDeployment } from "../utils/shared.js";
 import { NosanaCollections } from "../../definitions/collection.js";
+import { TasksRepository } from "../../repositories/index.js";
 
 import { OnEvent, type StrategyListener } from "../../client/listener/types.js";
 import { isSimpleOrSimpleExtendedDeployment } from "../utils/isSimpleOrSimpleExtendedDeployment.js";
@@ -20,7 +21,7 @@ import { DeploymentDocument, DeploymentStatus, type JobsDocument, JobsDocumentFi
 export const jobAllActiveJobsStop: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
   async ({ job, deployment: jobDeployment }, db) => {
-    db.collection<TaskDocument>(NosanaCollections.TASKS).deleteMany({
+    TasksRepository.delete({
       deploymentId: jobDeployment,
       job: {
         $eq: job,

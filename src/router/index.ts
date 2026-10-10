@@ -9,7 +9,13 @@ import { getConfig } from "../config/index.js";
 import { authMiddleware, authJobHostMiddleware } from "./middleware/index.js";
 import { nosanaLogo } from "./ui/index.js";
 import { CollectionsNames } from "../definitions/collection.js";
-import { setupDeploymentsRoutes, setupJobsRoutes, setupStatsRoutes, setupVaultRoutes } from "./setup/index.js";
+import {
+  setupDeploymentsRoutes,
+  setupJobsRoutes,
+  setupStatsRoutes,
+  setupVaultRoutes,
+  setupWebhooksRoutes,
+} from "./setup/index.js";
 import { AppMode } from "../config/mode.js";
 
 import { addSchemas } from "./schema/index.schema.js";
@@ -169,6 +175,8 @@ export async function startDeploymentManagerApi(db: Db, mode: AppMode, metricsHa
   });
 
   setupStatsRoutes(server);
+  // Internal host-manager webhooks: no user auth, the shared host-manager key instead.
+  setupWebhooksRoutes(server);
 
   try {
     await server.ready();

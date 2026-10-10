@@ -1,6 +1,8 @@
-import { Collection, Db, WithId, ClientSession, MongoClient, Filter, FindOptions, MatchKeysAndValues, OptionalUnlessRequiredId, Document } from "mongodb";
+import { Collection, Db, WithId, ClientSession, MongoClient, Filter, FindOptions, MatchKeysAndValues, OptionalUnlessRequiredId, Document, DeleteResult } from "mongodb";
 
+import { cancelReservationRequest } from "../client/hostManager/index.js";
 import { CollectionsMap, NosanaCollections } from "../definitions/collection.js";
+import { TaskType, type TaskDocument } from "../types/index.js";
 import {
   executeKeysetPagination,
   combineFilters,
@@ -63,7 +65,7 @@ export type FilterBuilders<T extends Document> = {
 
 export type WriteOptions = { session?: ClientSession };
 
-type Repository<T extends Document = Document> = {
+export type Repository<T extends Document = Document> = {
   /**
    * The raw MongoDB collection. Escape hatch for custom/atomic operations not
    * covered by the methods below (e.g. `$inc`/`$push`/`arrayFilters` updates,
@@ -77,6 +79,8 @@ type Repository<T extends Document = Document> = {
   create: (doc: OptionalUnlessRequiredId<T>, options?: WriteOptions) => Promise<WithId<T>>;
   update: (filter: Filter<T>, update: Partial<T>, options?: WriteOptions) => Promise<WithId<T> | null>;
   createOrUpdate: (filter: Filter<T>, update: Partial<T>, options?: WriteOptions) => Promise<WithId<T> | null>;
+  /** Deletes every document matching `filter`. */
+  delete: (filter: Filter<T>, options?: WriteOptions) => Promise<DeleteResult>;
   findPaginated: (options: {
     baseFilter?: StrictFilter<T>;
     additionalFilters?: (Record<string, unknown> | undefined)[];
@@ -126,6 +130,9 @@ function createRepository<T extends Document = Document>(
         { ...options, upsert: true, returnDocument: "after" },
       );
     },
+    delete: async (filter: Filter<T>, options?: WriteOptions): Promise<DeleteResult> => {
+      return col.deleteMany(filter, options);
+    },
     findPaginated: async (options): Promise<KeysetPaginationResult<T>> => {
       const { baseFilter, additionalFilters = [], sortField, sortOrder, limit, cursor } = options;
 
@@ -158,6 +165,49 @@ function createRepository<T extends Document = Document>(
   };
 }
 
+/**
+ * The tasks repository's `delete` also releases what host-manager holds for the
+ * LIST tasks it deletes. Their reservation request is keyed by the task id, so
+ * however a task goes (completed, swept by a stop, a banned owner, the attempt
+ * caps) its request is cancelled and its unassigned holds freed now rather than
+ * at expiry. Best effort: the cancels are not awaited, and a failure is logged.
+ */
+function createTasksRepository(db: Db): Repository<TaskDocument> {
+  const repository = createRepository<TaskDocument>(db, NosanaCollections.TASKS);
+  return {
+    ...repository,
+    delete: async (filter, options) => {
+      // A filter naming another task type cannot match a LIST: nothing to release.
+      const mayMatchList = typeof filter.task !== "string" || filter.task === TaskType.LIST;
+      const held = mayMatchList
+        ? await repository.collection
+            .find(
+              {
+                $and: [
+                  filter,
+                  {
+                    task: TaskType.LIST,
+                    $or: [{ reservation_request: { $exists: true } }, { reservation: { $exists: true } }],
+                  },
+                ],
+              },
+              { projection: { _id: 1 }, session: options?.session }
+            )
+            .toArray()
+        : [];
+
+      const result = await repository.delete(filter, options);
+      for (const { _id } of held) {
+        const key = _id.toHexString();
+        cancelReservationRequest(key).catch((error: unknown) =>
+          console.error(`[reservations] failed to cancel the request of deleted task ${key}`, error)
+        );
+      }
+      return result;
+    },
+  };
+}
+
 let dbClient: MongoClient;
 let repositories: {
   [K in keyof CollectionsMap]: Repository<CollectionsMap[K]>
@@ -184,7 +234,7 @@ export function setRepository(client: MongoClient, db: Db): void {
     return repos;
   };
 
-  repositories = initRepositories<CollectionsMap>();
+  repositories = { ...initRepositories<CollectionsMap>(), tasks: createTasksRepository(db) };
 }
 
 

@@ -6,7 +6,7 @@ vi.mock("../../../../tasks/scheduleTask.js", () => ({
 }));
 
 vi.mock("../../../../repositories/index.js", () => ({
-  TasksRepository: { collection: { deleteOne: vi.fn() } },
+  TasksRepository: { delete: vi.fn() },
   JobsRepository: { collection: { updateOne: vi.fn(), findOneAndUpdate: vi.fn() } },
   FrpsEndpointStatusRepository: { findOne: vi.fn() },
 }));
@@ -33,7 +33,7 @@ const JOB_ID = "job-1";
 const DEADLINE = new Date("2026-07-21T12:05:00Z");
 
 const mockedScheduleTask = vi.mocked(scheduleTask);
-const mockedDeleteOne = vi.mocked(TasksRepository.collection.deleteOne);
+const mockedDeleteTasks = vi.mocked(TasksRepository.delete);
 const mockedJobUpdate = vi.mocked(JobsRepository.collection.updateOne);
 const mockedStatusFindOne = vi.mocked(FrpsEndpointStatusRepository.findOne);
 
@@ -58,7 +58,7 @@ describe("armStartupDeadline", () => {
     vi.setSystemTime(NOW);
     mockedScheduleTask.mockResolvedValue(true);
     mockedStatusFindOne.mockResolvedValue(null);
-    mockedDeleteOne.mockResolvedValue({ deletedCount: 1, acknowledged: true } as never);
+    mockedDeleteTasks.mockResolvedValue({ deletedCount: 1, acknowledged: true } as never);
   });
 
   afterEach(() => {
@@ -117,7 +117,7 @@ describe("armStartupDeadline", () => {
     it("disarms itself, so an already-online job is never stopped", async () => {
       await armStartupDeadline(db, deployment(), JOB_ID);
 
-      expect(mockedDeleteOne).toHaveBeenCalledExactlyOnceWith({
+      expect(mockedDeleteTasks).toHaveBeenCalledExactlyOnceWith({
         task: TaskType.STOP,
         deploymentId: DEPLOYMENT_ID,
         job: JOB_ID,

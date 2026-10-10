@@ -7,6 +7,8 @@ export * from "./deployments/[id]/deploymentStop.js";
 export * from "./deployments/[id]/deploymentAddSshKeys/index.js";
 // Jobs
 export * from "./jobs/[id]/jobResults.js";
+// Webhooks
+export * from "./webhooks/reservations.js";
 // Vaults
 export * from "./vaults/[id]/withdraw/index.js";
 export * from "./vaults/createSharedVault/createSharedVault.js";

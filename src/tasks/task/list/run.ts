@@ -4,6 +4,8 @@ import { VaultWorker } from "../../../worker/Worker.js";
 import { decryptWithKey } from "../../../vault/decrypt.js";
 import { getRepository } from "../../../repositories/index.js";
 import { reconcileUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
+import { scheduleTask } from "../../scheduleTask.js";
+import { retryCooldownMs } from "../../utils/cooldown.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
 import { resolveListDefinitionHash } from "./resolveDefinitionHash.js";
 import { reserveListNodes, type ReserveOutcome } from "./reserve.js";
@@ -24,6 +26,7 @@ import {
   OutstandingTasksDocument,
   ReservedNode,
   TaskRunResult,
+  TaskType,
   WorkerData,
 } from "../../../types/index.js";
 
@@ -79,7 +82,7 @@ export async function runListTask(
     );
   }
 
-  const spawnWorker = (nodes: ReservedNode[], startUnit: number, reservationEpoch?: number) =>
+  const spawnWorker = (nodes: ReservedNode[], startUnit: number) =>
     new VaultWorker<WorkerData>("../tasks/task/list/worker.js", {
       workerData: {
         task,
@@ -89,29 +92,24 @@ export async function runListTask(
         count: nodes.length,
         startUnit,
         nodes,
-        reservationEpoch,
       },
     });
 
   // Reserve the shortfall left after resuming prior records, and persist it
-  // (inside reserveListNodes) before the worker posts anything. Fewer nodes than
-  // jobs assigns what was reserved and waits out the cooldown for the rest, as
-  // does no node at all.
-  let reserveFailure: Exclude<ReserveOutcome, { kind: "reserved" }> | undefined;
+  // (inside reserveListNodes) before the worker posts anything. A request
+  // host-manager has to queue parks the task; fewer nodes than jobs assigns
+  // what was reserved and hands the rest to a new LIST task (see below).
+  let reserved: ReserveOutcome | undefined;
   const reserveAndSpawn = async (count: number, startUnit: number) => {
-    const reserved = await reserveListNodes(tasks, events, task, count, signal);
-    if (reserved.kind !== "reserved") {
-      reserveFailure = reserved;
-      return null;
-    }
-    if (reserved.nodes.length < count) retrySignal ??= { insufficientFunds: false };
-    if (reserved.nodes.length === 0) return null;
+    const outcome = await reserveListNodes(tasks, events, task, count, signal);
+    reserved = outcome;
+    if (outcome.kind !== "reserved") return null;
     // Self-custody signs one assign per unused node. The API-key path posts the
-    // whole hold under a key scoped to its epoch: a same-key resend must carry
-    // the same payload, and the worker skips the nodes already recorded.
+    // whole hold under the task's assign key: a same-key resend must carry the
+    // same payload, and the worker skips the nodes already recorded.
     return useNosanaApiKey
-      ? spawnWorker(reserved.reservation.nodes, startUnit, reserved.reservation.epoch)
-      : spawnWorker(reserved.nodes, startUnit);
+      ? spawnWorker(outcome.reservation.nodes, startUnit)
+      : spawnWorker(outcome.nodes, startUnit);
   };
 
   const result = await reconcileUnits({
@@ -126,12 +124,12 @@ export async function runListTask(
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
   // 422 / 404 from host-manager: the deployment's market or requirements can
   // never be reserved, so retrying cannot help.
-  if (reserveFailure?.kind === "fatal") {
-    await failListDeployment(events, deployments, task, reserveFailure.error);
+  if (reserved?.kind === "fatal") {
+    await failListDeployment(events, deployments, task, reserved.error);
     return { outcome: "FAILED", successCount: result.confirmed };
   }
   // 503 / no response: retry the same key after the cooldown.
-  if (reserveFailure?.kind === "retry") onListError(events, task, reserveFailure.error, setRetrySignal);
+  if (reserved?.kind === "retry") onListError(events, task, reserved.error, setRetrySignal);
   // A negative CM balance means this owner's credits were clawed back for foul
   // play — condemn the whole account (archive every deployment, delist their jobs)
   // rather than retry. Owner-wide, not just this deployment.
@@ -142,12 +140,21 @@ export async function runListTask(
   // A handled error (or an in-flight wait) reschedules the task with an escalating
   // cooldown instead of flipping the deployment to terminal ERROR — it stays
   // RUNNING while it retries. The errored unit re-signs via reconcile top-up.
-  // 409 (same key in flight) is an in-flight wait, like a CM IN_PROGRESS.
-  const inFlight = result.retry || reserveFailure?.kind === "in-progress";
-  if (shouldRetry({ ...result, retry: inFlight }, retrySignal)) {
+  if (shouldRetry(result, retrySignal)) {
     const delayMs = retryDelayMs(task, result, retrySignal);
     await applyRetryState(deployments, task.deploymentId, retrySignal, delayMs);
     return { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: delayMs };
+  }
+  // No capacity yet is not an error: host-manager holds the request and calls
+  // the webhook when nodes appear (which makes the task due at once). Park until
+  // the request needs renewing, without the error backoff or the retry caps, so
+  // the deployment stays RUNNING however long the market stays empty.
+  if (reserved?.kind === "waiting") return { outcome: "PARKED", successCount: result.confirmed };
+  // This task's one request is spent: whatever is still missing goes to a new
+  // LIST task with a request of its own, at the back of host-manager's queue.
+  const missing = target - result.confirmed;
+  if (missing > 0 && (reserved?.kind === "handoff" || reserved?.kind === "reserved")) {
+    await handOffShortfall(db, events, task, missing, reserved.kind === "handoff" && reserved.backoff);
   }
 
   await onListExit(task);
@@ -174,4 +181,36 @@ async function failListDeployment(
     { id: task.deploymentId, status: { $ne: DeploymentStatus.ARCHIVED } },
     { $set: { status: DeploymentStatus.ERROR } }
   );
+}
+
+/**
+ * Hand what this LIST still misses to a new LIST task, carrying what scopes the
+ * work: the job an INFINITE rotation replaces (so it is dropped with that job)
+ * and the revision (so a revision swap sweeps it). Created once per task
+ * (`handoff_of`), however often this one is reclaimed, and after the retry
+ * cooldown when this task got no node at all, so a chain of lapsed or expired
+ * requests cannot spin.
+ */
+async function handOffShortfall(
+  db: Db,
+  events: EventsCollection,
+  task: OutstandingTasksDocument,
+  missing: number,
+  backoff: boolean
+) {
+  const due = new Date(Date.now() + (backoff ? retryCooldownMs(0, false) : 0));
+  const created = await scheduleTask(db, TaskType.LIST, task.deploymentId, task.deployment.status, due, {
+    limit: missing,
+    job: task.job,
+    active_revision: task.active_revision,
+    handoff_of: task._id,
+  });
+  if (!created) return;
+  await events.insertOne({
+    deploymentId: task.deploymentId,
+    category: "Deployment",
+    type: "JOB_RESERVE_SHORTFALL",
+    message: `${missing} job(s) still need a node: requested again by a new LIST task`,
+    created_at: new Date(),
+  });
 }

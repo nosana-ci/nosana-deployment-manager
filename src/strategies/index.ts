@@ -1,6 +1,7 @@
 import {
   deploymentMarketUpdate,
   deploymentReplicaUpdate,
+  deploymentReservationTermsUpdate,
   deploymentRevisionUpdate,
   deploymentStatusStartingUpdate,
   deploymentStatusStoppingUpdate,
@@ -27,6 +28,7 @@ export const strategyListeners: StrategyListeners = {
   deployments: [
     deploymentMarketUpdate,
     deploymentReplicaUpdate,
+    deploymentReservationTermsUpdate,
     deploymentRevisionUpdate,
     deploymentStatusStartingUpdate,
     deploymentStatusStoppingUpdate,

@@ -1,6 +1,7 @@
 
 export * from "./deploymentMarketUpdate.js";
 export * from "./deploymentReplicaUpdate.js";
+export * from "./deploymentReservationTermsUpdate.js";
 export * from "./deploymentRevisionUpdate.js";
 export * from "./deploymentStatusStartingUpdate.js";
 export * from "./deploymentStatusStoppingUpdate.js";

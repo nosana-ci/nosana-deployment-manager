@@ -11,6 +11,7 @@ import {
   abandonInflightExhausted,
   deleteCompletedTask,
   incrementAttempt,
+  parkTask,
   releaseTaskToPending,
   rescheduleInflight,
 } from "../transitions/index.js";
@@ -39,12 +40,18 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
   // Keyed by the task _id hex string (NOT the ObjectId object) so lookups work
   // across the fresh ObjectId instances returned by each claim/enrich query.
   const inflight = new Map<string, InflightTask>();
-  const collection = getRepository("tasks").collection;
+  const tasksRepository = getRepository("tasks");
+  const collection = tasksRepository.collection;
   const deployments = getRepository("deployments").collection;
   const locks = getDeploymentLocks();
 
-  const { tasks_batch_size, task_lease_ms, task_max_attempts, task_max_inflight_retries } =
-    getConfig();
+  const {
+    tasks_batch_size,
+    task_lease_ms,
+    task_max_attempts,
+    task_max_inflight_retries,
+    reservation_renew_ms,
+  } = getConfig();
 
   const consumerId = `${os.hostname()}:${process.pid}`;
   let fetchInterval: NodeJS.Timeout | undefined;
@@ -61,7 +68,7 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
   ) => {
     await Promise.all([
       deleteDoc
-        ? deleteCompletedTask(collection, task._id, consumerId).catch((error) =>
+        ? deleteCompletedTask(tasksRepository, task._id, consumerId).catch((error) =>
             console.error("[tasks] failed to delete completed task", error)
           )
         : Promise.resolve(),
@@ -91,6 +98,14 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
     await teardown(task, result.successCount, "TIMEOUT", false);
   };
 
+  // LIST waiting on a host-manager reservation request: park it until the
+  // request needs renewing (the webhook makes it due sooner), counting neither an
+  // attempt nor an in-flight retry, then drop local state.
+  const parkWaitingTask = async (task: OutstandingTasksDocument, result: TaskRunResult) => {
+    await parkTask(collection, task._id, consumerId, reservation_renew_ms);
+    await teardown(task, result.successCount, "TIMEOUT", false);
+  };
+
   const dispatch = (task: OutstandingTasksDocument) => {
     const controller = new AbortController();
     inflight.set(task._id.toHexString(), { controller, task });
@@ -102,6 +117,7 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       .then((result) => {
         if (result.outcome === "ABORTED") return abandonInflight(task, result.successCount);
         if (result.outcome === "RETRY") return rescheduleInflightTask(task, result);
+        if (result.outcome === "PARKED") return parkWaitingTask(task, result);
         return finishTerminal(task, result);
       })
       .catch(async (error) => {
@@ -138,7 +154,7 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       // the cap is `>=`: a task that has already run `task_max_attempts` times is
       // abandoned rather than dispatched again.
       if (task.attempts >= task_max_attempts) {
-        await abandonOverCap(collection, deployments, task);
+        await abandonOverCap(tasksRepository, deployments, task);
         continue;
       }
       // Separate, more generous bound on legitimate in-flight retries / retryable
@@ -146,7 +162,7 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       // abandons the deployment to ERROR. `0` disables the cap — retry forever at
       // the capped cooldown.
       if (task_max_inflight_retries > 0 && (task.inflight_retries ?? 0) >= task_max_inflight_retries) {
-        await abandonInflightExhausted(collection, deployments, task);
+        await abandonInflightExhausted(tasksRepository, deployments, task);
         continue;
       }
       survivors.push(task);

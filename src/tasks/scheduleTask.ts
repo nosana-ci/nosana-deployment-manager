@@ -1,4 +1,4 @@
-import type { Db } from "mongodb";
+import type { Db, ObjectId } from "mongodb";
 
 import { getRepository } from "../repositories/index.js";
 import { DeploymentStatus, TaskStatus, TaskType } from "../types/index.js";
@@ -21,6 +21,12 @@ type ScheduleTaskOptions = Partial<{
    * per-deployment task lock serialises this, so the check needs no unique index.
    */
   idempotent?: boolean;
+  /**
+   * The LIST task whose shortfall this LIST takes over (see
+   * `TaskDocument.handoff_of`). Implies `idempotent`: at most one task is created
+   * per source task, so a reclaimed source never hands off twice.
+   */
+  handoff_of?: ObjectId;
 }>
 
 /** @returns whether a new task was created (false when an idempotent skip no-oped). */
@@ -38,6 +44,7 @@ export async function scheduleTask(
     job,
     extend_seconds,
     idempotent,
+    handoff_of,
   }: ScheduleTaskOptions = {}
 ): Promise<boolean> {
   void db;
@@ -53,26 +60,29 @@ export async function scheduleTask(
     limit,
     job,
     extend_seconds,
+    ...(handoff_of && { handoff_of }),
     created_at: new Date(),
     status: TaskStatus.PENDING,
     attempts: 0,
   };
 
   let created = true;
-  if (idempotent) {
+  if (idempotent || handoff_of) {
     // At most one PENDING task per (task, deployment, job): a re-schedule while
     // one is still queued is a no-op, so a reclaimed confirm can't double-queue.
     // Exclude one-shot delta extends (`extend_seconds` set) from the match so a
     // pending re-alignment extend never dedups against — or blocks — the regular
     // EXTEND chain for the same (deployment, job).
     const { upsertedCount } = await tasks.updateOne(
-      {
-        task,
-        deploymentId,
-        status: TaskStatus.PENDING,
-        extend_seconds: { $exists: false },
-        ...(job !== undefined ? { job } : {}),
-      },
+      handoff_of
+        ? { deploymentId, handoff_of }
+        : {
+            task,
+            deploymentId,
+            status: TaskStatus.PENDING,
+            extend_seconds: { $exists: false },
+            ...(job !== undefined ? { job } : {}),
+          },
       { $setOnInsert: doc },
       { upsert: true }
     );

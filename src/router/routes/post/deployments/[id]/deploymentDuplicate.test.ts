@@ -176,7 +176,8 @@ describe("POST /deployments/:deployment/duplicate", () => {
     expect(db.deployments.insertOne).toHaveBeenCalledWith(expect.objectContaining({ status: "DRAFT" }));
     expect(db.deployments.updateOne).toHaveBeenCalledWith(
       { id: NEW_ID, owner: OWNER },
-      { $set: { status: "STARTING", updated_at: expect.any(Date) } }
+      // A start always opens a new run (see startDeploymentUpdate).
+      { $set: { status: "STARTING", updated_at: expect.any(Date) }, $inc: { run: 1 } }
     );
     expect(db.deployments.insertOne.mock.invocationCallOrder[0]).toBeLessThan(
       db.deployments.updateOne.mock.invocationCallOrder[0]

@@ -10,11 +10,21 @@ import { getTimeNthMinutesBeforeTimeout } from "../../tasks/utils/getTimeNthMinu
 import { type JobsDocument, JobsDocumentFields, JobState, TaskType } from "../../types/index.js";
 
 /**
- * 
+ * A job of an INFINITE deployment started RUNNING on a node:
+ *   - its startup deadline is armed;
+ *   - if it took the active revision over `replicas` (it replaces a job being
+ *     rotated out), one job is stopped, once however often the job is written
+ *     RUNNING while that stop is pending. Only the active revision counts:
+ *     during a revision swap the old revision's jobs are the swap's STOP's to retire;
+ *   - its rotation is scheduled: a LIST of the job's own revision,
+ *     `rotation_time` before the job times out, keyed on the job so a job
+ *     written RUNNING twice queues it once. It is the job's replacement to be:
+ *     listed ahead of the end when a node is spare, or as soon as the job ends
+ *     (see `infiniteJobStateCompletedOrStopUpdate`).
  */
 export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
   OnEvent.UPDATE,
-  async ({ deployment: jobDeployment, job }, db) => {
+  async ({ deployment: jobDeployment, job, revision }, db) => {
     const deployment = await findDeployment(db, jobDeployment);
     if (!deployment || !isActiveInfiniteDeployment(deployment)) return;;
 
@@ -26,25 +36,28 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
       .collection<JobsDocument>(NosanaCollections.JOBS)
       .countDocuments({
         deployment: jobDeployment,
+        revision: deployment.active_revision,
         state: {
           $in: [JobState.QUEUED, JobState.RUNNING],
         },
       });
 
     if (runningJobsCount > deployment.replicas) {
-      scheduleTask(
+      await scheduleTask(
         db,
         TaskType.STOP,
         deployment.id,
         deployment.status,
         new Date(),
         {
-          limit: 1
+          limit: 1,
+          reason: "overcount",
+          idempotent: true,
         },
       )
     }
 
-    scheduleTask(
+    await scheduleTask(
       db,
       TaskType.LIST,
       deployment.id,
@@ -53,6 +66,8 @@ export const infiniteJobRunningUpdate: StrategyListener<JobsDocument> = [
       {
         job,
         limit: 1,
+        active_revision: revision,
+        idempotent: true,
       }
     )
   },

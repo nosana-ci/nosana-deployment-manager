@@ -5,5 +5,6 @@ export {
   parkTask,
   releaseTaskToPending,
   incrementAttempt,
+  dropUnwantedTask,
   deleteCompletedTask,
 } from "./transitions.js";

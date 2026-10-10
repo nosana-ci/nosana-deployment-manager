@@ -20,6 +20,7 @@ vi.mock("../../scheduleTask.js", () => ({
 }));
 
 import { archiveBannedOwner } from "./archiveBannedOwner.js";
+import { LIST_IN_FLIGHT } from "../../queue/wanted/index.js";
 
 const db = {} as Db;
 
@@ -46,14 +47,16 @@ describe("archiveBannedOwner", () => {
       { projection: { id: 1, status: 1 } }
     );
     // Provisioning churn dropped; in-flight STOP tasks kept.
+    // A LIST in flight is spared: it drains, recording the jobs that land so the STOP can delist them.
     expect(tasksDelete).toHaveBeenCalledWith({
       deploymentId: { $in: ["dep-a", "dep-b"] },
       task: { $ne: "STOP" },
+      $nor: LIST_IN_FLIGHT,
     });
     // One idempotent STOP enqueued per deployment (to delist its on-chain jobs).
     expect(scheduleTask).toHaveBeenCalledTimes(2);
-    expect(scheduleTask).toHaveBeenCalledWith(db, "STOP", "dep-a", "RUNNING", expect.any(Date), { idempotent: true });
-    expect(scheduleTask).toHaveBeenCalledWith(db, "STOP", "dep-b", "STOPPING", expect.any(Date), { idempotent: true });
+    expect(scheduleTask).toHaveBeenCalledWith(db, "STOP", "dep-a", "RUNNING", expect.any(Date), { reason: "stop", idempotent: true });
+    expect(scheduleTask).toHaveBeenCalledWith(db, "STOP", "dep-b", "STOPPING", expect.any(Date), { reason: "stop", idempotent: true });
     // Terminal state applied to the whole account.
     expect(deploymentsUpdateMany).toHaveBeenCalledWith(
       { id: { $in: ["dep-a", "dep-b"] } },

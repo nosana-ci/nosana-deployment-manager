@@ -24,6 +24,10 @@ export async function onListExit(task: OutstandingTasksDocument) {
       due_at: getNextTaskTime(schedule, task.due_at),
       deploymentId: task.deploymentId,
       tx: undefined,
+      // The next firing lists the same revision in the same run; a swap or a
+      // restart supersedes it with a chain of its own.
+      ...(task.active_revision !== undefined && { active_revision: task.active_revision }),
+      ...(task.run !== undefined && { run: task.run }),
       created_at: new Date(),
       status: TaskStatus.PENDING,
       attempts: 0,

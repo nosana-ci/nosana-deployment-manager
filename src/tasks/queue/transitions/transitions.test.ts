@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { Collection, ObjectId, WithId } from "mongodb";
 
-import { DeploymentDocument, TaskDocument, TaskStatus, TaskType } from "../../../types/index.js";
+import { DeploymentDocument, OutstandingTasksDocument, TaskDocument, TaskStatus, TaskType } from "../../../types/index.js";
 import {
   abandonOverCap,
   abandonInflightExhausted,
   deleteCompletedTask,
+  dropUnwantedTask,
   incrementAttempt,
   parkTask,
   releaseTaskToPending,
@@ -14,7 +15,7 @@ import {
 
 function fakeTasks() {
   const deleteTasks = vi.fn(async () => ({ acknowledged: true, deletedCount: 1 }));
-  const updateOne = vi.fn(async () => ({ acknowledged: true }));
+  const updateOne = vi.fn(async () => ({ acknowledged: true, matchedCount: 1 }));
   return {
     deleteTasks,
     updateOne,
@@ -64,12 +65,28 @@ describe("task transitions", () => {
     const tasks = fakeTasks();
     const id = new ObjectId();
 
-    await incrementAttempt(tasks.collection, id, "consumer-1");
+    await expect(incrementAttempt(tasks.collection, id, "consumer-1")).resolves.toBe(true);
 
     expect(tasks.updateOne).toHaveBeenCalledWith(
       { _id: id, claimed_by: "consumer-1" },
       { $inc: { attempts: 1 } }
     );
+  });
+
+  it("incrementAttempt reports a failed fence: the task was deleted or reclaimed since", async () => {
+    const tasks = fakeTasks();
+    tasks.updateOne.mockResolvedValueOnce({ acknowledged: true, matchedCount: 0 });
+
+    await expect(incrementAttempt(tasks.collection, new ObjectId(), "consumer-1")).resolves.toBe(false);
+  });
+
+  it("dropUnwantedTask deletes fenced on the lease holder", async () => {
+    const tasks = fakeTasks();
+    const task = { _id: new ObjectId(), task: TaskType.LIST, deploymentId: "dep-1" } as unknown as OutstandingTasksDocument;
+
+    await dropUnwantedTask(tasks.repository, task, "consumer-1");
+
+    expect(tasks.deleteTasks).toHaveBeenCalledWith({ _id: task._id, claimed_by: "consumer-1" });
   });
 
   it("deleteCompletedTask deletes fenced on the lease holder", async () => {

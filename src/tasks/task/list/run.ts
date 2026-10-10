@@ -5,6 +5,7 @@ import { decryptWithKey } from "../../../vault/decrypt.js";
 import { getRepository } from "../../../repositories/index.js";
 import { reconcileUnits, OrchestrateHandlers } from "../../execution/orchestrate/index.js";
 import { scheduleTask } from "../../scheduleTask.js";
+import { checkTaskWanted } from "../../queue/wanted/index.js";
 import { retryCooldownMs } from "../../utils/cooldown.js";
 import { onListConfirmed, onListError, onListExit } from "./events/index.js";
 import { resolveListDefinitionHash } from "./resolveDefinitionHash.js";
@@ -30,14 +31,18 @@ import {
   WorkerData,
 } from "../../../types/index.js";
 
-/** How many jobs this LIST task should ultimately create (fixed on attempt 1). */
+/**
+ * How many jobs this LIST task should ultimately create (fixed on attempt 1).
+ * Each cron firing of a SCHEDULED deployment posts a full set; otherwise the
+ * task brings its own revision up to `replicas`. Another revision's jobs do not
+ * count: a revision swap's STOP is retiring them.
+ */
 function computeListTarget(task: OutstandingTasksDocument): number {
   if (task.limit != null) return task.limit;
-  const { replicas, strategy } = task.deployment;
-  if (strategy === DeploymentStrategy.SIMPLE || strategy === DeploymentStrategy["SIMPLE-EXTEND"]) {
-    return Math.max(0, replicas - task.jobs.length);
-  }
-  return replicas;
+  const { replicas, strategy, active_revision } = task.deployment;
+  if (strategy === DeploymentStrategy.SCHEDULED) return replicas;
+  const revision = task.active_revision ?? active_revision;
+  return Math.max(0, replicas - task.jobs.filter((job) => job.revision === revision).length);
 }
 
 export async function runListTask(
@@ -99,17 +104,33 @@ export async function runListTask(
   // (inside reserveListNodes) before the worker posts anything. A request
   // host-manager has to queue parks the task; fewer nodes than jobs assigns
   // what was reserved and hands the rest to a new LIST task (see below).
+  //
+  // The task is judged wanted again first: the run may have waited, and the
+  // stop route flips the status without the deployment lock. One no longer
+  // wanted only drains — the records it holds were resumed above, and the API
+  // path re-sends the batch it posted under the same key so that what landed
+  // is recorded — with no new request, node or signature.
   let reserved: ReserveOutcome | undefined;
+  let draining = false;
   const reserveAndSpawn = async (count: number, startUnit: number) => {
+    if (!(await checkTaskWanted(task))) {
+      draining = true;
+      return useNosanaApiKey && task.assign_posted_at && task.reservation
+        ? spawnWorker(task.reservation.nodes, startUnit)
+        : null;
+    }
     const outcome = await reserveListNodes(tasks, events, task, count, signal);
     reserved = outcome;
     if (outcome.kind !== "reserved") return null;
     // Self-custody signs one assign per unused node. The API-key path posts the
     // whole hold under the task's assign key: a same-key resend must carry the
-    // same payload, and the worker skips the nodes already recorded.
-    return useNosanaApiKey
-      ? spawnWorker(outcome.reservation.nodes, startUnit)
-      : spawnWorker(outcome.nodes, startUnit);
+    // same payload, and the worker skips the nodes already recorded. Its jobs
+    // can land unseen from the post on, which is marked first.
+    if (!useNosanaApiKey) return spawnWorker(outcome.nodes, startUnit);
+    if (!task.assign_posted_at) {
+      await tasks.updateOne({ _id: task._id }, { $set: { assign_posted_at: new Date() } });
+    }
+    return spawnWorker(outcome.reservation.nodes, startUnit);
   };
 
   const result = await reconcileUnits({
@@ -122,6 +143,13 @@ export async function runListTask(
     makeWorker: reserveAndSpawn,
   });
   if (result.aborted) return { outcome: "ABORTED", successCount: result.confirmed };
+  // A drain ends here: what was in flight is recorded, or still confirming and
+  // comes back for it. Nothing is retried, handed off or chained.
+  if (draining) {
+    return result.retry
+      ? { outcome: "RETRY", successCount: result.confirmed, retryAfterMs: result.retryAfterMs }
+      : { outcome: "COMPLETED", successCount: result.confirmed };
+  }
   // 422 / 404 from host-manager: the deployment's market or requirements can
   // never be reserved, so retrying cannot help.
   if (reserved?.kind === "fatal") {
@@ -185,8 +213,8 @@ async function failListDeployment(
 
 /**
  * Hand what this LIST still misses to a new LIST task, carrying what scopes the
- * work: the job an INFINITE rotation replaces (so it is dropped with that job)
- * and the revision (so a revision swap sweeps it). Created once per task
+ * work: the job an INFINITE rotation replaces (so it shares that job's fate)
+ * and the revision (so it is dropped once a swap supersedes it). Created once per task
  * (`handoff_of`), however often this one is reclaimed, and after the retry
  * cooldown when this task got no node at all, so a chain of lapsed or expired
  * requests cannot spin.

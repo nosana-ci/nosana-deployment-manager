@@ -42,7 +42,7 @@ describe('infiniteJobRunningUpdate', () => {
     state: JobState.RUNNING,
     created_at: new Date(),
     updated_at: new Date(),
-    revision: 0
+    revision: 1
   }
 
   const baseDeployment = {
@@ -180,7 +180,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 1 }
+          { limit: 1, reason: 'overcount', idempotent: true }
         );
       });
 
@@ -195,7 +195,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           mockNow,
-          { limit: 1 }
+          { limit: 1, reason: 'overcount', idempotent: true }
         );
       });
 
@@ -206,10 +206,28 @@ describe('infiniteJobRunningUpdate', () => {
 
         expect(mockCountDocuments).toHaveBeenCalledWith({
           deployment: testJobDeployment,
+          revision: 1,
           state: {
             $in: [JobState.QUEUED, JobState.RUNNING],
           },
         });
+      });
+    });
+
+    describe('rotation', () => {
+      it("lists the job's own revision, keyed on the job so a second RUNNING write queues nothing new", async () => {
+        mockCountDocuments.mockResolvedValue(3);
+
+        await handler({ ...mockJobDocument, revision: 4 }, mockDb);
+
+        expect(scheduleTask).toHaveBeenCalledWith(
+          mockDb,
+          TaskType.LIST,
+          testDeployment,
+          DeploymentStatus.RUNNING,
+          expect.any(Date),
+          { job: testJob, limit: 1, active_revision: 4, idempotent: true }
+        );
       });
     });
 
@@ -225,10 +243,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           expect.any(Date),
-          {
-            job: testJob,
-            limit: 1
-          }
+          { job: testJob, limit: 1, active_revision: 1, idempotent: true }
         );
       });
 
@@ -245,10 +260,7 @@ describe('infiniteJobRunningUpdate', () => {
           TaskType.LIST,
           testDeployment,
           DeploymentStatus.RUNNING,
-          expect.any(Date), {
-          job: testJob,
-          limit: 1
-        }
+          expect.any(Date), { job: testJob, limit: 1, active_revision: 1, idempotent: true }
         );
       });
 
@@ -266,10 +278,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           expect.any(Date),
-          {
-            job: testJob,
-            limit: 1
-          }
+          { job: testJob, limit: 1, active_revision: 1, idempotent: true }
         );
       });
 
@@ -291,10 +300,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           expectedTime,
-          {
-            job: testJob,
-            limit: 1
-          }
+          { job: testJob, limit: 1, active_revision: 1, idempotent: true }
         );
       });
 
@@ -316,10 +322,7 @@ describe('infiniteJobRunningUpdate', () => {
           testDeployment,
           DeploymentStatus.RUNNING,
           expectedTime,
-          {
-            job: testJob,
-            limit: 1
-          }
+          { job: testJob, limit: 1, active_revision: 1, idempotent: true }
         );
       });
     });

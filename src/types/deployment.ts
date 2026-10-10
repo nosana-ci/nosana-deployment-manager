@@ -68,6 +68,7 @@ export const DeploymentDocumentFields: Record<
   ROTATION_TIME: "rotation_time",
   STARTUP_TIMEOUT: "startup_timeout",
   RAPID_STREAK: "rapid_streak",
+  RUN: "run",
   NEXT_RETRY_AT: "next_retry_at",
   SSH_PUBLIC_KEYS: "ssh_public_keys",
 };
@@ -97,6 +98,14 @@ export type DeploymentDocumentBase = {
    * `rapid_completion_max_streak` the deployment is stopped to protect funds.
    */
   rapid_streak?: number;
+  /**
+   * How many times the deployment was started: bumped in the same write that
+   * moves it to STARTING (see `startDeploymentUpdate`). A LIST belongs to the
+   * run it was scheduled in and is wanted only in that run, so one left over
+   * from before a stop and restart never tops back up. Absent until the first
+   * start.
+   */
+  run?: number;
   /**
    * When a transiently-failing task is next due to retry (a handled
    * LIST/EXTEND/STOP error or a rapid-completion throttle). Soft, for UI/tracing

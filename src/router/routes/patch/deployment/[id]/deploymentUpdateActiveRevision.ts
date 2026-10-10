@@ -31,10 +31,21 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
     return;
   }
 
+  if (revision.revision === deployment.active_revision) {
+    res.status(400).send({
+      error: ErrorMessages.deployments.REVISION_ALREADY_ACTIVE,
+    });
+    return;
+  }
+
   try {
     const updated_at = new Date();
     const endpoints = createDeploymentRevisionEndpoints(deployment.id, deployment.vault, revision.job_definition);
 
+    // Re-pinned BEFORE the swap, so a LIST of the newly active revision never
+    // reads a stale pin. The swap below is fenced on the revision not being
+    // active yet; if a concurrent request activated it first, this pin is the
+    // active revision's current one all the same.
     if (!deployment.confidential) {
       const ipfs_definition_hash = await getKit().ipfs.pin(
         injectSsh(revision.job_definition, deployment.ssh_public_keys)
@@ -45,7 +56,7 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
       );
     }
 
-    const { acknowledged } = await db.deployments.updateOne(
+    const { matchedCount } = await db.deployments.updateOne(
       {
         id: { $eq: deployment.id },
         owner: { $eq: userId },
@@ -60,9 +71,9 @@ export const deploymentUpdateActiveRevisionHandler: RouteHandler<{
       }
     );
 
-    if (!acknowledged) {
-      res.status(500).send({
-        error: ErrorMessages.deployments.FAILED_TO_UPDATE_ACTIVE_REVISION,
+    if (matchedCount === 0) {
+      res.status(400).send({
+        error: ErrorMessages.deployments.REVISION_ALREADY_ACTIVE,
       });
       return;
     }

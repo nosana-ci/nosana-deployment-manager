@@ -56,6 +56,14 @@ describe("onListConfirmed", () => {
     expect(updateOne.mock.calls[0][1]).toMatchObject({ $setOnInsert: { market: "mkt-1", node: null } });
   });
 
+  it("labels the job with the revision the task lists, not the deployment's current one", async () => {
+    const { jobs, events, updateOne } = fakes(1);
+
+    await onListConfirmed(jobs, events, { ...task, active_revision: 1 } as OutstandingTasksDocument, "sig-1", "job-1");
+
+    expect(updateOne.mock.calls[0][1]).toMatchObject({ $setOnInsert: { revision: 1 } });
+  });
+
   it("does NOT emit a duplicate event on an idempotent replay (job already recorded)", async () => {
     const { jobs, events, updateOne, insertOne } = fakes(0);
 

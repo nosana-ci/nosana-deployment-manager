@@ -29,9 +29,9 @@ export const ErrorMessages = {
     FAILED_STARTUP_TIMEOUT_UPDATE: "Failed to update deployment startup timeout.",
     FAILED_REPLICA_COUNT_UPDATE: "Failed to update deployment replica count",
     FAILED_NAME_UPDATE: "Failed to update deployment name.",
-    FAILED_TO_UPDATE_ACTIVE_REVISION: "Failed to update deployment active revision.",
     FAILED_TO_CREATE_NEW_REVISION: "Failed to create a new deployment revision.",
     INVALID_ACTIVE_REVISION: "The specified revision does not exist.",
+    REVISION_ALREADY_ACTIVE: "The specified revision is already active.",
     INVALID_ROTATION_TIME: "Rotation time must be at least 10 minutes less than timeout.",
     INVALID_TIMEOUT: "Timeout for infinite deployments must be at least 1 hour.",
     STARTUP_TIMEOUT_WITHOUT_ENDPOINTS:

@@ -16,7 +16,7 @@ export const deploymentStatusStoppingUpdate: StrategyListener<DeploymentDocument
   [
     OnEvent.UPDATE,
     ({ id, status }, db) => {
-      scheduleTask(db, TaskType.STOP, id, status);
+      scheduleTask(db, TaskType.STOP, id, status, undefined, { reason: "stop" });
     },
     {
       fields: [DeploymentDocumentFields.STATUS],

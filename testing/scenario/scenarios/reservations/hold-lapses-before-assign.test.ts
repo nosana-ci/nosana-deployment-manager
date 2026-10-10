@@ -1,10 +1,10 @@
 import { expect } from 'vitest';
 import { Deployment } from '@nosana/api';
-import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
+import { DeploymentStatus, DeploymentStrategy, NosanaApi } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
+import { deployerClient } from '../../setup.js';
 import { hostManagerMock, requestingTasks } from '../../mocks/hostManagerMock.js';
-import { TaskType } from '../../../../src/types/index.js';
 import {
   checkAllJobsStopped,
   checkDeploymentJobs,
@@ -15,16 +15,15 @@ import {
   stopDeployment,
   verifyJobAssignedToNode,
   waitForDeploymentEvent,
-  waitForDeploymentHasTask,
   waitForDeploymentStatus,
   waitForReservations,
 } from '../../common/index.js';
 
-// No node is queued when the deployment starts: host-manager queues the
-// request and the LIST parks (RUNNING, no error, no retry ladder). When a node
-// joins, host-manager fills the request and calls the DM's webhook, and the
-// LIST assigns the job straight away, under the same request.
-createFlow('No Node Queued, Then One Joins', (step) => {
+// The webhook arrives but the hold it reports has already lapsed (the DM was
+// too slow to assign). A lapsed hold is never assigned: the LIST hands the job
+// to a new LIST task (after the retry cooldown) with a request of its own,
+// which the node fills once it joins.
+createFlow('Hold Lapses Before Assign', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
 
@@ -33,7 +32,7 @@ createFlow('No Node Queued, Then One Joins', (step) => {
   });
 
   step('creates deployment with SIMPLE strategy', createDeployment(deployment, {
-    name: 'Scenario testing: reservations > no node then join',
+    name: 'Scenario testing: reservations > hold lapses before assign',
     strategy: DeploymentStrategy.SIMPLE,
   }));
 
@@ -43,20 +42,17 @@ createFlow('No Node Queued, Then One Joins', (step) => {
 
   step('the request is reported as waiting', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_WAITING' }));
 
-  step('no job is posted, the LIST stays parked and the deployment RUNNING', async () => {
-    await checkDeploymentJobs(deployment, { expectedJobsCount: 0 })();
-    await waitForDeploymentHasTask(deployment, { task: TaskType.LIST })();
-    await waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING })();
+  step('host-manager delivers a fill whose hold has already lapsed', async () => {
+    const node = deployerClient.wallet!.address.toString();
+    await hostManagerMock.fulfil({ nodes: [node], holdMs: -1_000 });
+    await expect.poll(async () => (await hostManagerMock.deliveries()).map((delivery) => delivery.status)).toEqual([200]);
   });
 
-  step('the request carried the market and the replica count', waitForReservations({ count: 1 }, (calls) => {
-    expect(calls[0]).toMatchObject({
-      market: deployment.get().market,
-      count: 1,
-    });
+  step("the lapsed hold is not assigned: a new LIST task's request waits instead", waitForReservations({ count: 2 }, (calls) => {
+    expect(requestingTasks(calls)).toEqual(['task:1', 'task:2']);
   }));
 
-  step('node joins the market queue (host-manager fills the request and calls the webhook)', joinMarketQueue(() => deployment.get().market, { verifyQueued: false }));
+  step('node joins the market queue (host-manager fills the new request)', joinMarketQueue(() => deployment.get().market, { verifyQueued: false }));
 
   step('the job is posted', checkDeploymentJobs(
     deployment,
@@ -66,10 +62,10 @@ createFlow('No Node Queued, Then One Joins', (step) => {
 
   step('the job is assigned to our node', verifyJobAssignedToNode(() => firstJob.get()));
 
-  step('the webhook was accepted and no second request was needed', async () => {
-    const deliveries = await hostManagerMock.deliveries();
-    expect(deliveries.map((delivery) => delivery.status)).toEqual([200]);
-    expect(requestingTasks(await hostManagerMock.calls())).toEqual(['task:1']);
+  step('nothing was ever assigned from the lapsed hold', async () => {
+    const current = await (deployerClient.api as NosanaApi).deployments.get(deployment.get().id);
+    const { events } = await current.getEvents();
+    expect(events.map((event) => event.type)).not.toContain('JOB_LIST_ERROR');
   });
 
   step('stop deployment', stopDeployment(deployment));

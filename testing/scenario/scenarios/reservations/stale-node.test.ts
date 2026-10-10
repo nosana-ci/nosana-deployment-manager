@@ -4,7 +4,7 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 import { generateKeyPairSigner } from '@solana/signers';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { hostManagerMock, reservationEpochs } from '../../mocks/hostManagerMock.js';
+import { hostManagerMock, requestingTasks } from '../../mocks/hostManagerMock.js';
 import {
   checkAllJobsStopped,
   checkDeploymentJobs,
@@ -20,8 +20,9 @@ import {
 } from '../../common/index.js';
 
 // host-manager hands out a node that has since left the market queue: the
-// assign fails on-chain, the node counts as used, and the retry reserves under
-// the next epoch — which now returns the node that is really queued.
+// assign fails on-chain and the node counts as used. The retry finds the task's
+// one fill spent and hands the job to a new LIST task, whose own request gets
+// the node that is really queued.
 createFlow('Reserved Node No Longer In Queue', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
@@ -52,8 +53,8 @@ createFlow('Reserved Node No Longer In Queue', (step) => {
 
   step('the job is assigned to the node that is really queued', verifyJobAssignedToNode(() => firstJob.get()));
 
-  step('the stale node was never reused: the retry reserved under the next epoch', waitForReservations({ count: 2 }, (calls) => {
-    expect(reservationEpochs(calls)).toEqual(['reserve:0', 'reserve:1']);
+  step('the stale node was never reused: a new LIST task made a new request', waitForReservations({ count: 2 }, (calls) => {
+    expect(requestingTasks(calls)).toEqual(['task:1', 'task:2']);
   }));
 
   step('stop deployment', stopDeployment(deployment));

@@ -46,6 +46,9 @@ const commonConfig: Omit<
   client_manager_url: process.env.CLIENT_MANAGER_URL || undefined,
   host_manager_url: process.env.HOST_MANAGER_URL || undefined,
   host_manager_api_key: process.env.HOST_MANAGER_API_KEY || undefined,
+  reservation_renew_ms: process.env.RESERVATION_RENEW_MS
+    ? parseInt(process.env.RESERVATION_RENEW_MS)
+    : 840_000,
   rapid_completion_job_count: process.env.RAPID_COMPLETION_JOB_COUNT
     ? parseInt(process.env.RAPID_COMPLETION_JOB_COUNT)
     : 3,

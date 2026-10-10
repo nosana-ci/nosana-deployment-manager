@@ -1,45 +1,72 @@
-import { reserve } from "../../../client/hostManager/index.js";
-import { buildIdempotencyKey, classifyReservationError } from "../../idempotency/index.js";
-import { messageOf } from "../../idempotency/errorInfo.js";
+import { ObjectId, type Filter } from "mongodb";
 
+import {
+  HostManagerError,
+  requestReservation,
+  type ReservationRequestResponse,
+} from "../../../client/hostManager/index.js";
+import { getConfig } from "../../../config/index.js";
+import { messageOf } from "../../idempotency/errorInfo.js";
+import { TaskStatus, TaskType } from "../../../types/index.js";
+
+import type { DeploymentRequirements } from "../../../router/schema/components/requirements.schema.js";
 import type {
   EventsCollection,
   OutstandingTasksDocument,
   ReservedNode,
+  TaskDocument,
   TaskReservation,
+  TaskReservationRequest,
   TasksCollection,
 } from "../../../types/index.js";
 
-/** Host-manager's per-request cap on `count`; a larger shortfall reconciles over attempts. */
+/** Host-manager's per-request cap on `count`; the rest is handed to a new LIST task. */
 const MAX_RESERVATION_COUNT = 50;
 
+/** Host-manager's cap on a request's TTL. */
+const MAX_REQUEST_TTL_SECONDS = 900;
+
 /**
- * Outcome of the reserve step of a LIST attempt.
- *   - reserved    — `nodes` (possibly empty) are the reserved nodes to assign now;
- *                   fewer than requested is a shortfall (event already emitted).
- *   - in-progress — the same key is still in flight at host-manager (409).
+ * Outcome of the reserve step of a LIST attempt. A LIST task makes one
+ * reservation request, keyed by its id; what it cannot get from it is handed to
+ * a new LIST task.
+ *   - reserved    — `nodes` (at least one) are held for this task, to assign now;
+ *                   fewer than asked for is a shortfall the run hands off afterwards.
+ *   - waiting     — host-manager queued the request (recorded on the task): park
+ *                   until the webhook fills it or it is due for renewal.
+ *   - handoff     — the request has nothing (more) for this task: its fill is used
+ *                   or lapsed, it expired or was cancelled, or host-manager
+ *                   refused the deployment's new terms under the old key (409).
+ *                   `backoff` unless the terms changed, so a chain of empty
+ *                   hand-offs cannot spin.
  *   - retry       — 5xx / no response: retry the same key after the cooldown.
  *   - fatal       — the deployment's market/requirements are rejected (422, 404).
  */
 export type ReserveOutcome =
   | { kind: "reserved"; reservation: TaskReservation; nodes: ReservedNode[] }
-  | { kind: "in-progress" }
+  | { kind: "waiting" }
+  | { kind: "handoff"; backoff: boolean }
   | { kind: "retry"; error: string }
   | { kind: "fatal"; error: string };
 
 /**
- * Reserve nodes for `count` jobs and persist the reservation on the task before
- * anything is signed.
+ * What a request is sent with: always the deployment's current terms. While a
+ * request is pending nothing was assigned, so its count is unchanged; a market or
+ * requirements change makes host-manager answer 409 for the old key.
+ */
+type RequestTerms = { market: string; requirements: DeploymentRequirements | null; count: number };
+
+/**
+ * Reserve nodes for `count` jobs and persist them on the task before anything is
+ * signed.
  *
- * The task's recorded reservation plus the nodes on its TxRecords are the source
- * of truth. A node that appears on any TxRecord was used by a prior attempt and
- * is never handed to the signer again. While the recorded hold is live and still
- * has unused nodes (a reclaim after a crash), those nodes are reused under the
- * same key without asking host-manager again. Otherwise the next reservation
- * walks to `epoch + 1`: every node of the previous one was used (assigned, or
- * failed to assign) or its hold lapsed, so a fresh key gets fresh nodes. A failed
- * request records nothing, so the next attempt re-issues the same key and
- * host-manager replays it if the lost request did reserve.
+ * A task that already holds its fill (a reclaim, or the webhook delivered it)
+ * reuses the nodes still held, unused and in the deployment's current market; a
+ * node on any TxRecord was used by a prior attempt and is never handed to the
+ * signer again. Otherwise the task's request is renewed, or recorded and then
+ * sent, on the deployment's current terms. A failed request stays recorded, so
+ * the next attempt re-sends the same key and host-manager replays it if the lost
+ * request landed.
  */
 export async function reserveListNodes(
   tasks: TasksCollection,
@@ -48,81 +75,167 @@ export async function reserveListNodes(
   count: number,
   signal: AbortSignal
 ): Promise<ReserveOutcome> {
-  const used = new Set((task.transactions ?? []).flatMap((record) => record.nodes ?? []));
-  const unused = (nodes: ReservedNode[]) => nodes.filter(({ node }) => !used.has(node)).slice(0, count);
+  if (task.reservation) return reuseReservation(task, task.reservation, count);
 
-  const recorded = task.reservation;
-  const reservation =
-    recorded && isLive(recorded) && unused(recorded.nodes).length > 0
-      ? recorded
-      : await requestReservation(tasks, events, task, count, signal);
-  if ("kind" in reservation) return reservation;
-
-  const nodes = unused(reservation.nodes);
-  if (nodes.length < count) {
-    await events.insertOne({
-      deploymentId: task.deploymentId,
-      category: "Deployment",
-      type: "JOB_RESERVE_SHORTFALL",
-      message: `${count - nodes.length} of ${count} job(s) waiting for a matching node`,
-      created_at: new Date(),
-    });
-  }
-
-  return { kind: "reserved", reservation, nodes };
+  const terms: RequestTerms = {
+    market: task.deployment.market,
+    requirements: task.deployment.requirements ?? null,
+    count: Math.min(count, MAX_RESERVATION_COUNT),
+  };
+  const pending = task.reservation_request;
+  // A new request is recorded BEFORE it is sent, so its webhook always finds it.
+  if (!pending) await tasks.updateOne({ _id: task._id }, { $set: { reservation_request: {} } });
+  return submitRequest(tasks, events, task, terms, pending ?? {}, signal);
 }
 
-/** Reserve under the next epoch's key and persist the result; a failure records nothing. */
-async function requestReservation(
+function reuseReservation(task: OutstandingTasksDocument, reservation: TaskReservation, count: number): ReserveOutcome {
+  const { market } = task.deployment;
+  const used = new Set((task.transactions ?? []).flatMap((record) => record.nodes ?? []));
+  const nodes = reservation.nodes.filter((reserved) => !used.has(reserved.node) && reserved.market === market);
+  if (isLive(reservation) && nodes.length > 0) return { kind: "reserved", reservation, nodes: nodes.slice(0, count) };
+  return { kind: "handoff", backoff: reservation.nodes.every((reserved) => reserved.market === market) };
+}
+
+/**
+ * Send (or renew) the task's request: a fill with a live hold becomes the
+ * task's reservation, a `waiting` answer is noted once, and anything else (a
+ * replayed fill whose hold lapsed, expired, cancelled, or a 409 for changed
+ * terms) is a hand-off. The TTL
+ * outlives the renewal interval by a minute, so a parked request never lapses
+ * between renewals.
+ */
+async function submitRequest(
   tasks: TasksCollection,
   events: EventsCollection,
   task: OutstandingTasksDocument,
-  count: number,
+  terms: RequestTerms,
+  request: TaskReservationRequest,
   signal: AbortSignal
-): Promise<TaskReservation | Exclude<ReserveOutcome, { kind: "reserved" }>> {
-  const epoch = task.reservation ? task.reservation.epoch + 1 : 0;
-  const key = buildIdempotencyKey(task._id.toHexString(), "reserve", epoch);
-  const { market, requirements } = task.deployment;
-
-  const response = await reserve(
+): Promise<ReserveOutcome> {
+  const response = await requestReservation(
     {
-      market,
-      ...(requirements && { requirements }),
-      count: Math.min(count, MAX_RESERVATION_COUNT),
-      idempotencyKey: key,
+      key: task._id.toHexString(),
+      market: terms.market,
+      ...(terms.requirements && { requirements: terms.requirements }),
+      count: terms.count,
+      ttlSeconds: Math.min(MAX_REQUEST_TTL_SECONDS, Math.ceil(getConfig().reservation_renew_ms / 1000) + 60),
     },
     signal
   ).catch(reservationFailure);
   if ("kind" in response) return response;
 
-  const reservation: TaskReservation = {
-    key,
-    epoch,
-    expiresAt: response.expiresAt ? new Date(response.expiresAt) : null,
-    nodes: response.nodes.map(({ nodeAddress, market }) => ({ node: nodeAddress, market })),
-  };
-  await tasks.updateOne({ _id: task._id }, { $set: { reservation } });
-
-  if (reservation.nodes.length > 0) {
-    const markets = [...new Set(reservation.nodes.map((node) => node.market))];
-    await events.insertOne({
-      deploymentId: task.deploymentId,
-      category: "Deployment",
-      type: "JOB_RESERVE_CONFIRMED",
-      message: `Reserved ${reservation.nodes.length} node(s) in market(s) ${markets.join(", ")}`,
-      created_at: new Date(),
-    });
+  if (response.status === "waiting") {
+    await noteWaiting(tasks, events, task, terms, request);
+    return { kind: "waiting" };
   }
-  return reservation;
+  const reservation = toReservation(response);
+  // Never expected, but a fill without nodes is nothing to assign either.
+  if (response.status !== "fulfilled" || !isLive(reservation) || reservation.nodes.length === 0) {
+    return { kind: "handoff", backoff: true };
+  }
+
+  await tasks.updateOne({ _id: task._id }, { $set: { reservation }, $unset: { reservation_request: "" } });
+  const markets = [...new Set(reservation.nodes.map((node) => node.market))];
+  await events.insertOne({
+    deploymentId: task.deploymentId,
+    category: "Deployment",
+    type: "JOB_RESERVE_CONFIRMED",
+    message: `Reserved ${reservation.nodes.length} node(s) in market(s) ${markets.join(", ")}`,
+    created_at: new Date(),
+  });
+  return { kind: "reserved", reservation, nodes: reservation.nodes };
 }
 
-function reservationFailure(error: unknown): Exclude<ReserveOutcome, { kind: "reserved" }> {
-  const action = classifyReservationError(error);
-  if (action === "IN_PROGRESS") return { kind: "in-progress" };
-  if (action === "FATAL") return { kind: "fatal", error: `Node reservation rejected: ${messageOf(error)}` };
-  return { kind: "retry", error: `Node reservation failed: ${messageOf(error)}` };
+/** Stamp when host-manager first queued the request, and say so once per request (not per renewal). */
+async function noteWaiting(
+  tasks: TasksCollection,
+  events: EventsCollection,
+  task: OutstandingTasksDocument,
+  terms: RequestTerms,
+  request: TaskReservationRequest
+): Promise<void> {
+  if (request.since) return;
+  await tasks.updateOne(
+    { _id: task._id, reservation_request: { $exists: true } },
+    { $set: { "reservation_request.since": new Date() } }
+  );
+  await events.insertOne({
+    deploymentId: task.deploymentId,
+    category: "Deployment",
+    type: "JOB_RESERVE_WAITING",
+    message: `Waiting for ${terms.count} matching node(s) in market ${terms.market}`,
+    created_at: new Date(),
+  });
+}
+
+function toReservation({ nodes, holdExpiresAt }: Pick<ReservationRequestResponse, "nodes" | "holdExpiresAt">): TaskReservation {
+  return {
+    expiresAt: holdExpiresAt ? new Date(holdExpiresAt) : null,
+    nodes: nodes.map(({ nodeAddress, market }) => ({ node: nodeAddress, market })),
+  };
+}
+
+/**
+ * A 409 means the deployment's terms changed under a pending request: a new task
+ * asks on them at once. Any other 4xx (422 bad requirements, 404 unknown market)
+ * means the deployment itself is wrong, so retrying cannot help. A 5xx or no
+ * response at all may be a lost success: the same key is re-sent after the
+ * cooldown.
+ */
+function reservationFailure(error: unknown): Extract<ReserveOutcome, { kind: "handoff" | "retry" | "fatal" }> {
+  if (!(error instanceof HostManagerError) || error.status >= 500) {
+    return { kind: "retry", error: `Node reservation failed: ${messageOf(error)}` };
+  }
+  if (error.status === 409) return { kind: "handoff", backoff: false };
+  return { kind: "fatal", error: `Node reservation rejected: ${messageOf(error)}` };
 }
 
 function isLive({ expiresAt }: TaskReservation): boolean {
   return expiresAt !== null && expiresAt.getTime() > Date.now();
+}
+
+// ---------------------------------------------------------------------------
+// Webhook: host-manager filled a waiting request
+// ---------------------------------------------------------------------------
+
+/** A fulfilment as host-manager's webhook delivers it; `key` is the LIST task's id. */
+export type RequestFulfilment = Pick<ReservationRequestResponse, "key" | "nodes"> & { holdExpiresAt: string };
+
+/**
+ * Persist a webhook's fill as the task's reservation and make the task due now,
+ * so the LIST worker assigns the nodes within their hold. True when the task
+ * holds the nodes: recorded now, or already (a redelivery). False when the task
+ * is gone or has no request: the caller releases the nodes. A parked task is
+ * PENDING already; one mid-run is released due now when it tries to park (see
+ * `parkTask`).
+ */
+export async function recordRequestFulfilment(tasks: TasksCollection, fulfilment: RequestFulfilment): Promise<boolean> {
+  if (!/^[0-9a-f]{24}$/.test(fulfilment.key)) return false;
+  const _id = new ObjectId(fulfilment.key);
+
+  const { matchedCount } = await tasks.updateOne(
+    { _id, reservation_request: { $exists: true } },
+    { $set: { reservation: toReservation(fulfilment), due_at: new Date() }, $unset: { reservation_request: "" } }
+  );
+  if (matchedCount > 0) return true;
+
+  const task = await tasks.findOne({ _id }, { projection: { reservation: 1 } });
+  return Boolean(task?.reservation);
+}
+
+/**
+ * Make parked LIST tasks (those waiting on a request) due now, so they renew it
+ * at once: on API start, because host-manager sends each webhook once and a fill
+ * made while the API was down is missed; and when a deployment's terms change
+ * (narrowed by `filter`), so its LISTs hand off to the new terms. Never throws.
+ */
+export async function resyncParkedListTasks(tasks: TasksCollection, filter: Filter<TaskDocument> = {}): Promise<void> {
+  try {
+    await tasks.updateMany(
+      { ...filter, task: TaskType.LIST, status: TaskStatus.PENDING, reservation_request: { $exists: true } },
+      { $set: { due_at: new Date() } }
+    );
+  } catch (error) {
+    console.error("[reservations] failed to resync parked LIST tasks", error);
+  }
 }

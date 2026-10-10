@@ -4,7 +4,6 @@ import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
 import { hostManagerMock, requestingTasks } from '../../mocks/hostManagerMock.js';
-import { TaskType } from '../../../../src/types/index.js';
 import {
   checkAllJobsStopped,
   checkDeploymentJobs,
@@ -15,16 +14,15 @@ import {
   stopDeployment,
   verifyJobAssignedToNode,
   waitForDeploymentEvent,
-  waitForDeploymentHasTask,
   waitForDeploymentStatus,
   waitForReservations,
 } from '../../common/index.js';
 
-// No node is queued when the deployment starts: host-manager queues the
-// request and the LIST parks (RUNNING, no error, no retry ladder). When a node
-// joins, host-manager fills the request and calls the DM's webhook, and the
-// LIST assigns the job straight away, under the same request.
-createFlow('No Node Queued, Then One Joins', (step) => {
+// host-manager fills the waiting request but its webhook never arrives. The
+// parked LIST renews the same request when it is due and host-manager replays
+// the fulfilment, so the job is still assigned.
+// Needs the DM to renew quickly: run it with RESERVATION_RENEW_MS=10000.
+createFlow('Missed Webhook Recovered By Renewal', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
 
@@ -33,32 +31,23 @@ createFlow('No Node Queued, Then One Joins', (step) => {
   });
 
   step('creates deployment with SIMPLE strategy', createDeployment(deployment, {
-    name: 'Scenario testing: reservations > no node then join',
+    name: 'Scenario testing: reservations > missed webhook',
     strategy: DeploymentStrategy.SIMPLE,
   }));
 
   step('check vault has sufficient funds', checkSufficientVaultBalance(deployment));
 
+  step('host-manager will fill requests without calling the webhook', async () => {
+    await hostManagerMock.webhooks(false);
+  });
+
   step('start deployment with no node in the queue', startDeployment(deployment));
 
   step('the request is reported as waiting', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_WAITING' }));
 
-  step('no job is posted, the LIST stays parked and the deployment RUNNING', async () => {
-    await checkDeploymentJobs(deployment, { expectedJobsCount: 0 })();
-    await waitForDeploymentHasTask(deployment, { task: TaskType.LIST })();
-    await waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING })();
-  });
+  step('node joins the market queue (the request is filled silently)', joinMarketQueue(() => deployment.get().market, { verifyQueued: false }));
 
-  step('the request carried the market and the replica count', waitForReservations({ count: 1 }, (calls) => {
-    expect(calls[0]).toMatchObject({
-      market: deployment.get().market,
-      count: 1,
-    });
-  }));
-
-  step('node joins the market queue (host-manager fills the request and calls the webhook)', joinMarketQueue(() => deployment.get().market, { verifyQueued: false }));
-
-  step('the job is posted', checkDeploymentJobs(
+  step('the renewal posts the job', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => firstJob.set(jobs[0].job)
@@ -66,10 +55,12 @@ createFlow('No Node Queued, Then One Joins', (step) => {
 
   step('the job is assigned to our node', verifyJobAssignedToNode(() => firstJob.get()));
 
-  step('the webhook was accepted and no second request was needed', async () => {
-    const deliveries = await hostManagerMock.deliveries();
-    expect(deliveries.map((delivery) => delivery.status)).toEqual([200]);
-    expect(requestingTasks(await hostManagerMock.calls())).toEqual(['task:1']);
+  step('the renewal came from the same task (same key)', waitForReservations({ count: 2 }, (calls) => {
+    expect(requestingTasks(calls).slice(0, 2)).toEqual(['task:1', 'task:1']);
+  }));
+
+  step('no webhook was sent', async () => {
+    expect(await hostManagerMock.deliveries()).toEqual([]);
   });
 
   step('stop deployment', stopDeployment(deployment));
@@ -77,4 +68,8 @@ createFlow('No Node Queued, Then One Joins', (step) => {
   step('wait for deployment to be stopped', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.STOPPED }));
 
   step('check if all jobs are stopped', checkAllJobsStopped(deployment));
+
+  step('webhooks back on for the flows after this one', async () => {
+    await hostManagerMock.webhooks(true);
+  });
 });

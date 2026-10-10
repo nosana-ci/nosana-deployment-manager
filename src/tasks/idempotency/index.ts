@@ -1,10 +1,8 @@
 export { buildIdempotencyKey, MAX_IDEMPOTENCY_EPOCH } from "./key.js";
 export {
   classifyApiError,
-  classifyReservationError,
   IdempotencyCode,
   type IdempotencyAction,
-  type ReservationAction,
 } from "./classify.js";
 export { runIdempotentCall, type IdempotentCallResult } from "./call.js";
 export {

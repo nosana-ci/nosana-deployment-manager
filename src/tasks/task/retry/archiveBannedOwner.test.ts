@@ -3,7 +3,7 @@ import type { Db } from "mongodb";
 
 const deploymentsFindAll = vi.fn();
 const deploymentsUpdateMany = vi.fn(async () => ({}));
-const tasksDeleteMany = vi.fn(async () => ({}));
+const tasksDelete = vi.fn(async () => ({}));
 const scheduleTask = vi.fn(async () => true);
 
 vi.mock("../../../repositories/index.js", () => ({
@@ -13,7 +13,7 @@ vi.mock("../../../repositories/index.js", () => ({
           findAll: (...a: unknown[]) => deploymentsFindAll(...a),
           collection: { updateMany: (...a: unknown[]) => deploymentsUpdateMany(...a) },
         }
-      : { collection: { deleteMany: (...a: unknown[]) => tasksDeleteMany(...a) } },
+      : { delete: (...a: unknown[]) => tasksDelete(...a) },
 }));
 vi.mock("../../scheduleTask.js", () => ({
   scheduleTask: (...a: unknown[]) => scheduleTask(...a),
@@ -27,7 +27,7 @@ describe("archiveBannedOwner", () => {
   beforeEach(() => {
     deploymentsFindAll.mockReset();
     deploymentsUpdateMany.mockReset();
-    tasksDeleteMany.mockReset();
+    tasksDelete.mockReset();
     scheduleTask.mockReset();
     scheduleTask.mockResolvedValue(true);
   });
@@ -46,7 +46,7 @@ describe("archiveBannedOwner", () => {
       { projection: { id: 1, status: 1 } }
     );
     // Provisioning churn dropped; in-flight STOP tasks kept.
-    expect(tasksDeleteMany).toHaveBeenCalledWith({
+    expect(tasksDelete).toHaveBeenCalledWith({
       deploymentId: { $in: ["dep-a", "dep-b"] },
       task: { $ne: "STOP" },
     });
@@ -66,7 +66,7 @@ describe("archiveBannedOwner", () => {
 
     await archiveBannedOwner(db, "owner-1");
 
-    expect(tasksDeleteMany).not.toHaveBeenCalled();
+    expect(tasksDelete).not.toHaveBeenCalled();
     expect(scheduleTask).not.toHaveBeenCalled();
     expect(deploymentsUpdateMany).not.toHaveBeenCalled();
   });

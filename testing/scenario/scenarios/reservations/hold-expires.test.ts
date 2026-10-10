@@ -3,7 +3,7 @@ import { Deployment } from '@nosana/api';
 import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { reservationEpochs } from '../../mocks/hostManagerMock.js';
+import { requestingTasks } from '../../mocks/hostManagerMock.js';
 import {
   checkAllJobsStopped,
   checkDeploymentJobs,
@@ -21,7 +21,7 @@ import {
 
 // The reserved node could not be signed for (an unusable address, so nothing was
 // recorded against it) and the hold lapses before the retry: a lapsed hold is
-// never reused, so the retry reserves afresh under the next epoch.
+// never reused, so the retry hands the job to a new LIST task with its own request.
 // Needs the DM retry cooldown to be longer than the 1 s hold (it always is).
 createFlow('Hold Expires Before The Retry', (step) => {
   const deployment = createState<Deployment>();
@@ -52,8 +52,8 @@ createFlow('Hold Expires Before The Retry', (step) => {
 
   step('the job is assigned to our node', verifyJobAssignedToNode(() => firstJob.get()));
 
-  step('the lapsed hold was not reused: the retry reserved under the next epoch', waitForReservations({ count: 2 }, (calls) => {
-    expect(reservationEpochs(calls)).toEqual(['reserve:0', 'reserve:1']);
+  step('the lapsed hold was not reused: a new LIST task made a new request', waitForReservations({ count: 2 }, (calls) => {
+    expect(requestingTasks(calls)).toEqual(['task:1', 'task:2']);
   }));
 
   step('stop deployment', stopDeployment(deployment));

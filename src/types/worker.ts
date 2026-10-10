@@ -121,13 +121,7 @@ export type WorkerData = {
    * Reserved nodes the LIST signer assigns, one job each in the node's own
    * market. Reserved and persisted by the parent before the worker is spawned.
    * Self-custody gets the hold's unused nodes; the API-key path gets the whole
-   * hold (see `reservationEpoch`).
+   * hold, so a same-key resend within it always carries the same payload.
    */
   nodes?: ReservedNode[];
-  /**
-   * Epoch of the reservation `nodes` came from (LIST, API-key path). The batch
-   * idempotency key is scoped to it, so a same-key resend within one hold always
-   * carries the same payload.
-   */
-  reservationEpoch?: number;
 };

@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Db } from "mongodb";
 
+const deleteTasks = vi.fn();
+vi.mock("../../../repositories/index.js", () => ({
+  TasksRepository: { delete: (...a: unknown[]) => deleteTasks(...a) },
+}));
+
 import { jobAllActiveJobsStop } from "../jobAllActiveJobsStop.js";
 import { NosanaCollections } from "../../../definitions/collection.js";
 import {
@@ -13,7 +18,7 @@ import {
 
 const [, handler] = jobAllActiveJobsStop;
 
-const tasks = { deleteMany: vi.fn(), countDocuments: vi.fn() };
+const tasks = { countDocuments: vi.fn() };
 const jobs = { countDocuments: vi.fn() };
 const deployments = { findOne: vi.fn(), updateOne: vi.fn() };
 const db = {
@@ -35,7 +40,7 @@ const deployment = (over: Record<string, unknown> = {}) => ({
 });
 
 beforeEach(() => {
-  tasks.deleteMany.mockReset().mockResolvedValue({ acknowledged: true });
+  deleteTasks.mockReset().mockResolvedValue({ acknowledged: true });
   tasks.countDocuments.mockReset().mockResolvedValue(0);
   jobs.countDocuments.mockReset().mockResolvedValue(0);
   deployments.findOne.mockReset().mockResolvedValue(deployment());
@@ -46,7 +51,7 @@ describe("jobAllActiveJobsStop", () => {
   it("drops the settled job's own pending tasks", async () => {
     await handler(job, db);
 
-    expect(tasks.deleteMany).toHaveBeenCalledWith({ deploymentId: "dep-1", job: { $eq: "j1" } });
+    expect(deleteTasks).toHaveBeenCalledWith({ deploymentId: "dep-1", job: { $eq: "j1" } });
   });
 
   it("flips a RUNNING SIMPLE deployment to STOPPED once nothing is active and nothing is queued to list", async () => {

@@ -28,20 +28,20 @@ vi.mock("../lock/index.js", () => ({
 }));
 vi.mock("../../../repositories/index.js", () => ({
   getRepository: (name: string) => ({
+    // Task deletes go through the repository (it releases deleted LISTs' reservations).
+    delete: (...a: unknown[]) => deleteTasks(...a),
     collection:
       name === "deployments"
         ? { updateOne: (...a: unknown[]) => deploymentsUpdateOne(...a) }
         : {
-            deleteOne: (...a: unknown[]) => deleteOne(...a),
             updateOne: (...a: unknown[]) => updateOne(...a),
-            deleteMany: vi.fn(async () => ({})),
           },
   }),
 }));
 
 import { startTaskCollectionListener, FETCH_INTERVAL_MS } from "./index.js";
 
-let deleteOne: ReturnType<typeof vi.fn>;
+let deleteTasks: ReturnType<typeof vi.fn>;
 let updateOne: ReturnType<typeof vi.fn>;
 let deploymentsUpdateOne: ReturnType<typeof vi.fn>;
 
@@ -71,7 +71,7 @@ describe("startTaskCollectionListener", () => {
     runExtendTask.mockReset().mockResolvedValue({ outcome: "COMPLETED", successCount: 1 } as TaskRunResult);
     acquireDeploymentLock.mockReset().mockResolvedValue(true);
     releaseDeploymentLock.mockReset().mockResolvedValue(undefined);
-    deleteOne = vi.fn(async () => ({ acknowledged: true, deletedCount: 1 }));
+    deleteTasks = vi.fn(async () => ({ acknowledged: true, deletedCount: 1 }));
     updateOne = vi.fn(async () => ({ acknowledged: true }));
     deploymentsUpdateOne = vi.fn(async () => ({ acknowledged: true }));
   });
@@ -105,7 +105,7 @@ describe("startTaskCollectionListener", () => {
     const handle = startTaskCollectionListener(createFakeDb());
     await flush();
 
-    expect(deleteOne).toHaveBeenCalledWith(
+    expect(deleteTasks).toHaveBeenCalledWith(
       expect.objectContaining({ _id: task._id, claimed_by: expect.any(String) })
     );
     expect(releaseDeploymentLock).toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe("startTaskCollectionListener", () => {
     const handle = startTaskCollectionListener(createFakeDb());
     await flush();
 
-    expect(deleteOne).not.toHaveBeenCalled();
+    expect(deleteTasks).not.toHaveBeenCalled();
     expect(releaseDeploymentLock).toHaveBeenCalled();
 
     await handle.stop();
@@ -135,7 +135,7 @@ describe("startTaskCollectionListener", () => {
     const handle = startTaskCollectionListener(createFakeDb());
     await flush();
 
-    expect(deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
+    expect(deleteTasks).toHaveBeenCalledWith({ _id: { $eq: task._id } });
     expect(deploymentsUpdateOne).toHaveBeenCalledWith(
       { id: task.deploymentId, status: { $ne: "ARCHIVED" } },
       { $set: { status: "ERROR" } }
@@ -154,7 +154,7 @@ describe("startTaskCollectionListener", () => {
     const handle = startTaskCollectionListener(createFakeDb());
     await flush();
 
-    expect(deleteOne).not.toHaveBeenCalled(); // not terminal — comes back
+    expect(deleteTasks).not.toHaveBeenCalled(); // not terminal — comes back
     expect(updateOne).toHaveBeenCalledWith(
       { _id: task._id, claimed_by: expect.any(String) },
       expect.objectContaining({
@@ -167,6 +167,30 @@ describe("startTaskCollectionListener", () => {
     await handle.stop();
   });
 
+  it("parks a LIST waiting on a reservation request until renewal, without counting a retry", async () => {
+    const task = baseTask(TaskType.LIST);
+    claimTasks.mockResolvedValueOnce([task]);
+    enrichClaimedTasks.mockResolvedValueOnce([task]);
+    runListTask.mockResolvedValueOnce({ outcome: "PARKED", successCount: 0 });
+    updateOne.mockResolvedValue({ acknowledged: true, matchedCount: 1 });
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(deleteTasks).not.toHaveBeenCalled(); // not terminal — comes back to renew
+    expect(updateOne).toHaveBeenCalledWith(
+      { _id: task._id, claimed_by: expect.any(String), reservation_request: { $exists: true } },
+      expect.objectContaining({
+        $set: { status: TaskStatus.PENDING, due_at: new Date(Date.now() + 840_000) }, // reservation_renew_ms
+        $inc: { attempts: -1 }, // no inflight_retries: waiting for capacity never reaches the cap
+      })
+    );
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled(); // the deployment is left RUNNING
+    expect(releaseDeploymentLock).toHaveBeenCalled();
+
+    await handle.stop();
+  });
+
   it("abandons a task that exceeds the in-flight retry cap (distinct from the crash cap)", async () => {
     const task = { ...baseTask(TaskType.LIST), inflight_retries: 99 };
     claimTasks.mockResolvedValueOnce([task]);
@@ -174,7 +198,7 @@ describe("startTaskCollectionListener", () => {
     const handle = startTaskCollectionListener(createFakeDb());
     await flush();
 
-    expect(deleteOne).toHaveBeenCalledWith({ _id: { $eq: task._id } });
+    expect(deleteTasks).toHaveBeenCalledWith({ _id: { $eq: task._id } });
     expect(deploymentsUpdateOne).toHaveBeenCalledWith(
       { id: task.deploymentId, status: { $ne: "ARCHIVED" } },
       { $set: { status: "ERROR" } }

@@ -19,17 +19,16 @@ import type { WorkerData } from "../../../types/index.js";
  * crash mid-send is recoverable.
  *
  * API-key path: ONE batch call has client-manager assign a job to every node of
- * the reservation, under a per-epoch idempotency key scoped to that reservation
- * (`taskId:assign-<reservationEpoch>:<epoch>`) carrying the whole hold — the
- * stable payload that key requires, since a reclaim within the hold reuses the
- * same reservation. A lost in-flight response retried on reclaim replays the
+ * the reservation, under a per-epoch idempotency key (`taskId:assign:<epoch>`)
+ * carrying the whole hold — the stable payload that key requires: a task makes
+ * one reservation, and a reclaim within the hold reuses it. A lost in-flight response retried on reclaim replays the
  * CM's frozen verdict, so a node that secretly got its job is never assigned
  * twice. {@link runIdempotentBatch} walks a fresh epoch over the expired tail;
  * we emit CONFIRMED only for nodes not yet on a TxRecord, so each job is
  * recorded exactly once across reclaims.
  */
 try {
-  const { kit, useNosanaApiKey, task, taskId, startUnit = 0, nodes = [], reservationEpoch } =
+  const { kit, useNosanaApiKey, task, taskId, startUnit = 0, nodes = [] } =
     await prepareWorker<WorkerData>(workerData);
   const { timeout } = task.deployment;
 
@@ -45,14 +44,10 @@ try {
   }
 
   if (useNosanaApiKey) {
-    if (reservationEpoch === undefined) {
-      parentPort!.postMessage({ event: "ERROR", error: "Missing reservation epoch" });
-      process.exit(1);
-    }
     // The whole hold is sent every epoch-0 (the stable payload the key needs); the
     // expired tail is re-posted under fresh epochs against the same nodes, and once
-    // the walk is exhausted the task reclaims and reserves afresh when the hold
-    // lapses. We emit CONFIRMED only for nodes with no TxRecord yet — the walk
+    // the walk is exhausted the task reclaims and, when the hold lapses, hands what
+    // is still missing to a new LIST task. We emit CONFIRMED only for nodes with no TxRecord yet — the walk
     // re-collects every confirmed node from epoch 0, so this keeps one record per
     // job across reclaims.
     const units = nodes.map((reserved) => ({
@@ -67,7 +62,7 @@ try {
 
     const result = await runIdempotentBatch({
       taskId,
-      op: `assign-${reservationEpoch}`,
+      op: "assign",
       maxEpoch: MAX_IDEMPOTENCY_EPOCH,
       units,
       post: (jobs, idempotencyKey) => kit.api!.jobs.assignBatch({ jobs }, { idempotencyKey }),

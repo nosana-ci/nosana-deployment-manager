@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ObjectId, type Db } from "mongodb";
 
 import { DeploymentStrategy } from "../../../types/index.js";
-import type { OutstandingTasksDocument, TaskReservation, TxRecord } from "../../../types/index.js";
+import type { OutstandingTasksDocument, TaskReservation, TaskReservationRequest, TxRecord } from "../../../types/index.js";
 
 const order: string[] = [];
 const reconcileUnits = vi.fn();
@@ -12,7 +12,8 @@ const deploymentsUpdateOne = vi.fn<Write>(async () => ({ acknowledged: true }));
 const eventsInsertOne = vi.fn<Write>(async () => ({ acknowledged: true }));
 const onListExit = vi.fn(async () => {});
 const onListConfirmed = vi.fn();
-const reserve = vi.fn();
+const requestReservation = vi.fn();
+const scheduleTask = vi.fn();
 const vaultKey = { value: "solana-secret-key" };
 
 vi.mock("../../execution/orchestrate/index.js", () => ({
@@ -44,7 +45,13 @@ vi.mock("../../../vault/decrypt.js", () => ({
 }));
 vi.mock("../../../client/hostManager/index.js", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  reserve: (...a: unknown[]) => reserve(...a),
+  requestReservation: (...a: unknown[]) => {
+    order.push("request");
+    return requestReservation(...a);
+  },
+}));
+vi.mock("../../scheduleTask.js", () => ({
+  scheduleTask: (...a: unknown[]) => scheduleTask(...a),
 }));
 const resolveListDefinitionHash = vi.fn(() => "QmDefinition");
 vi.mock("./resolveDefinitionHash.js", () => ({
@@ -66,6 +73,7 @@ vi.mock("./events/index.js", () => ({
 }));
 
 import { HostManagerError } from "../../../client/hostManager/index.js";
+import { setConfig } from "../../../config/index.js";
 import { VaultWorker } from "../../../worker/Worker.js";
 import { runListTask } from "./run.js";
 
@@ -82,7 +90,10 @@ function makeTask(over: {
   jobs?: unknown[];
   market?: string;
   requirements?: Record<string, number | string | boolean> | null;
+  job?: string;
+  active_revision?: number;
   reservation?: TaskReservation;
+  reservation_request?: TaskReservationRequest;
   transactions?: TxRecord[];
 }): OutstandingTasksDocument {
   return {
@@ -91,6 +102,9 @@ function makeTask(over: {
     target_count: over.target_count,
     ipfs_definition_hash: over.ipfs_definition_hash,
     reservation: over.reservation,
+    reservation_request: over.reservation_request,
+    job: over.job,
+    active_revision: over.active_revision,
     transactions: over.transactions ?? [],
     jobs: over.jobs ?? [],
     deployment: {
@@ -100,6 +114,7 @@ function makeTask(over: {
       active_revision: 1,
       market: over.market ?? "m",
       requirements: over.requirements ?? null,
+      status: "RUNNING",
     },
   } as unknown as OutstandingTasksDocument;
 }
@@ -114,9 +129,28 @@ function reconcileFresh(result = { confirmed: 0, errored: 0, aborted: false, ret
   );
 }
 
-function reserved(nodes: { nodeAddress: string; market: string }[], requested = nodes.length) {
-  return { requested, reserved: nodes.length, expiresAt: nodes.length ? inAMinute().toISOString() : null, nodes };
+type Node = { nodeAddress: string; market: string };
+
+function fulfilled(nodes: Node[], requested = nodes.length) {
+  return {
+    key: "k",
+    status: "fulfilled",
+    requested,
+    nodes,
+    holdExpiresAt: inAMinute().toISOString(),
+    expiresAt: inAMinute().toISOString(),
+  };
 }
+
+function answered(status: "waiting" | "expired" | "cancelled", requested = 1) {
+  return { key: "k", status, requested, nodes: [], holdExpiresAt: null, expiresAt: inAMinute().toISOString() };
+}
+
+/** A request host-manager already answered `waiting`: only a marker is stored, never its terms. */
+const pendingRequest = (): TaskReservationRequest => ({ since: new Date(Date.now() - 60_000) });
+
+/** The options of the hand-off LIST task the run scheduled, if any. */
+const handOff = () => scheduleTask.mock.calls.map(([, type, deploymentId, , due, options]) => ({ type, deploymentId, due, options }));
 
 const spawnedWorkerData = () =>
   vi.mocked(VaultWorker).mock.calls.map(([, options]) => (options as { workerData: Record<string, unknown> }).workerData);
@@ -134,7 +168,8 @@ beforeEach(() => {
   onListExit.mockReset().mockResolvedValue(undefined);
   onListConfirmed.mockReset();
   onListError.mockClear();
-  reserve.mockReset();
+  requestReservation.mockReset();
+  scheduleTask.mockReset().mockResolvedValue(true);
   vi.mocked(VaultWorker).mockClear();
   resolveListDefinitionHash.mockReset().mockReturnValue("QmDefinition");
   vaultKey.value = "solana-secret-key";
@@ -142,7 +177,7 @@ beforeEach(() => {
 
 describe("runListTask target", () => {
   it("hands the frozen definition hash to the signer worker", async () => {
-    reserve.mockResolvedValue(reserved([{ nodeAddress: "n1", market: "m" }]));
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
     reconcileFresh();
     const task = makeTask({ target_count: 1, replicas: 1 });
 
@@ -226,10 +261,11 @@ describe("runListTask target", () => {
   });
 });
 
+
 describe("runListTask reservation (self-custody)", () => {
-  it("reserves the shortfall under taskId:reserve:0 and persists it before the worker signs", async () => {
-    reserve.mockResolvedValue(
-      reserved([
+  it("records the request (keyed by the task id) before sending it, and the fill before the worker signs", async () => {
+    requestReservation.mockResolvedValue(
+      fulfilled([
         { nodeAddress: "n1", market: "m" },
         { nodeAddress: "n2", market: "m" },
       ])
@@ -239,27 +275,31 @@ describe("runListTask reservation (self-custody)", () => {
 
     const result = await runListTask(db, task, signal());
 
-    expect(reserve).toHaveBeenCalledExactlyOnceWith(
-      { market: "m", count: 2, idempotencyKey: `${task._id.toHexString()}:reserve:0` },
+    expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
+      { key: task._id.toHexString(), market: "m", count: 2, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
-    expect(tasksUpdateOne).toHaveBeenCalledExactlyOnceWith(
-      { _id: task._id },
-      {
-        $set: {
-          reservation: {
-            key: `${task._id.toHexString()}:reserve:0`,
-            epoch: 0,
-            expiresAt: expect.any(Date),
-            nodes: [
-              { node: "n1", market: "m" },
-              { node: "n2", market: "m" },
-            ],
+    expect(tasksUpdateOne.mock.calls).toEqual([
+      // A marker only: the terms are sent, never stored.
+      [{ _id: task._id }, { $set: { reservation_request: {} } }],
+      [
+        { _id: task._id },
+        {
+          $set: {
+            reservation: {
+              expiresAt: expect.any(Date),
+              nodes: [
+                { node: "n1", market: "m" },
+                { node: "n2", market: "m" },
+              ],
+            },
           },
+          $unset: { reservation_request: "" },
         },
-      }
-    );
-    expect(order).toEqual(["persist", "spawn"]); // reservation recorded before anything is signed
+      ],
+    ]);
+    // The request is on the task before host-manager sees it, the nodes before anything is signed.
+    expect(order).toEqual(["persist", "request", "persist", "spawn"]);
     expect(spawnedNodes()).toEqual([
       [
         { node: "n1", market: "m" },
@@ -267,27 +307,28 @@ describe("runListTask reservation (self-custody)", () => {
       ],
     ]);
     expect(eventTypes()).toEqual(["JOB_RESERVE_CONFIRMED"]);
+    expect(scheduleTask).not.toHaveBeenCalled();
     expect(result.outcome).toBe("COMPLETED");
   });
 
-  it("reserves within the deployment's market, filtered by its requirements", async () => {
-    reserve.mockResolvedValue(reserved([{ nodeAddress: "n1", market: "m" }]));
-    reconcileFresh();
+  it("requests within the deployment's market, filtered by its requirements", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
+    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
     const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, requirements: { gpu: "RTX 4090" } });
 
     await runListTask(db, task, signal());
 
-    expect(reserve.mock.calls[0][0]).toEqual({
+    expect(requestReservation.mock.calls[0][0]).toEqual({
+      key: task._id.toHexString(),
       market: "m",
       requirements: { gpu: "RTX 4090" },
       count: 1,
-      idempotencyKey: `${task._id.toHexString()}:reserve:0`,
+      ttlSeconds: 900, // one minute past the 14-minute renewal, at host-manager's cap
     });
-    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m" }]]);
   });
 
   it("records each confirmed job's node and its own market from the reservation", async () => {
-    reserve.mockResolvedValue(reserved([{ nodeAddress: "n1", market: "m" }]));
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
     reconcileUnits.mockImplementation(
       async ({ makeWorker, handlers }: {
         makeWorker: (count: number, startUnit: number) => unknown;
@@ -320,15 +361,13 @@ describe("runListTask reservation (self-custody)", () => {
     );
   });
 
-  it("on reclaim within the hold, reuses the recorded nodes and skips the ones already assigned", async () => {
+  it("on reclaim within the hold (or after the webhook), reuses the recorded nodes and skips the ones already assigned", async () => {
     reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
     const task = makeTask({
       target_count: 2,
       ipfs_definition_hash: "Qm",
       replicas: 2,
       reservation: {
-        key: "k:reserve:0",
-        epoch: 0,
         expiresAt: inAMinute(),
         nodes: [
           { node: "n1", market: "m" },
@@ -340,26 +379,39 @@ describe("runListTask reservation (self-custody)", () => {
 
     await runListTask(db, task, signal());
 
-    expect(reserve).not.toHaveBeenCalled(); // same key, same hold: nothing new to ask for
+    expect(requestReservation).not.toHaveBeenCalled(); // the task's one request is already filled
     expect(tasksUpdateOne).not.toHaveBeenCalled();
     expect(spawnedNodes()).toEqual([[{ node: "n2", market: "m" }]]); // n1 was already assigned
   });
 
-  it("after an assign error used every reserved node, reserves under a bumped epoch and never reassigns them", async () => {
-    reserve.mockResolvedValue(
-      reserved([
-        { nodeAddress: "n1", market: "m" }, // released after a lapsed hold, handed out again
-        { nodeAddress: "n3", market: "m" },
-      ])
-    );
+  it("does not reuse a live hold in a market the deployment has left: it hands off at once", async () => {
+    reconcileFresh();
+    const task = makeTask({
+      target_count: 1,
+      ipfs_definition_hash: "Qm",
+      replicas: 1,
+      market: "m2",
+      reservation: { expiresAt: inAMinute(), nodes: [{ node: "n1", market: "m" }] },
+    });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(handOff()).toEqual([
+      { type: "LIST", deploymentId: "dep-1", due: expect.any(Date), options: expect.objectContaining({ limit: 1 }) },
+    ]);
+    expect(handOff()[0].due.getTime()).toBeLessThanOrEqual(Date.now()); // no backoff: the deployment moved on
+    expect(result.outcome).toBe("COMPLETED");
+  });
+
+  it("a fill that is spent (every node used after an assign error) hands off after the cooldown", async () => {
     reconcileFresh();
     const task = makeTask({
       target_count: 2,
       ipfs_definition_hash: "Qm",
       replicas: 2,
       reservation: {
-        key: "k:reserve:0",
-        epoch: 0,
         expiresAt: inAMinute(),
         nodes: [
           { node: "n1", market: "m" },
@@ -370,69 +422,229 @@ describe("runListTask reservation (self-custody)", () => {
       transactions: [{ unit: 0, signature: "s", lastValidBlockHeight: 1, status: "SENT", jobs: ["j1", "j2"], nodes: ["n1", "n2"] }],
     });
 
-    await runListTask(db, task, signal());
+    const result = await runListTask(db, task, signal());
 
-    expect(reserve.mock.calls[0][0]).toMatchObject({ idempotencyKey: `${task._id.toHexString()}:reserve:1`, count: 2 });
-    expect(tasksUpdateOne.mock.calls[0][1]).toMatchObject({ $set: { reservation: { epoch: 1 } } });
-    expect(spawnedNodes()).toEqual([[{ node: "n3", market: "m" }]]);
+    expect(requestReservation).not.toHaveBeenCalled(); // never a second request for this task
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(handOff()[0].options).toMatchObject({ limit: 2, handoff_of: task._id });
+    expect(handOff()[0].due.getTime()).toBeGreaterThanOrEqual(Date.now() + 29_000);
+    expect(result.outcome).toBe("COMPLETED");
   });
 
-  it("a lapsed hold is not reused: the next epoch reserves afresh", async () => {
-    reserve.mockResolvedValue(reserved([{ nodeAddress: "n1", market: "m" }]));
+  it("a lapsed hold is never assigned: the task hands off", async () => {
     reconcileFresh();
     const task = makeTask({
       target_count: 1,
       ipfs_definition_hash: "Qm",
       replicas: 1,
-      reservation: { key: "k:reserve:4", epoch: 4, expiresAt: new Date(Date.now() - 1), nodes: [{ node: "n1", market: "m" }] },
+      reservation: { expiresAt: new Date(Date.now() - 1), nodes: [{ node: "n1", market: "m" }] },
     });
 
     await runListTask(db, task, signal());
 
-    expect(reserve.mock.calls[0][0]).toMatchObject({ idempotencyKey: `${task._id.toHexString()}:reserve:5` });
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(handOff()).toHaveLength(1);
   });
 
-  it("no matching node: records the empty reservation, emits a shortfall and RETRYs with the cooldown", async () => {
-    reserve.mockResolvedValue(reserved([], 3));
+  it("no capacity yet: parks until renewal, says so once, and is not an error", async () => {
+    requestReservation.mockResolvedValue(answered("waiting", 3));
     reconcileFresh();
     const task = makeTask({ target_count: 3, ipfs_definition_hash: "Qm", replicas: 3 });
 
     const result = await runListTask(db, task, signal());
 
+    expect(result).toEqual({ outcome: "PARKED", successCount: 0 }); // the consumer parks it for reservation_renew_ms
     expect(VaultWorker).not.toHaveBeenCalled();
-    expect(tasksUpdateOne.mock.calls[0][1]).toMatchObject({ $set: { reservation: { epoch: 0, nodes: [], expiresAt: null } } });
-    expect(eventTypes()).toEqual(["JOB_RESERVE_SHORTFALL"]);
-    expect(eventsInsertOne.mock.calls[0][0]).toMatchObject({ message: "3 of 3 job(s) waiting for a matching node" });
-    expect(result.outcome).toBe("RETRY");
-    expect(result.retryAfterMs).toBeGreaterThanOrEqual(30_000); // escalating cooldown, not the in-flight poll
-    expect(deploymentsUpdateOne).toHaveBeenCalledWith({ id: "dep-1" }, { $set: { next_retry_at: expect.any(Date) } });
+    expect(tasksUpdateOne).toHaveBeenLastCalledWith(
+      { _id: task._id, reservation_request: { $exists: true } },
+      { $set: { "reservation_request.since": expect.any(Date) } }
+    );
+    expect(eventTypes()).toEqual(["JOB_RESERVE_WAITING"]);
+    expect(eventsInsertOne.mock.calls[0][0]).toMatchObject({ message: "Waiting for 3 matching node(s) in market m" });
+    // None of the error path: no JOB_LIST_ERROR, no retry stamp or ERROR on the deployment, no hand-off.
+    expect(onListError).not.toHaveBeenCalled();
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled();
+    expect(scheduleTask).not.toHaveBeenCalled();
     expect(onListExit).not.toHaveBeenCalled();
   });
 
-  it("a partial reservation assigns what was reserved and RETRYs for the remainder", async () => {
-    reserve.mockResolvedValue(reserved([{ nodeAddress: "n1", market: "m" }], 2));
+  it("renews a parked request under the same key, and stays quiet while it keeps waiting", async () => {
+    requestReservation.mockResolvedValue(answered("waiting"));
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, reservation_request: pendingRequest() });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
+      { key: task._id.toHexString(), market: "m", count: 1, ttlSeconds: 900 },
+      expect.any(AbortSignal)
+    );
+    expect(result.outcome).toBe("PARKED");
+    expect(tasksUpdateOne).not.toHaveBeenCalled(); // same request, already noted as waiting
+    expect(eventsInsertOne).not.toHaveBeenCalled(); // JOB_RESERVE_WAITING is once per request
+  });
+
+  it("a renewal that comes back fulfilled (missed webhook) records the nodes and assigns them", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
     reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, reservation_request: pendingRequest() });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).toHaveBeenCalledTimes(1);
+    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m" }]]);
+    expect(result.outcome).toBe("COMPLETED");
+  });
+
+  it.each([
+    ["expired", answered("expired")],
+    ["cancelled", answered("cancelled")],
+    ["a replayed fill whose hold lapsed", { ...fulfilled([{ nodeAddress: "n1", market: "m" }]), holdExpiresAt: new Date(Date.now() - 1).toISOString() }],
+  ])("a renewal answered %s hands what is missing to a new LIST task after the cooldown", async (_case, response) => {
+    requestReservation.mockResolvedValue(response);
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, reservation_request: pendingRequest() });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).toHaveBeenCalledTimes(1); // no second request from this task
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(handOff()).toEqual([
+      {
+        type: "LIST",
+        deploymentId: "dep-1",
+        due: expect.any(Date),
+        options: { limit: 1, job: undefined, active_revision: undefined, handoff_of: task._id },
+      },
+    ]);
+    // Backed off: a chain of lapsed or expired requests cannot spin.
+    expect(handOff()[0].due.getTime()).toBeGreaterThanOrEqual(Date.now() + 29_000);
+    expect(eventTypes()).toEqual(["JOB_RESERVE_SHORTFALL"]);
+    expect(onListError).not.toHaveBeenCalled();
+    expect(result.outcome).toBe("COMPLETED");
+  });
+
+  it("a renewal after the deployment's terms changed sends the new terms; host-manager's 409 hands off at once", async () => {
+    requestReservation.mockRejectedValue(new HostManagerError(409, "Request key reused with different terms"));
+    reconcileFresh();
+    const task = makeTask({
+      target_count: 1,
+      ipfs_definition_hash: "Qm",
+      replicas: 1,
+      market: "m2",
+      requirements: { gpu: "H100" },
+      reservation_request: pendingRequest(),
+    });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
+      { key: task._id.toHexString(), market: "m2", requirements: { gpu: "H100" }, count: 1, ttlSeconds: 900 },
+      expect.any(AbortSignal)
+    );
+    expect(onListError).not.toHaveBeenCalled(); // not an error: the deployment moved on
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled();
+    expect(handOff()[0].options).toMatchObject({ limit: 1, handoff_of: task._id });
+    expect(handOff()[0].due.getTime()).toBeLessThanOrEqual(Date.now());
+    expect(result.outcome).toBe("COMPLETED");
+  });
+
+  it("a partial fill assigns what came back and hands the remainder to a new LIST task straight away", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }], 3));
+    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 3, ipfs_definition_hash: "Qm", replicas: 3 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).toHaveBeenCalledTimes(1);
+    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m" }]]);
+    expect(handOff()[0].options).toMatchObject({ limit: 2, handoff_of: task._id });
+    expect(handOff()[0].due.getTime()).toBeLessThanOrEqual(Date.now()); // no cooldown: this round made progress
+    expect(eventTypes()).toEqual(["JOB_RESERVE_CONFIRMED", "JOB_RESERVE_SHORTFALL"]);
+    expect(eventsInsertOne.mock.calls[1][0]).toMatchObject({ message: "2 job(s) still need a node: requested again by a new LIST task" });
+    expect(onListError).not.toHaveBeenCalled();
+    expect(deploymentsUpdateOne).not.toHaveBeenCalled();
+    expect(onListExit).toHaveBeenCalledWith(task);
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 1 });
+  });
+
+  it("a hand-off carries the rotated job and the revision of an INFINITE rotation LIST", async () => {
+    requestReservation.mockResolvedValue(answered("expired"));
+    reconcileFresh();
+    const task = makeTask({
+      target_count: 1,
+      ipfs_definition_hash: "Qm",
+      replicas: 2,
+      strategy: DeploymentStrategy.INFINITE,
+      job: "rotated-job",
+      active_revision: 4,
+      reservation_request: pendingRequest(),
+    });
+
+    await runListTask(db, task, signal());
+
+    expect(handOff()[0].options).toEqual({
+      limit: 1,
+      job: "rotated-job",
+      active_revision: 4,
+      handoff_of: task._id,
+    });
+  });
+
+  it("a reclaimed task that already handed off does not announce it twice", async () => {
+    scheduleTask.mockResolvedValue(false); // the idempotent hand-off already exists
+    requestReservation.mockResolvedValue(answered("expired"));
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, reservation_request: pendingRequest() });
+
+    await runListTask(db, task, signal());
+
+    expect(eventsInsertOne).not.toHaveBeenCalled();
+  });
+
+  it("does not hand off after an assign error: the error path retries with the cooldown", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }], 2));
+    reconcileUnits.mockImplementation(async ({ makeWorker, handlers }: {
+      makeWorker: (count: number, startUnit: number) => unknown;
+      handlers: { onError: (u: number, e: string) => void };
+    }) => {
+      await makeWorker(2, 0);
+      await handlers.onError(0, "Transaction simulation failed");
+      return { confirmed: 0, errored: 1, aborted: false, retry: false };
+    });
     const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2 });
 
     const result = await runListTask(db, task, signal());
 
-    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m" }]]);
-    expect(eventTypes()).toEqual(["JOB_RESERVE_CONFIRMED", "JOB_RESERVE_SHORTFALL"]);
-    expect(result).toMatchObject({ outcome: "RETRY", successCount: 1 });
+    expect(scheduleTask).not.toHaveBeenCalled();
+    expect(result.outcome).toBe("RETRY");
+    expect(result.retryAfterMs).toBeGreaterThanOrEqual(30_000);
   });
 
-  it("caps a request at host-manager's 50 and reconciles the rest next attempt", async () => {
-    reserve.mockResolvedValue(reserved([], 50));
+  it("a fill with no node (never expected) hands off after the cooldown instead of looping", async () => {
+    requestReservation.mockResolvedValue(fulfilled([], 2));
+    reconcileFresh();
+    const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(handOff()[0].due.getTime()).toBeGreaterThanOrEqual(Date.now() + 29_000);
+    expect(result.outcome).toBe("COMPLETED");
+  });
+
+  it("caps a request at host-manager's 50; the rest goes to a hand-off", async () => {
+    requestReservation.mockResolvedValue(answered("waiting", 50));
     reconcileFresh();
     const task = makeTask({ target_count: 80, ipfs_definition_hash: "Qm", replicas: 80 });
 
     await runListTask(db, task, signal());
 
-    expect(reserve.mock.calls[0][0]).toMatchObject({ count: 50 });
+    expect(requestReservation.mock.calls[0][0]).toMatchObject({ count: 50 });
   });
 
   it("422 (bad requirements) fails the task terminally and flags the deployment ERROR with the message", async () => {
-    reserve.mockRejectedValue(new HostManagerError(422, "Unknown metric: gpu_colour"));
+    requestReservation.mockRejectedValue(new HostManagerError(422, "Unknown metric: gpu_colour"));
     reconcileFresh();
     const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, requirements: { gpu_colour: "red" } });
 
@@ -440,7 +652,6 @@ describe("runListTask reservation (self-custody)", () => {
 
     expect(result.outcome).toBe("FAILED");
     expect(VaultWorker).not.toHaveBeenCalled();
-    expect(tasksUpdateOne).not.toHaveBeenCalled(); // nothing reserved, nothing recorded
     expect(eventsInsertOne).toHaveBeenCalledWith(
       expect.objectContaining({ type: "JOB_LIST_ERROR", message: expect.stringContaining("Unknown metric: gpu_colour") })
     );
@@ -450,20 +661,30 @@ describe("runListTask reservation (self-custody)", () => {
     );
   });
 
-  it("409 (same key in flight) is an in-flight wait: short re-poll, nothing recorded", async () => {
-    reserve.mockRejectedValue(new HostManagerError(409, "Reservation k is already in progress"));
+  it("asks for a TTL a minute past the renewal interval, so a parked request never lapses between renewals", async () => {
+    setConfig("reservation_renew_ms", 60_000);
+    requestReservation.mockResolvedValue(answered("waiting"));
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
+
+    await runListTask(db, task, signal());
+
+    expect(requestReservation.mock.calls[0][0]).toMatchObject({ ttlSeconds: 120 });
+    setConfig("reservation_renew_ms", 14 * 60_000);
+  });
+
+  it("404 (unknown market) is fatal like any other 4xx", async () => {
+    requestReservation.mockRejectedValue(new HostManagerError(404, "Unknown market"));
     reconcileFresh();
     const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
 
     const result = await runListTask(db, task, signal());
 
-    expect(result).toMatchObject({ outcome: "RETRY", retryAfterMs: 5_000 });
-    expect(tasksUpdateOne).not.toHaveBeenCalled(); // no epoch bump: the next attempt reuses the key
-    expect(onListError).not.toHaveBeenCalled();
+    expect(result.outcome).toBe("FAILED");
   });
 
-  it("503 / no response retries the same key after the cooldown", async () => {
-    reserve.mockRejectedValue(new HostManagerError(503, "Failed to read on-chain markets"));
+  it("503 / no response retries after the cooldown, keeping the request so the same key is re-sent", async () => {
+    requestReservation.mockRejectedValue(new HostManagerError(503, "Failed to read on-chain markets"));
     reconcileFresh();
     const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
 
@@ -472,7 +693,11 @@ describe("runListTask reservation (self-custody)", () => {
     expect(result.outcome).toBe("RETRY");
     expect(result.retryAfterMs).toBeGreaterThanOrEqual(30_000);
     expect(onListError.mock.calls[0][2]).toContain("Failed to read on-chain markets");
-    expect(tasksUpdateOne).not.toHaveBeenCalled(); // nothing recorded → the next attempt re-sends reserve:0
+    expect(tasksUpdateOne).toHaveBeenCalledExactlyOnceWith(
+      { _id: task._id },
+      { $set: { reservation_request: {} } }
+    );
+    expect(scheduleTask).not.toHaveBeenCalled();
   });
 });
 
@@ -481,9 +706,9 @@ describe("runListTask API-key path", () => {
     vaultKey.value = "nos_api_key";
   });
 
-  it("reserves like self-custody, with the deployment's requirements, and hands the worker the whole hold and its epoch", async () => {
-    reserve.mockResolvedValue(
-      reserved([
+  it("requests like self-custody, with the deployment's requirements, and hands the worker the whole hold", async () => {
+    requestReservation.mockResolvedValue(
+      fulfilled([
         { nodeAddress: "n1", market: "m" },
         { nodeAddress: "n2", market: "m" },
       ])
@@ -493,18 +718,15 @@ describe("runListTask API-key path", () => {
 
     const result = await runListTask(db, task, signal());
 
-    expect(reserve).toHaveBeenCalledExactlyOnceWith(
-      { market: "m", requirements: { gpu: "RTX 4090" }, count: 2, idempotencyKey: `${task._id.toHexString()}:reserve:0` },
+    expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
+      { key: task._id.toHexString(), market: "m", requirements: { gpu: "RTX 4090" }, count: 2, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
-    expect(spawnedWorkerData()).toEqual([
-      expect.objectContaining({
-        nodes: [
-          { node: "n1", market: "m" },
-          { node: "n2", market: "m" },
-        ],
-        reservationEpoch: 0,
-      }),
+    expect(spawnedNodes()).toEqual([
+      [
+        { node: "n1", market: "m" },
+        { node: "n2", market: "m" },
+      ],
     ]);
     expect(result.outcome).toBe("COMPLETED");
   });
@@ -520,8 +742,6 @@ describe("runListTask API-key path", () => {
       ipfs_definition_hash: "Qm",
       replicas: 2,
       reservation: {
-        key: "k:reserve:1",
-        epoch: 1,
         expiresAt: inAMinute(),
         nodes: [
           { node: "n1", market: "m" },
@@ -533,15 +753,12 @@ describe("runListTask API-key path", () => {
 
     const result = await runListTask(db, task, signal());
 
-    expect(reserve).not.toHaveBeenCalled();
-    expect(spawnedWorkerData()).toEqual([
-      expect.objectContaining({
-        nodes: [
-          { node: "n1", market: "m" },
-          { node: "n2", market: "m" },
-        ],
-        reservationEpoch: 1,
-      }),
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(spawnedNodes()).toEqual([
+      [
+        { node: "n1", market: "m" },
+        { node: "n2", market: "m" },
+      ],
     ]);
     expect(result.outcome).toBe("COMPLETED");
   });

@@ -15,8 +15,8 @@ import {
   waitForDeploymentStatus,
 } from '../../common/index.js';
 
-// No host ever joins: no job is posted (nothing to assign to), the LIST keeps
-// retrying with a shortfall, no extend is ever scheduled, and the deployment
+// No host ever joins: no job is posted (nothing to assign to), the LIST stays
+// parked on a waiting request, no extend is ever scheduled, and the deployment
 // can still be stopped cleanly.
 createFlow('Queued Without Host', (step) => {
   const deployment = createState<Deployment>();
@@ -35,11 +35,11 @@ createFlow('Queued Without Host', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('the reservation is a shortfall', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_SHORTFALL' }));
+  step('the request waits at host-manager', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_WAITING' }));
 
   step('no job is posted', checkDeploymentJobs(deployment, { expectedJobsCount: 0 }));
 
-  step('only a LIST retry is scheduled, no extend', waitForDeploymentHasTask(deployment, { task: TaskType.LIST }, (task) => {
+  step('only the parked LIST is scheduled, no extend', waitForDeploymentHasTask(deployment, { task: TaskType.LIST }, (task) => {
     if (task.task !== TaskType.LIST) throw new Error(`unexpected ${task.task} task`);
   }));
 

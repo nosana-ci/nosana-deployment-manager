@@ -20,6 +20,8 @@ import {
   type TaskCollectionListenerHandle,
 } from "./tasks/index.js";
 import { createConfidentialJobDefinition } from "./definitions/confidential.jobdefinition.js";
+import { getRepository } from "./repositories/index.js";
+import { resyncParkedListTasks } from "./tasks/task/list/reserve.js";
 import {
   getAppMode,
   shouldRunApi,
@@ -71,6 +73,8 @@ if (shouldRunConsumer(mode)) {
 
 if (shouldRunApi(mode)) {
   apiServer = await startDeploymentManagerApi(dbClient, mode, metrics);
+  // Reservation webhooks land here and are sent once: catch up on any missed while down.
+  void resyncParkedListTasks(getRepository("tasks").collection);
 } else if (shouldRunWorker(mode)) {
   // Worker without api: spin up a tiny HTTP server for the k8s liveness probe,
   // ops-side `/stats` access, and Prometheus scrape endpoint.

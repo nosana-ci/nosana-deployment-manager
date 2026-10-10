@@ -38,10 +38,20 @@ export type DeploymentsConfig = {
   deployment_manager_port: number;
   vault_key: string | undefined;
   client_manager_url: string | undefined;
-  /** Host manager base URL; LIST tasks reserve nodes from its `POST /reservations`. */
+  /** Host manager base URL; LIST tasks request nodes from its `POST /reservations/requests`. */
   host_manager_url: string | undefined;
-  /** Shared key the host manager expects in `authorization` on `POST /reservations`. */
+  /**
+   * Shared key the host manager expects in `authorization` on its reservation
+   * routes; host-manager sends it back as `authorization` on its webhooks.
+   */
   host_manager_api_key: string | undefined;
+  /**
+   * How long a LIST parks while host-manager holds its reservation request
+   * before renewing it; a fill usually arrives sooner, by webhook. Each request
+   * asks for a TTL one minute longer (capped at host-manager's 15 minutes), so
+   * keep this under 14 minutes or a parked request can expire between renewals.
+   */
+  reservation_renew_ms: number;
   docdb: {
     hostname: string;
     port: string | number;

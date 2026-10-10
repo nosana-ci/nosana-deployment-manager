@@ -17,9 +17,9 @@ import {
   waitForJobState,
 } from '../../common/index.js';
 
-// Started before any node is queued: nothing can be assigned, so the LIST waits
-// (shortfall). Once the node joins, the retry assigns the job and the extend
-// cycle starts.
+// Started before any node is queued: nothing can be assigned, so the LIST parks
+// on a waiting request. Once the node joins, host-manager fills it and calls the
+// webhook, the LIST assigns the job and the extend cycle starts.
 createFlow('Queue Then Join', (step) => {
   const deployment = createState<Deployment>();
   const firstJob = createState<string>();
@@ -38,13 +38,13 @@ createFlow('Queue Then Join', (step) => {
 
   step('wait for deployment to be running', waitForDeploymentStatus(deployment, { expectedStatus: DeploymentStatus.RUNNING }));
 
-  step('no node to assign: the reservation is a shortfall', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_SHORTFALL' }));
+  step('no node to assign: the request waits', waitForDeploymentEvent(deployment, { type: 'JOB_RESERVE_WAITING' }));
 
   step('no job is posted while nothing is queued', checkDeploymentJobs(deployment, { expectedJobsCount: 0 }));
 
   step('join market queue', joinMarketQueue(() => deployment.get().market, { verifyQueued: false }));
 
-  step('the retry posts the job', checkDeploymentJobs(
+  step('the filled request posts the job', checkDeploymentJobs(
     deployment,
     { expectedJobsCount: 1 },
     ({ jobs }) => firstJob.set(jobs[0].job)

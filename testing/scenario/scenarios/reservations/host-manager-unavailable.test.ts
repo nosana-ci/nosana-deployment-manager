@@ -3,7 +3,7 @@ import { Deployment } from '@nosana/api';
 import { DeploymentStatus, DeploymentStrategy } from '@nosana/kit';
 
 import { createState, createFlow } from '../../utils/index.js';
-import { reservationEpochs } from '../../mocks/hostManagerMock.js';
+import { requestingTasks } from '../../mocks/hostManagerMock.js';
 import {
   checkAllJobsStopped,
   checkDeploymentJobs,
@@ -51,8 +51,8 @@ createFlow('Host-Manager Unavailable', (step) => {
 
   step('the job is assigned to our node', verifyJobAssignedToNode(() => firstJob.get()));
 
-  step('the retry re-issued the same key', waitForReservations({ count: 2 }, (calls) => {
-    expect(reservationEpochs(calls)).toEqual(['reserve:0', 'reserve:0']);
+  step('the retry re-issued the same key (same task)', waitForReservations({ count: 2 }, (calls) => {
+    expect(requestingTasks(calls)).toEqual(['task:1', 'task:1']);
   }));
 
   step('stop deployment', stopDeployment(deployment));

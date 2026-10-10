@@ -35,7 +35,7 @@ export async function runStopTask(
   // Full-stop housekeeping: drop other pending tasks for this deployment so a
   // stop is not immediately undone by a queued LIST/EXTEND.
   if (!task.limit && !task.job) {
-    await tasks.deleteMany({
+    await getRepository("tasks").delete({
       deploymentId: task.deploymentId,
       task: { $ne: "STOP" },
       ...(task.active_revision && { active_revision: { $ne: task.active_revision } }),

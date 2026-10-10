@@ -1,4 +1,4 @@
-import type { Collection, Document } from "mongodb";
+import type { Collection, Document, ObjectId } from "mongodb";
 
 import type { DeploymentDocument } from "./deployment.js";
 import type { VaultDocument } from "./vault.js";
@@ -85,18 +85,26 @@ export type TxRecord = {
 export type ReservedNode = { node: string; market: string };
 
 /**
- * The latest host-manager reservation of a LIST task, persisted before anything
- * is signed. Within the hold a reclaim reuses these nodes (same key) instead of
- * reserving again; once every node is used or the hold lapsed, the next
- * reservation walks to `epoch + 1` so host-manager hands out fresh nodes.
+ * The nodes host-manager filled a LIST task's reservation request with (its key
+ * is the task id), persisted before anything is signed. Within the hold a
+ * reclaim reuses them; once every node is used or the hold lapsed, what is
+ * still missing is handed to a new LIST task with a request of its own.
  */
 export type TaskReservation = {
-  /** Idempotency key sent to host-manager: `${taskId}:reserve:${epoch}`. */
-  key: string;
-  epoch: number;
   /** When host-manager releases the hold; null when nothing was reserved. */
   expiresAt: Date | null;
   nodes: ReservedNode[];
+};
+
+/**
+ * Marks a LIST task's pending reservation request (key: the task id). Recorded
+ * before it is sent, so the webhook always finds it, and cleared once it is
+ * filled. Each renewal sends the deployment's current terms; host-manager
+ * answers 409 when they no longer match the request, and the task hands off.
+ */
+export type TaskReservationRequest = {
+  /** When host-manager first answered `waiting`; unset until then. */
+  since?: Date;
 };
 
 export type TaskDocument = {
@@ -157,6 +165,14 @@ export type TaskDocument = {
   ipfs_definition_hash?: string;
   /** Latest node reservation of a LIST task (self-custody). */
   reservation?: TaskReservation;
+  /** Pending reservation request of a LIST task, cleared once it is fulfilled. */
+  reservation_request?: TaskReservationRequest;
+  /**
+   * The LIST task this one took a shortfall over from. It is part of that
+   * task's round (a SCHEDULED one fires no cron of its own) and is created once
+   * per source task, however often the source is reclaimed.
+   */
+  handoff_of?: ObjectId;
 };
 
 export type TasksCollection = Collection<TaskDocument>;
@@ -197,9 +213,12 @@ export type TaskFinishedReason = "COMPLETED" | "FAILED" | "TIMEOUT";
  *   - RETRY — an API-path unit is in-flight / got no definitive response; the
  *     task is rescheduled after `retryAfterMs` WITHOUT counting as a crash, and
  *     re-issues the same idempotency key (CM de-dupes).
+ *   - PARKED — a LIST waits for host-manager to fill its reservation request:
+ *     due again after `reservation_renew_ms` to renew it (or sooner, when the
+ *     webhook fills it), counting neither as an attempt nor as an in-flight retry.
  */
 export type TaskRunResult = {
-  outcome: "COMPLETED" | "FAILED" | "ABORTED" | "RETRY";
+  outcome: "COMPLETED" | "FAILED" | "ABORTED" | "RETRY" | "PARKED";
   successCount: number;
   /** Delay (ms) before the in-flight retry becomes claimable; RETRY only. */
   retryAfterMs?: number;

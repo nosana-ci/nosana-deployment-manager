@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { Db } from "mongodb";
+import { ObjectId, type Db } from "mongodb";
 
 import { DeploymentStatus, TaskType } from "../types/index.js";
 
@@ -74,6 +74,24 @@ describe("scheduleTask", () => {
       expect.objectContaining({ extend_seconds: { $exists: false } }),
       expect.anything(),
       expect.anything()
+    );
+  });
+
+  it("a hand-off is created once per source task (implied idempotent), whatever state an earlier one is in", async () => {
+    const source = new ObjectId();
+    updateOne.mockResolvedValueOnce({ upsertedCount: 0 });
+
+    const created = await scheduleTask(db, TaskType.LIST, "dep-1", DeploymentStatus.RUNNING, new Date(0), {
+      limit: 2,
+      job: "job-1",
+      handoff_of: source,
+    });
+
+    expect(created).toBe(false);
+    expect(updateOne).toHaveBeenCalledWith(
+      { deploymentId: "dep-1", handoff_of: source },
+      { $setOnInsert: expect.objectContaining({ task: TaskType.LIST, limit: 2, job: "job-1", handoff_of: source }) },
+      { upsert: true }
     );
   });
 

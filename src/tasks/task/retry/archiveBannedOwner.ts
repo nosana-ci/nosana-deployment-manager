@@ -20,7 +20,7 @@ import { DeploymentStatus, TaskType } from "../../../types/index.js";
  */
 export async function archiveBannedOwner(db: Db, owner: string): Promise<void> {
   const deployments = getRepository("deployments");
-  const tasks = getRepository("tasks").collection;
+  const tasks = getRepository("tasks");
 
   const owned = await deployments
     .findAll(
@@ -34,7 +34,7 @@ export async function archiveBannedOwner(db: Db, owner: string): Promise<void> {
 
   // Stop provisioning churn immediately; keep STOP tasks so an in-flight stop can
   // still finish (the enqueue below is idempotent against them).
-  await tasks.deleteMany({ deploymentId: { $in: ids }, task: { $ne: TaskType.STOP } });
+  await tasks.delete({ deploymentId: { $in: ids }, task: { $ne: TaskType.STOP } });
 
   // Delist each deployment's on-chain jobs via the STOP worker.
   for (const { id, status } of owned) {

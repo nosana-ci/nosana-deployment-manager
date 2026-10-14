@@ -56,3 +56,9 @@ describe("deploymentCreateValidation market / requirements", () => {
     expect(validate(body({ market: "not-a-key" })).error).toBeInstanceOf(Error);
   });
 });
+
+describe("deploymentCreateValidation body shape", () => {
+  it("rejects a body sent as a JSON string, saying it must be an object", () => {
+    expect(validate(JSON.stringify(body({ market: MARKET }))).error?.message).toContain("must be a JSON object");
+  });
+});

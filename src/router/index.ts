@@ -17,6 +17,7 @@ import {
   setupWebhooksRoutes,
 } from "./setup/index.js";
 import { AppMode } from "../config/mode.js";
+import { invalidJsonError, registerErrorHandler } from "./errorHandler.js";
 
 import { addSchemas } from "./schema/index.schema.js";
 import { createDeploymentWatchers, type DeploymentWatchers } from "./stream/deploymentWatchers.js";
@@ -43,10 +44,11 @@ export async function startDeploymentManagerApi(db: Db, mode: AppMode, metricsHa
       const json = JSON.parse(body as string);
       done(null, json);
     } catch (err) {
-      // @ts-expect-error expected type
-      done(err, undefined);
+      done(invalidJsonError(err), undefined);
     }
   });
+
+  registerErrorHandler(server);
 
   // Register metrics instrumentation and the /metrics scrape endpoint early,
   // before other plugins, so all routes are covered by the HTTP hook.

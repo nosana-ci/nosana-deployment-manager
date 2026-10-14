@@ -14,6 +14,9 @@ export const deploymentCreateValidation: FastifySchemaCompiler<FastifySchema> =
     if (httpPart !== "body") return undefined as never;
 
     return (data: unknown) => {
+      if (typeof data !== "object" || data === null || Array.isArray(data)) {
+        return { error: new Error("The request body must be a JSON object, not a string or a list.") };
+      }
       const body = data as DeploymentCreateBody;
       // 1. Validate top-level fields using the metadata-only schema
       // This automatically ignores the job_definition field

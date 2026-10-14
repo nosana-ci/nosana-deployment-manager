@@ -19,41 +19,31 @@ async function app() {
   return server;
 }
 
-const valid = {
-  name: "ollama",
-  market: "M".repeat(44),
-  replicas: 1,
-  timeout: 60,
-  strategy: "SIMPLE",
-  job_definition: {
-    version: "0.1",
-    type: "container",
-    ops: [{ type: "container/run", id: "server", args: { image: "docker.io/ollama/ollama" } }],
-  },
+const jobDefinition = {
+  version: "0.1",
+  type: "container",
+  ops: [{ type: "container/run", id: "server", args: { image: "docker.io/ollama/ollama" } }],
 };
 
 const validate = async (payload: unknown) =>
   (await app()).inject({ method: "POST", url: "/deployments/validate", payload: payload as object });
 
 describe("POST /deployments/validate", () => {
-  it("accepts a body create would accept", async () => {
-    const res = await validate(valid);
+  it("accepts a job definition create would accept", async () => {
+    const res = await validate({ job_definition: jobDefinition });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ valid: true, errors: [] });
   });
 
-  it("lists what create would reject, without failing the request", async () => {
-    const withoutStrategy = Object.fromEntries(Object.entries(valid).filter(([key]) => key !== "strategy"));
-    const res = await validate(withoutStrategy);
+  it("lists what the Kit's validator rejects, without failing the request", async () => {
+    const res = await validate({ job_definition: { ...jobDefinition, ops: [{ id: "server", args: {} }] } });
     expect(res.statusCode).toBe(200);
     expect(res.json().valid).toBe(false);
-    expect(res.json().errors.join(" ")).toContain("strategy");
+    expect(res.json().errors).toContain('job_definition.ops[0].type: expected ("container/create-volume" | "container/run")');
   });
 
-  it("reports a job definition the Kit's validator rejects", async () => {
-    const res = await validate({ ...valid, job_definition: { ...valid.job_definition, ops: [{ id: "server", args: {} }] } });
-    expect(res.json().valid).toBe(false);
-    expect(res.json().errors.some((error: string) => error.startsWith("job_definition"))).toBe(true);
+  it("asks for a job definition when there is none", async () => {
+    expect((await validate({})).json()).toEqual({ valid: false, errors: ["job_definition: Expected required property"] });
   });
 
   it("is published for MCP as a read-only tool", async () => {

@@ -36,6 +36,17 @@ describe("registerErrorHandler", () => {
     expect(res.json().error).toContain("strategy: Expected required property");
   });
 
+  it("keeps the reason in `message` where no schema narrows the body", async () => {
+    const server = fastify();
+    registerErrorHandler(server);
+    server.post("/plain", async () => {
+      throw Object.assign(new Error("market is closed"), { statusCode: 409 });
+    });
+    const res = await server.inject({ method: "POST", url: "/plain" });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: "market is closed", message: "market is closed" });
+  });
+
   it("answers a body that is not JSON with a 400 that says so", async () => {
     const res = await (await app()).inject({
       method: "POST",

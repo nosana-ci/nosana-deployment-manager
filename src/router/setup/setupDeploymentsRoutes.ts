@@ -31,6 +31,7 @@ const {
   },
   post: {
     deploymentCreateHandler,
+    deploymentValidateHandler,
     deploymentCreateRevisionHandler,
     deploymentDuplicateHandler,
     deploymentStartHandler,
@@ -69,6 +70,7 @@ const {
   },
   post: {
     DeploymentCreateSchema,
+    DeploymentValidateSchema,
     DeploymentCreateRevisionSchema,
     DeploymentDuplicateSchema,
     DeploymentStartSchema,
@@ -190,6 +192,16 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       validatorCompiler: deploymentCreateValidation,
     },
     deploymentCreateHandler
+  );
+
+  // Every body reaches the handler, which reports what create would reject.
+  server.post(
+    `${API_PREFIX}/validate`,
+    {
+      schema: DeploymentValidateSchema,
+      validatorCompiler: () => (data) => ({ value: data }),
+    },
+    deploymentValidateHandler
   );
 
   server.post(

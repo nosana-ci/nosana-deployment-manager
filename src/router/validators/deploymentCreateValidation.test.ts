@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { FastifyRouteSchemaDef } from "fastify/types/schema.js";
 import type { FastifySchema } from "fastify";
 
-import { deploymentCreateValidation } from "./deploymentCreateValidation.js";
+import { deploymentCreateErrors, deploymentCreateValidation } from "./deploymentCreateValidation.js";
 
 const MARKET = "M".repeat(44);
 const REQUIREMENTS = { name: "NVIDIA GeForce RTX 4090", ram_gb: 64, cuda_driver_version: "13", soc_2: true };
@@ -60,5 +60,28 @@ describe("deploymentCreateValidation market / requirements", () => {
 describe("deploymentCreateValidation body shape", () => {
   it("rejects a body sent as a JSON string, saying it must be an object", () => {
     expect(validate(JSON.stringify(body({ market: MARKET }))).error?.message).toContain("must be a JSON object");
+  });
+});
+
+describe("deploymentCreateErrors messages", () => {
+  const withoutStrategy = Object.fromEntries(
+    Object.entries(body({ market: MARKET })).filter(([key]) => key !== "strategy")
+  );
+
+  it("names a missing strategy and the values it takes, not just the union", () => {
+    expect(deploymentCreateErrors(withoutStrategy)).toEqual([
+      "strategy: Expected required property",
+      "strategy: Expected one of 'SIMPLE', 'SIMPLE-EXTEND'",
+    ]);
+  });
+
+  it("explains fields that exclude each other", () => {
+    expect(deploymentCreateErrors(body({ market: MARKET, vault: MARKET, new_vault: true }))).toEqual([
+      "new_vault: not allowed together with the other fields given",
+    ]);
+  });
+
+  it("finds nothing wrong with a valid body", () => {
+    expect(deploymentCreateErrors(body({ market: MARKET }))).toEqual([]);
   });
 });

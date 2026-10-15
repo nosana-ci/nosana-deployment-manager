@@ -111,7 +111,8 @@ describe("PATCH /deployments/:deployment/update-requirements", () => {
 
   it.each([
     ["an empty set", {}],
-    ["a value that is not a number, string or boolean", { ram_gb: [64] }],
+    ["a value that is not a number, string, boolean or list of them", { ram_gb: { min: 64 } }],
+    ["an empty list", { name: [] }],
   ])("rejects %s", async (_case, requirements) => {
     const res = await update({ requirements, market: OLD_MARKET });
 
@@ -119,14 +120,27 @@ describe("PATCH /deployments/:deployment/update-requirements", () => {
     expect(db.deployments.updateOne).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["requirements", { market: OLD_MARKET }],
-    ["a market", { requirements: REQUIREMENTS }],
-  ])("rejects a body without %s", async (_case, payload) => {
-    const res = await update(payload);
+  it("rejects a body without requirements", async () => {
+    const res = await update({ market: OLD_MARKET });
 
     expect(res.statusCode).toBe(400);
     expect(db.deployments.updateOne).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["no market", {}],
+    ["a null market", { market: null }],
+  ])("posts across markets with %s: the market is written as null", async (_case, market) => {
+    const requirements = { name: ["RTX 4090", "RTX 5090"] };
+
+    const res = await update({ requirements, ...market });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().market).toBeNull();
+    // `$set` rather than `$unset`, so the change listeners see the field change.
+    expect(db.deployments.updateOne).toHaveBeenCalledWith(expect.anything(), {
+      $set: { requirements, market: null, updated_at: expect.any(Date) },
+    });
   });
 
   it("reports a failed write", async () => {

@@ -7,7 +7,7 @@ import { RequirementsSchema } from "../../../components/requirements.schema.js";
 
 const DeploymentUpdateRequirementsSuccess = Type.Object({
   requirements: Type.Union([RequirementsSchema, Type.Null()]),
-  market: PublicKeySchema,
+  market: Type.Union([PublicKeySchema, Type.Null()]),
   updated_at: Type.String({ format: "date-time" }),
 });
 
@@ -16,7 +16,7 @@ export type DeploymentUpdateRequirementsError = ErrorSchema;
 
 export const DeploymentUpdateRequirementsSchema: FastifySchema = {
   description:
-    "Replace the node requirements of a deployment, or clear them with null, together with the market that serves them: the market follows the GPU, as on create. Every job listed from now on is reserved on nodes that meet the new requirements. On the same market running jobs keep their hosts; on a new one, a RUNNING deployment's jobs are stopped and relisted on it, as with update-market.",
+    "Replace the node requirements of a deployment, or clear them with null, together with the market that serves them, as on create. Every job listed from now on is reserved on nodes that meet the new requirements. Omit the market (or send null) to post across markets: each job goes to the cheapest PREMIUM market with a node that meets them. Running jobs keep their hosts, unless the market changes to another one: then a RUNNING deployment's jobs are stopped and relisted on it, as with update-market.",
   tags: ["Deployments", "mcp"],
   headers: {
     $ref: "Headers",
@@ -32,7 +32,7 @@ export const DeploymentUpdateRequirementsSchema: FastifySchema = {
   },
   body: Type.Object({
     requirements: Type.Union([RequirementsSchema, Type.Null()]),
-    market: PublicKeySchema,
+    market: Type.Optional(Type.Union([PublicKeySchema, Type.Null()])),
   }),
   response: {
     200: {

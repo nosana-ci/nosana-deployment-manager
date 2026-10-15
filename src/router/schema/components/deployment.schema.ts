@@ -23,7 +23,7 @@ export const DeploymentSchema = Type.Intersect([
     id: Type.String(),
     name: Type.String(),
     vault: PublicKeySchema,
-    market: PublicKeySchema,
+    market: Type.Union([PublicKeySchema, Type.Null()]),
     requirements: Type.Union([RequirementsSchema, Type.Null()]),
     owner: PublicKeySchema,
     status: DeploymentStatusSchema,

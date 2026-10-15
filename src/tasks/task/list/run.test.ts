@@ -92,8 +92,8 @@ function makeTask(over: {
   replicas: number;
   strategy?: string;
   jobs?: unknown[];
-  market?: string;
-  requirements?: Record<string, number | string | boolean> | null;
+  market?: string | null;
+  requirements?: Record<string, number | string | boolean | string[]> | null;
   job?: string;
   active_revision?: number;
   reservation?: TaskReservation;
@@ -118,7 +118,7 @@ function makeTask(over: {
       strategy: over.strategy ?? "SIMPLE",
       vault: { vault_key: "k" },
       active_revision: 1,
-      market: over.market ?? "m",
+      market: over.market === undefined ? "m" : over.market,
       requirements: over.requirements ?? null,
       status: "RUNNING",
     },
@@ -359,6 +359,23 @@ describe("runListTask reservation (self-custody)", () => {
     });
   });
 
+  it("requests across markets when the deployment has none: no market is sent", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "premium-a" }]));
+    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
+    const requirements = { name: ["RTX 4090", "RTX 5090"] };
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, market: null, requirements });
+
+    await runListTask(db, task, signal());
+
+    expect(requestReservation.mock.calls[0][0]).toEqual({
+      key: task._id.toHexString(),
+      requirements,
+      count: 1,
+      ttlSeconds: 900,
+    });
+    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "premium-a" }]]);
+  });
+
   it("records each confirmed job's node and its own market from the reservation", async () => {
     requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
     reconcileUnits.mockImplementation(
@@ -414,6 +431,33 @@ describe("runListTask reservation (self-custody)", () => {
     expect(requestReservation).not.toHaveBeenCalled(); // the task's one request is already filled
     expect(tasksUpdateOne).not.toHaveBeenCalled();
     expect(spawnedNodes()).toEqual([[{ node: "n2", market: "m" }]]); // n1 was already assigned
+  });
+
+  it("reuses a live hold in any market when the deployment has none", async () => {
+    reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
+    const task = makeTask({
+      target_count: 2,
+      ipfs_definition_hash: "Qm",
+      replicas: 2,
+      market: null,
+      reservation: {
+        expiresAt: inAMinute(),
+        nodes: [
+          { node: "n1", market: "premium-a" },
+          { node: "n2", market: "premium-b" },
+        ],
+      },
+    });
+
+    await runListTask(db, task, signal());
+
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(spawnedNodes()).toEqual([
+      [
+        { node: "n1", market: "premium-a" },
+        { node: "n2", market: "premium-b" },
+      ],
+    ]);
   });
 
   it("does not reuse a live hold in a market the deployment has left: it hands off at once", async () => {

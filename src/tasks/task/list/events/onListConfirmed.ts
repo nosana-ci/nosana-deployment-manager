@@ -22,7 +22,8 @@ import {
  * a second JOB_LIST_CONFIRMED for a job that was already recorded.
  *
  * An assigned job records the reserved node and its market; a record from
- * before assignment carries neither and falls back to the deployment's market.
+ * before assignment carries neither and falls back to the deployment's market
+ * (only deployments with a market predate assignment).
  */
 export async function onListConfirmed(
   jobs: JobsCollection,
@@ -38,7 +39,7 @@ export async function onListConfirmed(
       $setOnInsert: {
         job,
         tx: signature,
-        market: reserved?.market ?? task.deployment.market,
+        market: reserved?.market ?? task.deployment.market ?? undefined,
         node: reserved?.node ?? null,
         state: JobState.QUEUED,
         deployment: task.deploymentId,

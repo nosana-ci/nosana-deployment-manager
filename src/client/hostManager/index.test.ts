@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { setConfig } from "../../config/index.js";
-import { HostManagerError, cancelReservationRequest, requestReservation } from "./index.js";
+import { HostManagerError, cancelReservationRequest, listMarkets, requestReservation } from "./index.js";
 
 const fetchMock = vi.fn();
 
@@ -81,6 +81,18 @@ describe("host-manager client: reservation requests", () => {
     respond(401, { message: "Unauthorized" });
 
     await expect(cancelReservationRequest("k")).rejects.toMatchObject({ status: 401, message: "Unauthorized" });
+  });
+
+  it("listMarkets GETs every market with the shared key and no body", async () => {
+    const markets = [{ address: "m1", type: "PREMIUM", usd_reward_per_hour: 0.2, nos_reward_per_second: 0.0001 }];
+    respond(200, markets);
+
+    expect(await listMarkets()).toEqual(markets);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://host-manager:3000/markets/");
+    expect(init.method).toBe("GET");
+    expect(init.headers).toEqual({ authorization: "dm-key" });
+    expect(init.body).toBeUndefined();
   });
 
   it("refuses to call without the shared key configured", async () => {

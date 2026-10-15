@@ -10,8 +10,10 @@ export { archiveBannedOwner } from "./archiveBannedOwner.js";
  * rescheduled with an escalating cooldown and the deployment keeps doing what it
  * was doing (RUNNING / STOPPING). A funds shortfall is the one exception we keep
  * visible (it's actionable — top up the vault / credits) and retry more slowly:
- * both the on-chain rent error (`InsufficientFundsForRent`) and the client
- * manager's credit-exhaustion error (`Insufficient credits`) qualify.
+ * the on-chain funds errors (`InsufficientFundsForRent`, and those a simulation
+ * reports, see `FUNDS_ERROR_MARKERS`), the client manager's credit-exhaustion
+ * error (`Insufficient credits`), and the LIST funds check before reserving
+ * (`Insufficient credits` / `Insufficient funds`) qualify.
  */
 export type RetrySignal = {
   insufficientFunds: boolean;
@@ -25,8 +27,20 @@ export type RetrySignal = {
   negativeBalance?: boolean;
 };
 
-/** Substrings marking a funds/credit shortfall — retried on the slow funds ladder. */
-const FUNDS_ERROR_MARKERS = ["InsufficientFundsForRent", "Insufficient credits"];
+/**
+ * Substrings marking a funds/credit shortfall — retried on the slow funds ladder.
+ * A simulation (see `sendUnit`) reports an unfunded fee payer (a vault that never
+ * held SOL) as `AccountNotFound`, too little SOL for the fee as
+ * `InsufficientFundsForFee`, and too little NOS in the token program's log.
+ */
+const FUNDS_ERROR_MARKERS = [
+  "InsufficientFundsForRent",
+  "InsufficientFundsForFee",
+  "AccountNotFound",
+  "Error: insufficient funds",
+  "Insufficient credits",
+  "Insufficient funds",
+];
 
 /**
  * Pull the signed `Available: $X` balance out of a CM credits error, tolerating

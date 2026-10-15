@@ -27,6 +27,25 @@ describe("classifyTaskError", () => {
     ).toBe(true);
   });
 
+  it.each([
+    "Insufficient credits: $-5.000 available, $0.629 needed per job",
+    "Insufficient funds in vault: 0 NOS and 0 SOL available, 0.684 NOS and 0.00429 SOL needed per job",
+    "Insufficient funds for any market in reach: no market is priced within its budget",
+  ])("flags the LIST funds check (%s), never as a ban", (error) => {
+    expect(classifyTaskError(error)).toEqual({ insufficientFunds: true, negativeBalance: false });
+  });
+
+  it.each([
+    ["an unfunded fee payer", 'Transaction simulation failed: "AccountNotFound"'],
+    ["too little SOL for the fee", 'Transaction simulation failed: "InsufficientFundsForFee"'],
+    [
+      "too little NOS",
+      'Transaction simulation failed: {"InstructionError":[2,{"Custom":"1"}]} (Program log: Error: insufficient funds | Program a failed)',
+    ],
+  ])("flags a simulation's funds error: %s", (_case, error) => {
+    expect(classifyTaskError(error)).toEqual({ insufficientFunds: true, negativeBalance: false });
+  });
+
   it("treats any other error as a standard retry", () => {
     expect(classifyTaskError("Transaction simulation failed").insufficientFunds).toBe(false);
   });

@@ -25,6 +25,20 @@ export type ReservationRequestBody = {
   count: number;
   /** How long a waiting request stays queued without a renewal (host-manager caps it at 900). */
   ttlSeconds?: number;
+  /** Budget per node, sent again on every renewal: only markets priced within it (else a 402). */
+  maxUsdPerHour?: number;
+  /** Budget per node: the market's on-chain job price, NOS base units per second. */
+  maxJobPrice?: number;
+};
+
+/** A market as host-manager lists it: its type and its prices per node. */
+export type HostManagerMarket = {
+  address: string;
+  type: string;
+  /** What credits are charged per hour; null when the market has no USD price. */
+  usd_reward_per_hour: number | null;
+  /** The on-chain job price in NOS per second (the program's `jobPrice` / 1e6). */
+  nos_reward_per_second: number | null;
 };
 
 /**
@@ -55,8 +69,8 @@ export type CancelReservationRequestResponse = {
  * host-manager fills it at once when it can, otherwise queues it and calls our
  * webhook when matching nodes appear; the same key replays a fulfilment.
  * Throws {@link HostManagerError} on an error response (409 key reused with
- * other terms, 422 bad requirements, 404 unknown market, 503 chain unavailable,
- * …) and the fetch error when no response arrived (network, timeout, abort).
+ * other terms, 422 bad requirements, 404 unknown market, 402 no market within
+ * the budget, 503 chain unavailable, …) and the fetch error when no response arrived (network, timeout, abort).
  */
 export function requestReservation(
   body: ReservationRequestBody,
@@ -73,8 +87,13 @@ export function cancelReservationRequest(key: string): Promise<CancelReservation
   return callHostManager("DELETE", `/reservations/requests/${encodeURIComponent(key)}`);
 }
 
+/** Every market host-manager knows, with its type and prices. */
+export function listMarkets(signal?: AbortSignal): Promise<HostManagerMarket[]> {
+  return callHostManager("GET", "/markets/", undefined, signal);
+}
+
 async function callHostManager<T>(
-  method: "POST" | "DELETE",
+  method: "GET" | "POST" | "DELETE",
   path: string,
   body?: unknown,
   signal?: AbortSignal

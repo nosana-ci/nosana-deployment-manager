@@ -10,14 +10,14 @@ import type {
 } from "../../../../schema/patch/index.schema.js";
 
 /**
- * Writes the requirements and the market that serves them in one write, as on
- * create; no market (null) posts across markets. LIST reads both when it
- * reserves, so every job listed from now on lands on a node that meets them.
- * Running jobs keep their hosts unless the market changed to another one: then
- * `deploymentMarketUpdate`, on the worker, moves them.
+ * Writes the requirements and the market that serves them in one write; the
+ * market follows the GPU, as on create. LIST reads both when it reserves, so
+ * every job listed from now on lands on a node that meets them. Running jobs
+ * keep their hosts unless the market changed: then `deploymentMarketUpdate`,
+ * on the worker, moves them.
  */
 export const deploymentUpdateRequirementsHandler: RouteHandler<{
-  Body: { requirements: DeploymentRequirements | null; market?: string | null };
+  Body: { requirements: DeploymentRequirements | null; market: string };
   Params: { deployment: string };
   Headers: HeadersSchema;
   Reply: DeploymentUpdateRequirementsSuccess | DeploymentUpdateRequirementsError;
@@ -25,7 +25,7 @@ export const deploymentUpdateRequirementsHandler: RouteHandler<{
   const { db } = res.locals;
   const requirements = req.body.requirements;
   const deployment = res.locals.deployment!;
-  const market = req.body.market?.trim() ?? null;
+  const market = req.body.market.trim();
   const userId = req.headers["x-user-id"];
 
   try {

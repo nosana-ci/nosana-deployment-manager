@@ -33,23 +33,19 @@ describe("deploymentCreateValidation market / requirements", () => {
     expect(validate(body({ market: MARKET, requirements: REQUIREMENTS })).error).toBeUndefined();
   });
 
-  it("accepts requirements without a market (posted across markets)", () => {
-    expect(validate(body({ requirements: REQUIREMENTS })).error).toBeUndefined();
+  it("rejects requirements without a market", () => {
+    expect(validate(body({ requirements: REQUIREMENTS })).error?.message).toContain("market: Expected required property");
   });
 
-  it("accepts neither (any premium node)", () => {
-    expect(validate(body({})).error).toBeUndefined();
-  });
-
-  it("accepts a list requirement as any of its values", () => {
-    expect(validate(body({ requirements: { name: ["RTX 4090", "RTX 5090"], vram_total_mb: 80000 } })).error).toBeUndefined();
+  it("rejects neither with a market-required error", () => {
+    expect(validate(body({})).error?.message).toContain("market: Expected required property");
   });
 
   it("rejects empty requirements", () => {
     expect(validate(body({ market: MARKET, requirements: {} })).error).toBeInstanceOf(Error);
   });
 
-  it.each([{ nested: { a: 1 } }, { list: [] }, { list: [[1]] }, { list: [1, null] }, { missing: null }])(
+  it.each([{ nested: { a: 1 } }, { list: [1, 2] }, { missing: null }])(
     "rejects a non-scalar requirement value %j",
     (requirements) => {
       expect(validate(body({ market: MARKET, requirements })).error).toBeInstanceOf(Error);

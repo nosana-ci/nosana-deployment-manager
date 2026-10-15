@@ -19,8 +19,7 @@ export class HostManagerError extends Error {
 /** Body of `POST /reservations/requests`: registers a request for `count` nodes, or renews the one under `key`. */
 export type ReservationRequestBody = {
   key: string;
-  /** None: any PREMIUM market, cheapest first. */
-  market?: string;
+  market: string;
   requirements?: DeploymentRequirements;
   count: number;
   /** How long a waiting request stays queued without a renewal (host-manager caps it at 900). */

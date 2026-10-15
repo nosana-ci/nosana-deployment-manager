@@ -80,7 +80,7 @@ export type DeploymentDocumentBase = {
   idempotency_key?: string;
   id: string; // Deployment PublicKey
   vault: string; // Vault PublicKey
-  market: string | null; // Market PublicKey; null: any PREMIUM market, cheapest first
+  market: string; // Market PublicKey
   requirements: DeploymentRequirements | null;
   owner: string; // Owners PublicKey
   name: string;

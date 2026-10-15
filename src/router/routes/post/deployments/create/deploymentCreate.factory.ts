@@ -184,7 +184,7 @@ export async function createDeployment(
     ...(idempotency_key && { idempotency_key }),
     vault,
     name,
-    market: market?.trim() ?? null,
+    market: market.trim(),
     requirements: requirements ?? null,
     owner,
     status: DeploymentStatus.DRAFT,
@@ -262,7 +262,7 @@ export function duplicateDeployment(
 ): Promise<{ deployment: DeploymentDocument, revision: RevisionDocument }> {
   const base = {
     name: overrides.name,
-    market: overrides.market ?? source.market ?? undefined,
+    market: overrides.market ?? source.market,
     requirements: source.requirements ?? undefined,
     replicas: source.replicas,
     timeout: source.timeout,

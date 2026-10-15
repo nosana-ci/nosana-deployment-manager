@@ -71,13 +71,6 @@ describe("deploymentMarketUpdate — behavior", () => {
     );
   });
 
-  it("displaces nothing when the market is cleared: jobs keep their hosts, LIST posts across markets", async () => {
-    await handler({ ...deployment(DeploymentStrategy.SIMPLE), market: null }, db);
-
-    expect(jobsFindAll).not.toHaveBeenCalled();
-    expect(scheduleTask).not.toHaveBeenCalled();
-  });
-
   it("does nothing when every active job is already on the new market", async () => {
     jobsFindAll.mockResolvedValueOnce([]);
 

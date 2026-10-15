@@ -12,9 +12,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
   Type.Object({
     idempotency_key: Type.Optional(Type.String({ minLength: 1, maxLength: 128, pattern: "^[a-zA-Z0-9:/_.-]+$", description: "Optional owner-scoped create key. A duplicate returns 409; omit for independent creates. Deleting the deployment releases the key." })),
     name: Type.String(),
-    market: Type.Optional(CloneType(PublicKeySchema, {
-      description: "Market to post every job in. Omit to post across markets: each job goes to the cheapest PREMIUM market with a node that meets `requirements`.",
-    })),
+    market: PublicKeySchema,
     requirements: Type.Optional(RequirementsSchema),
     replicas: Type.Number({ minimum: 1 }),
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),

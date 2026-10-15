@@ -54,16 +54,16 @@ export type ReserveOutcome =
  * request is pending nothing was assigned, so its count is unchanged; a market or
  * requirements change makes host-manager answer 409 for the old key.
  */
-type RequestTerms = { market: string | null; requirements: DeploymentRequirements | null; count: number };
+type RequestTerms = { market: string; requirements: DeploymentRequirements | null; count: number };
 
 /**
  * Reserve nodes for `count` jobs and persist them on the task before anything is
  * signed.
  *
  * A task that already holds its fill (a reclaim, or the webhook delivered it)
- * reuses the nodes still held, unused and in the deployment's current market
- * (any market when it has none); a node on any TxRecord was used by a prior
- * attempt and is never handed to the signer again. Otherwise the task's request is renewed, or recorded and then
+ * reuses the nodes still held, unused and in the deployment's current market; a
+ * node on any TxRecord was used by a prior attempt and is never handed to the
+ * signer again. Otherwise the task's request is renewed, or recorded and then
  * sent, on the deployment's current terms. A failed request stays recorded, so
  * the next attempt re-sends the same key and host-manager replays it if the lost
  * request landed.
@@ -90,11 +90,10 @@ export async function reserveListNodes(
 
 function reuseReservation(task: OutstandingTasksDocument, reservation: TaskReservation, count: number): ReserveOutcome {
   const { market } = task.deployment;
-  const inTerms = (reserved: ReservedNode) => market === null || reserved.market === market;
   const used = new Set((task.transactions ?? []).flatMap((record) => record.nodes ?? []));
-  const nodes = reservation.nodes.filter((reserved) => !used.has(reserved.node) && inTerms(reserved));
+  const nodes = reservation.nodes.filter((reserved) => !used.has(reserved.node) && reserved.market === market);
   if (isLive(reservation) && nodes.length > 0) return { kind: "reserved", reservation, nodes: nodes.slice(0, count) };
-  return { kind: "handoff", backoff: reservation.nodes.every(inTerms) };
+  return { kind: "handoff", backoff: reservation.nodes.every((reserved) => reserved.market === market) };
 }
 
 /**
@@ -116,7 +115,7 @@ async function submitRequest(
   const response = await requestReservation(
     {
       key: task._id.toHexString(),
-      ...(terms.market && { market: terms.market }),
+      market: terms.market,
       ...(terms.requirements && { requirements: terms.requirements }),
       count: terms.count,
       ttlSeconds: Math.min(MAX_REQUEST_TTL_SECONDS, Math.ceil(getConfig().reservation_renew_ms / 1000) + 60),
@@ -171,7 +170,7 @@ async function noteWaiting(
     type: "JOB_RESERVE_WAITING",
     message: task.job
       ? `Rotation of job ${task.job}: no spare node yet, it is replaced as soon as one frees up (at the latest when the job ends)`
-      : `Waiting for ${terms.count} matching node(s) in ${terms.market ? `market ${terms.market}` : "any premium market"}`,
+      : `Waiting for ${terms.count} matching node(s) in market ${terms.market}`,
     created_at: new Date(),
   });
 }

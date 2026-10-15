@@ -15,8 +15,6 @@ import {
 /**
  * Moves a RUNNING deployment's jobs onto its new market. The update-market
  * route only writes the market; this listener — on the worker — does the swap.
- * No market (null) posts across markets, so no job is displaced: running jobs
- * keep their hosts and LIST reserves on any PREMIUM market from now on.
  *
  * Every active job still on another market gets its own targeted STOP. A
  * targeted stop (`job` set) commits to exactly that job, so it can never take
@@ -42,8 +40,6 @@ import {
 export const deploymentMarketUpdate: StrategyListener<DeploymentDocument> = [
   OnEvent.UPDATE,
   async ({ id, status, strategy, market }, db) => {
-    if (market === null) return;
-
     const displaced = await JobsRepository.findAll(
       {
         deployment: id,

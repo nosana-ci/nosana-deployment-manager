@@ -644,6 +644,21 @@ describe("runListTask reservation (self-custody)", () => {
     expect(result).toEqual({ outcome: "COMPLETED", successCount: 1 });
   });
 
+  it("held nodes that got no job (a tx that never landed) hand off after the cooldown", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
+    reconcileFresh({ confirmed: 0, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m" }]]);
+    expect(handOff()[0].options).toMatchObject({ limit: 1, handoff_of: task._id });
+    // Backed off: an immediate hand-off would release n1 and re-reserve it at once.
+    expect(handOff()[0].due.getTime()).toBeGreaterThanOrEqual(Date.now() + 29_000);
+    expect(eventTypes()).toEqual(["JOB_RESERVE_CONFIRMED", "JOB_RESERVE_SHORTFALL"]);
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 0 });
+  });
+
   it("a hand-off carries the rotated job and the revision of an INFINITE rotation LIST", async () => {
     requestReservation.mockResolvedValue(answered("expired"));
     reconcileFresh();

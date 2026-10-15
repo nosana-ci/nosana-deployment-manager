@@ -180,9 +180,13 @@ export async function runListTask(
   if (reserved?.kind === "waiting") return { outcome: "PARKED", successCount: result.confirmed };
   // This task's one request is spent: whatever is still missing goes to a new
   // LIST task with a request of its own, at the back of host-manager's queue.
+  // Nodes held but no job landed (a tx that never confirmed, e.g. an unfunded
+  // vault behind an RPC that skips preflight) backs off too: handing off at once
+  // would release the hold and re-reserve the same queue-head node, starving it.
   const missing = target - result.confirmed;
   if (missing > 0 && (reserved?.kind === "handoff" || reserved?.kind === "reserved")) {
-    await handOffShortfall(db, events, task, missing, reserved.kind === "handoff" && reserved.backoff);
+    const backoff = reserved.kind === "handoff" ? reserved.backoff : result.confirmed === 0;
+    await handOffShortfall(db, events, task, missing, backoff);
   }
 
   await onListExit(task);
@@ -216,8 +220,8 @@ async function failListDeployment(
  * work: the job an INFINITE rotation replaces (so it shares that job's fate)
  * and the revision (so it is dropped once a swap supersedes it). Created once per task
  * (`handoff_of`), however often this one is reclaimed, and after the retry
- * cooldown when this task got no node at all, so a chain of lapsed or expired
- * requests cannot spin.
+ * cooldown when this task got no node or no job at all, so a chain of lapsed or
+ * expired requests, or of held nodes that never got their job, cannot spin.
  */
 async function handOffShortfall(
   db: Db,

@@ -53,18 +53,29 @@ export function buildMultiValueFilter<T extends Document = Document>(
 /**
  * Builds a multi-value filter on a nested path (e.g. `requirements.name`),
  * which the typed builders cannot name. Matches a scalar or any element of a
- * list at that path, as MongoDB does.
+ * list at that path, as MongoDB does. With `noneMeansMissing`, the value
+ * `none` selects documents with nothing at that path, and may be combined
+ * with real values (`none,RTX 4090` is either).
  * @param path - Dotted field path
  * @param value - Single value or comma-separated list
  */
 export function buildNestedMultiValueFilter(
   path: string,
-  value: string | undefined
+  value: string | undefined,
+  { noneMeansMissing = false }: { noneMeansMissing?: boolean } = {}
 ): Record<string, unknown> | undefined {
   if (!value) return undefined;
 
-  const values = parseMultiValue(value);
-  return values.length === 1 ? { [path]: values[0] } : { [path]: { $in: values } };
+  const all = parseMultiValue(value);
+  const values = noneMeansMissing ? all.filter((v) => v !== 'none') : all;
+  const missing = noneMeansMissing && values.length < all.length;
+  const present =
+    values.length === 0 ? undefined
+    : values.length === 1 ? { [path]: values[0] }
+    : { [path]: { $in: values } };
+  if (!missing) return present;
+  const absent = { [path]: { $exists: false } };
+  return present ? { $or: [present, absent] } : absent;
 }
 
 /**

@@ -41,7 +41,7 @@ export const deploymentsHandler: RouteHandler<{
         buildSingleValueFilter(DeploymentDocumentFields.IDEMPOTENCY_KEY, idempotency_key),
         buildSingleValueFilter(DeploymentDocumentFields.VAULT, vault),
         buildMarketFilter(DeploymentDocumentFields.MARKET, market),
-        buildNestedMultiValueFilter(`${DeploymentDocumentFields.REQUIREMENTS}.name`, gpu),
+        buildNestedMultiValueFilter(`${DeploymentDocumentFields.REQUIREMENTS}.name`, gpu, { noneMeansMissing: true }),
         buildDateRangeFilter(DeploymentDocumentFields.CREATED_AT, created_after, created_before)
       ],
       sortField: DeploymentDocumentFields.CREATED_AT,

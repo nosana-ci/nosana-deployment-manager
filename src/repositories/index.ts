@@ -65,7 +65,7 @@ export type FilterBuilders<T extends Document> = {
   buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) => Record<string, unknown> | undefined;
   buildMarketFilter: <K extends Extract<keyof T, string>>(field: K, value: string | undefined) => Record<string, unknown> | undefined;
   /** Multi-value filter on a dotted path below a document field, e.g. `requirements.name`. */
-  buildNestedMultiValueFilter: (path: `${Extract<keyof T, string>}.${string}`, value: string | undefined) => Record<string, unknown> | undefined;
+  buildNestedMultiValueFilter: (path: `${Extract<keyof T, string>}.${string}`, value: string | undefined, options?: { noneMeansMissing?: boolean }) => Record<string, unknown> | undefined;
 };
 
 export type WriteOptions = { session?: ClientSession };

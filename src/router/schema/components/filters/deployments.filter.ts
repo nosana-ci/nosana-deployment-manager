@@ -50,7 +50,7 @@ export const DeploymentsFilterSchema = Type.Object({
   ),
   gpu: Type.Optional(
     Type.String({
-      description: "Filter by GPU model in the node requirements (`requirements.name`, exact as hosts report it). Can be single value or comma-separated list"
+      description: "Filter by GPU model in the node requirements (`requirements.name`, exact as hosts report it). Can be single value or comma-separated list; `none` selects deployments whose requirements name no GPU"
     })
   ),
   created_after: Type.Optional(

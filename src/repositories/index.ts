@@ -10,6 +10,8 @@ import {
   buildSingleValueFilter as buildSingleValueFilterUntyped,
   buildDateRangeFilter as buildDateRangeFilterUntyped,
   buildPartialMatchFilter as buildPartialMatchFilterUntyped,
+  buildMarketFilter as buildMarketFilterUntyped,
+  buildNestedMultiValueFilter,
   type KeysetPaginationResult,
   type SortOrder,
   type PageSize
@@ -61,6 +63,9 @@ export type FilterBuilders<T extends Document> = {
   buildSingleValueFilter: <K extends Extract<keyof T, string>>(field: K, value: string | number | undefined) => Record<string, unknown> | undefined;
   buildDateRangeFilter: <K extends Extract<keyof T, string>>(field: K, after?: string, before?: string) => Record<string, unknown> | undefined;
   buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) => Record<string, unknown> | undefined;
+  buildMarketFilter: <K extends Extract<keyof T, string>>(field: K, value: string | undefined) => Record<string, unknown> | undefined;
+  /** Multi-value filter on a dotted path below a document field, e.g. `requirements.name`. */
+  buildNestedMultiValueFilter: (path: `${Extract<keyof T, string>}.${string}`, value: string | undefined) => Record<string, unknown> | undefined;
 };
 
 export type WriteOptions = { session?: ClientSession };
@@ -160,6 +165,9 @@ function createRepository<T extends Document = Document>(
         buildDateRangeFilterUntyped<T>(field, after, before),
       buildPartialMatchFilter: <K extends Extract<keyof T, string>>(fields: K[], searchTerm: string | undefined) =>
         buildPartialMatchFilterUntyped<T>(fields, searchTerm),
+      buildMarketFilter: <K extends Extract<keyof T, string>>(field: K, value: string | undefined) =>
+        buildMarketFilterUntyped<T>(field, value),
+      buildNestedMultiValueFilter,
     },
     serializeDates: serializeDates as Repository<T>['serializeDates'],
   };

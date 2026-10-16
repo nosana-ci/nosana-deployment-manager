@@ -43,6 +43,16 @@ export const DeploymentsFilterSchema = Type.Object({
       description: "Filter by vault public key"
     })
   ),
+  market: Type.Optional(
+    Type.String({
+      description: "Filter by pinned market address. Can be single value or comma-separated list; `none` selects deployments that post across markets"
+    })
+  ),
+  gpu: Type.Optional(
+    Type.String({
+      description: "Filter by GPU model in the node requirements (`requirements.name`, exact as hosts report it). Can be single value or comma-separated list"
+    })
+  ),
   created_after: Type.Optional(
     Type.String({
       format: "date-time",

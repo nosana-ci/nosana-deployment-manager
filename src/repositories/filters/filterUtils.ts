@@ -51,6 +51,39 @@ export function buildMultiValueFilter<T extends Document = Document>(
 }
 
 /**
+ * Builds a multi-value filter on a nested path (e.g. `requirements.name`),
+ * which the typed builders cannot name. Matches a scalar or any element of a
+ * list at that path, as MongoDB does.
+ * @param path - Dotted field path
+ * @param value - Single value or comma-separated list
+ */
+export function buildNestedMultiValueFilter(
+  path: string,
+  value: string | undefined
+): Record<string, unknown> | undefined {
+  if (!value) return undefined;
+
+  const values = parseMultiValue(value);
+  return values.length === 1 ? { [path]: values[0] } : { [path]: { $in: values } };
+}
+
+/**
+ * Builds a market filter: addresses as a multi-value filter, where `none`
+ * stands for deployments without a pinned market (null).
+ * @param field - The market field name
+ * @param value - Single value or comma-separated list, possibly including `none`
+ */
+export function buildMarketFilter<T extends Document = Document>(
+  field: keyof T & string,
+  value: string | undefined
+): Record<string, unknown> | undefined {
+  if (!value) return undefined;
+
+  const values = parseMultiValue(value).map((v) => (v === 'none' ? null : v));
+  return values.length === 1 ? { [field]: values[0] } : { [field]: { $in: values } };
+}
+
+/**
  * Builds a single value filter - typed version
  * @param field - The field name to filter on (must be a key of T)
  * @param value - The value to filter by

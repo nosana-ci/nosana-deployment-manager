@@ -20,6 +20,7 @@ const {
   get: {
     deploymentGetScheduledTasksHandler,
     deploymentGetHeaderHandler,
+    deploymentGetJobHeadersHandler,
     getDeploymentByIdHandler,
     deploymentsHandler,
     deploymentJobByIdHandler,
@@ -61,6 +62,7 @@ const {
     DeploymentByIdSchema,
     GetDeploymentScheduledTasksSchema,
     GetDeploymentHeaderSchema,
+    GetDeploymentJobHeadersSchema,
     DeploymentJobByIdSchema,
     GetDeploymentJobsSchema,
     GetDeploymentRevisionsSchema,
@@ -126,6 +128,15 @@ export function setupDeploymentsRoutes(server: FastifyInstance) {
       preHandler: [getDeploymentMiddleware],
     },
     deploymentGetHeaderHandler
+  )
+
+  server.get(
+    `${API_PREFIX}/:deployment/headers`,
+    {
+      schema: GetDeploymentJobHeadersSchema,
+      preHandler: [getDeploymentMiddleware],
+    },
+    deploymentGetJobHeadersHandler
   )
 
   server.get(`${API_PREFIX}/:deployment/jobs/:job`,

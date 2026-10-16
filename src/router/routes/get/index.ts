@@ -2,6 +2,7 @@
 export * from "./deployments/[id]/getDeploymentById.js";
 export * from "./deployments/[id]/getScheduledTasks.js";
 export * from "./deployments/[id]/getDeploymentHeaders/index.js";
+export * from "./deployments/[id]/getDeploymentJobHeaders/index.js";
 export * from "./deployments/[id]/getDeploymentJobs.js";
 export * from "./deployments/[id]/getDeploymentRevisions.js";
 export * from "./deployments/[id]/getDeploymentSshKeys.js";

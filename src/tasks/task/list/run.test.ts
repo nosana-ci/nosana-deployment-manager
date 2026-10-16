@@ -57,6 +57,10 @@ const checkTaskWanted = vi.fn(async () => true);
 vi.mock("../../queue/wanted/index.js", () => ({
   checkTaskWanted: (...a: unknown[]) => checkTaskWanted(...a),
 }));
+const checkListFunds = vi.fn();
+vi.mock("./funds.js", () => ({
+  checkListFunds: (...a: unknown[]) => checkListFunds(...a),
+}));
 const resolveListDefinitionHash = vi.fn(() => "QmDefinition");
 vi.mock("./resolveDefinitionHash.js", () => ({
   resolveListDefinitionHash: (...a: unknown[]) => resolveListDefinitionHash(...a),
@@ -77,6 +81,7 @@ vi.mock("./events/index.js", () => ({
 }));
 
 import { HostManagerError } from "../../../client/hostManager/index.js";
+import { classifyTaskError } from "../retry/index.js";
 import { setConfig } from "../../../config/index.js";
 import { VaultWorker } from "../../../worker/Worker.js";
 import { runListTask } from "./run.js";
@@ -179,6 +184,7 @@ beforeEach(() => {
   vi.mocked(VaultWorker).mockClear();
   resolveListDefinitionHash.mockReset().mockReturnValue("QmDefinition");
   checkTaskWanted.mockReset().mockResolvedValue(true);
+  checkListFunds.mockReset().mockResolvedValue(null); // unchecked: request as is
   vaultKey.value = "solana-secret-key";
 });
 
@@ -789,6 +795,107 @@ describe("runListTask reservation (self-custody)", () => {
       { $set: { reservation_request: {} } }
     );
     expect(scheduleTask).not.toHaveBeenCalled();
+  });
+});
+
+describe("runListTask funds check", () => {
+  it("asks only for what the vault can afford, under its budget", async () => {
+    checkListFunds.mockResolvedValue({ kind: "affordable", count: 1, budget: { maxJobPrice: 120 } });
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }], 1));
+    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 3, ipfs_definition_hash: "Qm", replicas: 3 });
+
+    await runListTask(db, task, signal());
+
+    expect(checkListFunds).toHaveBeenCalledWith(task, 3, expect.any(AbortSignal));
+    expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
+      { key: task._id.toHexString(), market: "m", count: 1, ttlSeconds: 900, maxJobPrice: 120 },
+      expect.any(AbortSignal)
+    );
+    // The rest is handed off, as for any partial fill.
+    expect(handOff()[0].options).toMatchObject({ limit: 2, handoff_of: task._id });
+  });
+
+  it("an unaffordable job sends no request and retries on the funds cooldown as INSUFFICIENT_FUNDS", async () => {
+    const error = "Insufficient funds in vault: 0 NOS and 0 SOL available, 0.684 NOS and 0.004290 SOL needed per job";
+    checkListFunds.mockResolvedValue({ kind: "insufficient", error });
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(tasksUpdateOne).not.toHaveBeenCalled(); // no request recorded
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(onListError).toHaveBeenCalledWith(expect.anything(), task, error, expect.any(Function));
+    expect(scheduleTask).not.toHaveBeenCalled();
+    expect(result.outcome).toBe("RETRY");
+  });
+
+  it.each([
+    ["the vault", "Insufficient funds in vault: 0 NOS and 0 SOL available, 0.36 NOS and 0.0032 SOL needed per job"],
+    ["credits", "Insufficient credits: $0.074 available, $0.200 needed per job"],
+  ])("a shortfall in %s waits on the slow funds ladder (it needs a top-up) and flags INSUFFICIENT_FUNDS", async (_case, error) => {
+    // The real classification, not the suite's InsufficientFundsForRent-only stand-in.
+    onListError.mockImplementationOnce((_events, _task, message, setRetrySignal) =>
+      setRetrySignal(classifyTaskError(message))
+    );
+    checkListFunds.mockResolvedValue({ kind: "insufficient", error });
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(result.outcome).toBe("RETRY");
+    expect(result.retryAfterMs).toBe(600_000); // first rung: 10 minutes, then 20, 40, … up to 6 h
+    expect(deploymentsUpdateOne).toHaveBeenCalledWith(
+      { id: "dep-1", status: "RUNNING" },
+      { $set: { status: "INSUFFICIENT_FUNDS" } }
+    );
+  });
+
+  it("a deployment that can never be paid for fails without a request", async () => {
+    checkListFunds.mockResolvedValue({ kind: "fatal", error: "Credit-based jobs are only allowed on premium markets" });
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1 });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(eventsInsertOne.mock.calls[0][0]).toMatchObject({
+      type: "JOB_LIST_ERROR",
+      message: "Credit-based jobs are only allowed on premium markets",
+    });
+    expect(deploymentsUpdateOne).toHaveBeenCalledWith(expect.anything(), { $set: { status: "ERROR" } });
+    expect(result.outcome).toBe("FAILED");
+  });
+
+  it("host-manager's 402 (no market within the budget) is a funds retry, not a failure", async () => {
+    checkListFunds.mockResolvedValue({ kind: "affordable", count: 1, budget: { maxUsdPerHour: 0.1 } });
+    requestReservation.mockRejectedValue(new HostManagerError(402, "no market is priced within its budget"));
+    reconcileFresh();
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, market: null });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(onListError.mock.calls[0][2]).toMatch(/^Insufficient funds/);
+    expect(deploymentsUpdateOne).not.toHaveBeenCalledWith(expect.anything(), { $set: { status: "ERROR" } });
+    expect(result.outcome).toBe("RETRY");
+  });
+
+  it("a held reservation is reused without checking funds again", async () => {
+    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
+    const task = makeTask({
+      target_count: 1,
+      ipfs_definition_hash: "Qm",
+      replicas: 1,
+      reservation: { expiresAt: inAMinute(), nodes: [{ node: "n1", market: "m" }] },
+    });
+
+    await runListTask(db, task, signal());
+
+    expect(checkListFunds).not.toHaveBeenCalled();
+    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m" }]]);
   });
 });
 

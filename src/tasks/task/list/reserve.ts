@@ -7,6 +7,7 @@ import {
 } from "../../../client/hostManager/index.js";
 import { getConfig } from "../../../config/index.js";
 import { messageOf } from "../../idempotency/errorInfo.js";
+import { checkListFunds, type ListBudget } from "./funds.js";
 import { TaskStatus, TaskType } from "../../../types/index.js";
 
 import type { DeploymentRequirements } from "../../../router/schema/components/requirements.schema.js";
@@ -39,8 +40,11 @@ const MAX_REQUEST_TTL_SECONDS = 900;
  *                   refused the deployment's new terms under the old key (409).
  *                   `backoff` unless the terms changed, so a chain of empty
  *                   hand-offs cannot spin.
- *   - retry       — 5xx / no response: retry the same key after the cooldown.
- *   - fatal       — the deployment's market/requirements are rejected (422, 404).
+ *   - retry       — 5xx / no response: retry the same key after the cooldown; or
+ *                   the vault cannot pay for a node (our check, or host-manager's
+ *                   402), retried on the slow funds cooldown.
+ *   - fatal       — the deployment's market/requirements are rejected (422, 404),
+ *                   or it can never be paid for as configured.
  */
 export type ReserveOutcome =
   | { kind: "reserved"; reservation: TaskReservation; nodes: ReservedNode[] }
@@ -51,10 +55,17 @@ export type ReserveOutcome =
 
 /**
  * What a request is sent with: always the deployment's current terms. While a
- * request is pending nothing was assigned, so its count is unchanged; a market or
- * requirements change makes host-manager answer 409 for the old key.
+ * request is pending nothing was assigned, so its count is unchanged unless the
+ * vault can now pay for fewer; a market, requirements or count change makes
+ * host-manager answer 409 for the old key. The budget is not a term: it follows
+ * the vault's balance on every renewal.
  */
-type RequestTerms = { market: string | null; requirements: DeploymentRequirements | null; count: number };
+type RequestTerms = {
+  market: string | null;
+  requirements: DeploymentRequirements | null;
+  count: number;
+  budget: ListBudget;
+};
 
 /**
  * Reserve nodes for `count` jobs and persist them on the task before anything is
@@ -77,10 +88,18 @@ export async function reserveListNodes(
 ): Promise<ReserveOutcome> {
   if (task.reservation) return reuseReservation(task, task.reservation, count);
 
+  // Never hold a node for a job the vault cannot pay for: ask only for what it
+  // can afford, under a budget host-manager reserves within. Unchecked, ask as is.
+  const wanted = Math.min(count, MAX_RESERVATION_COUNT);
+  const funds = await checkListFunds(task, wanted, signal);
+  if (funds?.kind === "insufficient") return { kind: "retry", error: funds.error };
+  if (funds?.kind === "fatal") return { kind: "fatal", error: funds.error };
+
   const terms: RequestTerms = {
     market: task.deployment.market,
     requirements: task.deployment.requirements ?? null,
-    count: Math.min(count, MAX_RESERVATION_COUNT),
+    count: funds?.count ?? wanted,
+    budget: funds?.budget ?? {},
   };
   const pending = task.reservation_request;
   // A new request is recorded BEFORE it is sent, so its webhook always finds it.
@@ -119,6 +138,7 @@ async function submitRequest(
       ...(terms.market && { market: terms.market }),
       ...(terms.requirements && { requirements: terms.requirements }),
       count: terms.count,
+      ...terms.budget,
       ttlSeconds: Math.min(MAX_REQUEST_TTL_SECONDS, Math.ceil(getConfig().reservation_renew_ms / 1000) + 60),
     },
     signal
@@ -185,16 +205,20 @@ function toReservation({ nodes, holdExpiresAt }: Pick<ReservationRequestResponse
 
 /**
  * A 409 means the deployment's terms changed under a pending request: a new task
- * asks on them at once. Any other 4xx (422 bad requirements, 404 unknown market)
- * means the deployment itself is wrong, so retrying cannot help. A 5xx or no
- * response at all may be a lost success: the same key is re-sent after the
- * cooldown.
+ * asks on them at once. A 402 means no market it could use is priced within the
+ * vault's budget: a funds shortfall, retried on the funds cooldown. Any other
+ * 4xx (422 bad requirements, 404 unknown market) means the deployment itself is
+ * wrong, so retrying cannot help. A 5xx or no response at all may be a lost
+ * success: the same key is re-sent after the cooldown.
  */
 function reservationFailure(error: unknown): Extract<ReserveOutcome, { kind: "handoff" | "retry" | "fatal" }> {
   if (!(error instanceof HostManagerError) || error.status >= 500) {
     return { kind: "retry", error: `Node reservation failed: ${messageOf(error)}` };
   }
   if (error.status === 409) return { kind: "handoff", backoff: false };
+  if (error.status === 402) {
+    return { kind: "retry", error: `Insufficient funds for any market in reach: ${messageOf(error)}` };
+  }
   return { kind: "fatal", error: `Node reservation rejected: ${messageOf(error)}` };
 }
 

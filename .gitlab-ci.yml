@@ -17,7 +17,7 @@ variables:
   GITHUB_REPO: nosana-deployment-manager
 
 npm install:
-  image: node:22
+  image: node:22.23.4
   stage: build
   script:
     - npm ci
@@ -28,7 +28,7 @@ npm install:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 npm format:
-  image: node:22
+  image: node:22.23.4
   stage: test
   dependencies:
     - npm install
@@ -39,7 +39,7 @@ npm format:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 npm test:
-  image: node:22
+  image: node:22.23.4
   stage: test
   dependencies:
     - npm install

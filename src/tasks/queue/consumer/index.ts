@@ -12,6 +12,7 @@ import {
   abandonInflightExhausted,
   deleteCompletedTask,
   dropUnwantedTask,
+  dropOrphanedTask,
   incrementAttempt,
   parkTask,
   releaseTaskToPending,
@@ -177,6 +178,12 @@ export function startTaskCollectionListener(db: Db): TaskCollectionListenerHandl
       collection,
       survivors.map((task) => task._id)
     );
+
+    // A survivor enrich left out has no deployment or vault to run against.
+    const hydrated = new Set(enriched.map((task) => task._id.toHexString()));
+    for (const task of survivors) {
+      if (!hydrated.has(task._id.toHexString())) await dropOrphanedTask(tasksRepository, task, consumerId);
+    }
 
     for (const task of enriched) {
       if (stopped) break;

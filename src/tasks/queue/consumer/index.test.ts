@@ -103,6 +103,22 @@ describe("startTaskCollectionListener", () => {
     await handle.stop();
   });
 
+  it("deletes a claimed task enrich left out (deployment or vault gone) instead of leaving it leased", async () => {
+    const orphan = baseTask(TaskType.LIST);
+    const task = baseTask(TaskType.STOP);
+    claimTasks.mockResolvedValueOnce([orphan, task]);
+    enrichClaimedTasks.mockResolvedValueOnce([task]);
+
+    const handle = startTaskCollectionListener(createFakeDb());
+    await flush();
+
+    expect(deleteTasks).toHaveBeenCalledWith({ _id: orphan._id, claimed_by: expect.any(String) });
+    expect(runListTask).not.toHaveBeenCalled();
+    expect(runStopTask).toHaveBeenCalledOnce();
+
+    await handle.stop();
+  });
+
   it("deletes the task on terminal completion, fenced on the lease holder", async () => {
     const task = baseTask(TaskType.LIST);
     claimTasks.mockResolvedValueOnce([task]);

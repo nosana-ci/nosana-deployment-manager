@@ -16,9 +16,9 @@ import {
 
 /**
  * Hydrate claimed tasks with their deployment, vault, jobs and revisions for
- * the worker. A task whose deployment or vault no longer exists is dropped (it
- * cannot be acted on); it stays PROCESSING until its lease lapses and is then
- * reclaimed, eventually hitting the crash-loop cap.
+ * the worker. A task whose deployment or vault no longer exists is left out;
+ * the consumer deletes it (see `dropOrphanedTask`), since a task left claimed
+ * would be reclaimed every lease without ever counting an attempt.
  *
  * Hydration is separate filtered queries stitched in memory, NOT $lookups: the
  * unfiltered lookup embedded the deployment's full job history and every

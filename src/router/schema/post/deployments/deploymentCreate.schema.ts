@@ -16,7 +16,7 @@ export const DeploymentCreateBodySchema = Type.Intersect([
       description: "Market to post every job in. Omit to post across markets: each job goes to the cheapest PREMIUM market with a node that meets `requirements`.",
     })),
     requirements: Type.Optional(RequirementsSchema),
-    replicas: Type.Number({ minimum: 1 }),
+    replicas: Type.Number({ minimum: 1, maximum: 100 }),
     timeout: Type.Number({ minimum: 1, description: "Timeout in minutes, must be at least 1 minute." }),
     confidential: Type.Optional(Type.Boolean()),
     autostart: Type.Optional(Type.Boolean({

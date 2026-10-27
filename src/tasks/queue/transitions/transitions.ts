@@ -165,6 +165,22 @@ export async function dropUnwantedTask(
 }
 
 /**
+ * Drop a claimed task whose deployment or vault no longer exists: nothing can
+ * act on it, and left in place it would sit PROCESSING until its lease lapsed
+ * and be reclaimed every lease, forever, without ever counting an attempt.
+ */
+export async function dropOrphanedTask(
+  tasks: TaskDeleter,
+  task: Pick<WithId<TaskDocument>, "_id" | "task" | "deploymentId">,
+  consumerId: string
+): Promise<void> {
+  console.log(
+    `[tasks] dropping ${task.task} task ${task._id.toHexString()} for deployment ${task.deploymentId}: its deployment or vault is gone`
+  );
+  await tasks.delete({ _id: task._id, claimed_by: consumerId });
+}
+
+/**
  * Delete a completed task, fenced on the lease holder so a consumer that lost
  * its lease never deletes another consumer's work.
  */

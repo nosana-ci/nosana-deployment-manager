@@ -7,6 +7,7 @@ import {
   abandonInflightExhausted,
   deleteCompletedTask,
   dropUnwantedTask,
+  dropOrphanedTask,
   incrementAttempt,
   parkTask,
   releaseTaskToPending,
@@ -85,6 +86,15 @@ describe("task transitions", () => {
     const task = { _id: new ObjectId(), task: TaskType.LIST, deploymentId: "dep-1" } as unknown as OutstandingTasksDocument;
 
     await dropUnwantedTask(tasks.repository, task, "consumer-1");
+
+    expect(tasks.deleteTasks).toHaveBeenCalledWith({ _id: task._id, claimed_by: "consumer-1" });
+  });
+
+  it("dropOrphanedTask deletes fenced on the lease holder", async () => {
+    const tasks = fakeTasks();
+    const task = { _id: new ObjectId(), task: TaskType.LIST, deploymentId: "dep-gone" } as unknown as OutstandingTasksDocument;
+
+    await dropOrphanedTask(tasks.repository, task, "consumer-1");
 
     expect(tasks.deleteTasks).toHaveBeenCalledWith({ _id: task._id, claimed_by: "consumer-1" });
   });

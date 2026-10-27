@@ -28,7 +28,7 @@ export const DeploymentUpdateReplicaCountSchema: FastifySchema = {
     required: ["deployment"],
   },
   body: Type.Object({
-    replicas: Type.Number({ minimum: 0 }),
+    replicas: Type.Number({ minimum: 0, maximum: 100 }),
   }),
   response: {
     200: {

@@ -72,6 +72,8 @@ describe("deploymentCreateValidation job definition", () => {
     const message = validate(
       body({ market: MARKET, job_definition: { version: "0.1", type: "container", ops: [{ id: "run", args: { image: 5 } }] } })
     ).error?.message;
-    expect(message).toContain("job_definition.ops[0].args.image: expected string");
+    // An op the Kit cannot type (no `type`) is reported at the op: its type union, then its args.
+    expect(message).toContain('job_definition.ops[0].type: expected ("container/create-volume" | "container/run" | "cvm/run" | "vm/run")');
+    expect(message).toContain("job_definition.ops[0].args: expected (ContainerRun | VmRunArgs)");
   });
 });

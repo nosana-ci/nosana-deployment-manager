@@ -39,7 +39,9 @@ describe("POST /deployments/validate", () => {
     const res = await validate({ job_definition: { ...jobDefinition, ops: [{ id: "server", args: {} }] } });
     expect(res.statusCode).toBe(200);
     expect(res.json().valid).toBe(false);
-    expect(res.json().errors).toContain('job_definition.ops[0].type: expected ("container/create-volume" | "container/run")');
+    expect(res.json().errors).toContain(
+      'job_definition.ops[0].type: expected ("container/create-volume" | "container/run" | "cvm/run" | "vm/run")'
+    );
   });
 
   it("asks for a job definition when there is none", async () => {

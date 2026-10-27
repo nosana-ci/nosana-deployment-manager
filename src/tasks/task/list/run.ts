@@ -70,6 +70,14 @@ export async function runListTask(
   // decrypt here: the worker decrypts again to sign).
   const useNosanaApiKey = decryptWithKey(task.deployment.vault.vault_key).startsWith("nos_");
 
+  // A deployment that names its market lists straight into that market's
+  // queue: no host-manager request, no node, no hold. Only one with no market
+  // reserves, since choosing a market by its requirements is host-manager's to
+  // do (and the nodes it holds are paid for). Nodes that join a queue holding a
+  // listed job work that job and never enter the queue, so a reservation only
+  // ever fills from nodes no listed job caught first.
+  const listIntoQueue = task.deployment.market !== null;
+
   // Target and definition hash are frozen together on the first attempt so a
   // reclaim tops up the same plan instead of re-deriving it: the target would
   // shrink as this task's own jobs appear, and the hash — which embeds the
@@ -100,6 +108,21 @@ export async function runListTask(
       },
     });
 
+  // Queue listing: no nodes; the worker lists `count` jobs into the deployment's
+  // market from `startUnit`, and the API path sends the whole frozen `target`.
+  const spawnListWorker = (count: number, startUnit: number) =>
+    new VaultWorker<WorkerData>("../tasks/task/list/worker.js", {
+      workerData: {
+        task,
+        taskId: task._id.toHexString(),
+        vault: task.deployment.vault.vault_key,
+        ipfs_definition_hash: ipfsDefinitionHash,
+        count,
+        startUnit,
+        target,
+      },
+    });
+
   // Reserve the shortfall left after resuming prior records, and persist it
   // (inside reserveListNodes) before the worker posts anything. A request
   // host-manager has to queue parks the task; fewer nodes than jobs assigns
@@ -115,9 +138,17 @@ export async function runListTask(
   const reserveAndSpawn = async (count: number, startUnit: number) => {
     if (!(await checkTaskWanted(task))) {
       draining = true;
-      return useNosanaApiKey && task.assign_posted_at && task.reservation
-        ? spawnWorker(task.reservation.nodes, startUnit)
-        : null;
+      if (!useNosanaApiKey || !task.assign_posted_at) return null;
+      if (listIntoQueue) return spawnListWorker(count, startUnit);
+      return task.reservation ? spawnWorker(task.reservation.nodes, startUnit) : null;
+    }
+    if (listIntoQueue) {
+      // The API path posts the whole target under the task's list key, so its
+      // jobs can land unseen from the post on: marked first, as for an assign.
+      if (useNosanaApiKey && !task.assign_posted_at) {
+        await tasks.updateOne({ _id: task._id }, { $set: { assign_posted_at: new Date() } });
+      }
+      return spawnListWorker(count, startUnit);
     }
     const outcome = await reserveListNodes(tasks, events, task, count, signal);
     reserved = outcome;

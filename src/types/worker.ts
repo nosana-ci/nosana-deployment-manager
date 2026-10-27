@@ -112,6 +112,12 @@ export type WorkerData = {
   /** Unit index to assign to the first produced unit (for reclaim top-up). */
   startUnit?: number;
   /**
+   * The LIST task's frozen total (`target_count`) when its jobs are listed into
+   * the deployment's market queue: the API path sends every slot `0..target-1`
+   * under one stable idempotency key, whatever `count` this run tops up.
+   */
+  target?: number;
+  /**
    * Frozen ordered set of job addresses a STOP task targets (from the task's
    * `stop_targets`). The API batch path sends this exact set under one stable
    * idempotency key; the self-custody path stops each in turn.

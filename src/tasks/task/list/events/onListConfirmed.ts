@@ -21,9 +21,8 @@ import {
  * replay on reclaim re-confirms the same job, and we must not log (or `tx`-trace)
  * a second JOB_LIST_CONFIRMED for a job that was already recorded.
  *
- * An assigned job records the reserved node and its market; a record from
- * before assignment carries neither and falls back to the deployment's market
- * (only deployments with a market predate assignment).
+ * An assigned job records the reserved node and its market; a job listed into
+ * the deployment's market queue carries neither and takes that market.
  */
 export async function onListConfirmed(
   jobs: JobsCollection,

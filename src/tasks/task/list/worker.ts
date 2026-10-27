@@ -6,10 +6,17 @@ import {
   workerErrorFormatter,
 } from "../../../worker/Worker.js";
 import { runIdempotentBatch, MAX_IDEMPOTENCY_EPOCH } from "../../idempotency/index.js";
+import { pendingSlots } from "./pendingSlots.js";
 import type { WorkerData } from "../../../types/index.js";
 
 /**
  * LIST signer worker.
+ *
+ * Given no reserved `nodes` (a deployment with a market), it lists into that
+ * market's queue instead: `count` list instructions signed from `startUnit`
+ * (self-custody), or ONE batch call listing every slot of the frozen `target`
+ * under the per-epoch key `taskId:list:<epoch>` (API key), emitting CONFIRMED
+ * only for slots not yet recorded ({@link pendingSlots}).
  *
  * Self-custody path: build one `assign` per node the parent reserved (each in
  * the node's own market), let the kit pack them into the fewest size/CU-bounded
@@ -28,7 +35,7 @@ import type { WorkerData } from "../../../types/index.js";
  * recorded exactly once across reclaims.
  */
 try {
-  const { kit, useNosanaApiKey, task, taskId, startUnit = 0, nodes = [] } =
+  const { kit, useNosanaApiKey, task, taskId, count = 0, startUnit = 0, target, nodes } =
     await prepareWorker<WorkerData>(workerData);
   const { timeout } = task.deployment;
 
@@ -43,7 +50,71 @@ try {
     process.exit(1);
   }
 
-  if (useNosanaApiKey) {
+  if (!nodes) {
+    // Queue listing: the parent sends no nodes only for a deployment with a
+    // market (one without has host-manager pick it, by reservation).
+    const market = task.deployment.market!;
+    if (useNosanaApiKey) {
+      // The full target set is sent every epoch-0 (the stable payload the key
+      // needs); the expired tail is re-posted under fresh epochs. CONFIRMED only
+      // for slots without a CONFIRMED record yet — the walk re-collects every
+      // confirmed slot from epoch 0 — so each slot gets one TxRecord across reclaims.
+      const slotCount = target ?? startUnit + count;
+      const units = Array.from({ length: slotCount }, (_, slot) => ({
+        id: slot,
+        body: { ipfsHash: ipfs_definition_hash, market, timeout: timeout * 60 },
+      }));
+
+      const result = await runIdempotentBatch({
+        taskId,
+        op: "list",
+        maxEpoch: MAX_IDEMPOTENCY_EPOCH,
+        units,
+        post: (jobs, idempotencyKey) => kit.api!.jobs.listBatch({ jobs }, { idempotencyKey }),
+      });
+
+      const pending = new Set(pendingSlots(task.transactions, slotCount));
+      for (const confirmation of result.confirmed) {
+        if (!pending.has(confirmation.id)) continue; // already recorded on a prior run
+        parentPort!.postMessage({
+          event: "CONFIRMED",
+          unit: confirmation.id,
+          job: confirmation.job,
+          run: confirmation.run,
+          tx: confirmation.tx,
+        });
+      }
+
+      if (result.kind === "retry") {
+        parentPort!.postMessage({ event: "RETRY", retryAfterMs: result.retryAfterMs });
+      } else if (result.kind === "fatal") {
+        console.log("Error listing jobs:", result.error);
+        parentPort!.postMessage({ event: "ERROR", error: result.error });
+      }
+    } else {
+      // Self-custody: `count` list instructions, packed + signed into the fewest
+      // txs (never sent); one SIGNED per packed bucket, persisted by the parent
+      // before broadcast. signBatch throws (no partial) on any failure, so the
+      // whole run errors and the task reclaims and reconciles.
+      const instructions = await kit.jobs.listMany(
+        { ipfsHash: ipfs_definition_hash, timeout: timeout * 60, market: address(market) },
+        count
+      );
+      const signed = await kit.jobs.signBatch(instructions, { computeUnitMargin: 3 });
+
+      signed.forEach((tx, bucket) => {
+        parentPort!.postMessage({
+          event: "SIGNED",
+          unit: startUnit + bucket,
+          blob: tx.blob,
+          lastValidBlockHeight: Number(tx.lastValidBlockHeight),
+          signature: String(tx.signature),
+          jobs: (tx.accounts.jobs ?? []).map(String),
+          runs: (tx.accounts.runs ?? []).map(String),
+        });
+      });
+    }
+  } else if (useNosanaApiKey) {
     // The whole hold is sent every epoch-0 (the stable payload the key needs); the
     // expired tail is re-posted under fresh epochs against the same nodes, and once
     // the walk is exhausted the task reclaims and, when the hold lapses, hands what

@@ -123,7 +123,8 @@ function makeTask(over: {
       strategy: over.strategy ?? "SIMPLE",
       vault: { vault_key: "k" },
       active_revision: 1,
-      market: over.market === undefined ? "m" : over.market,
+      // No market: the reserving kind (one with a market lists into its queue).
+      market: over.market === undefined ? null : over.market,
       requirements: over.requirements ?? null,
       status: "RUNNING",
     },
@@ -314,7 +315,7 @@ describe("runListTask reservation (self-custody)", () => {
     const result = await runListTask(db, task, signal());
 
     expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
-      { key: task._id.toHexString(), market: "m", count: 2, ttlSeconds: 900 },
+      { key: task._id.toHexString(), count: 2, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
     expect(tasksUpdateOne.mock.calls).toEqual([
@@ -347,22 +348,6 @@ describe("runListTask reservation (self-custody)", () => {
     expect(eventTypes()).toEqual(["JOB_RESERVE_CONFIRMED"]);
     expect(scheduleTask).not.toHaveBeenCalled();
     expect(result.outcome).toBe("COMPLETED");
-  });
-
-  it("requests within the deployment's market, filtered by its requirements", async () => {
-    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m" }]));
-    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
-    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, requirements: { gpu: "RTX 4090" } });
-
-    await runListTask(db, task, signal());
-
-    expect(requestReservation.mock.calls[0][0]).toEqual({
-      key: task._id.toHexString(),
-      market: "m",
-      requirements: { gpu: "RTX 4090" },
-      count: 1,
-      ttlSeconds: 900, // one minute past the 14-minute renewal, at host-manager's cap
-    });
   });
 
   it("requests across markets when the deployment has none: no market is sent", async () => {
@@ -466,27 +451,6 @@ describe("runListTask reservation (self-custody)", () => {
     ]);
   });
 
-  it("does not reuse a live hold in a market the deployment has left: it hands off at once", async () => {
-    reconcileFresh();
-    const task = makeTask({
-      target_count: 1,
-      ipfs_definition_hash: "Qm",
-      replicas: 1,
-      market: "m2",
-      reservation: { expiresAt: inAMinute(), nodes: [{ node: "n1", market: "m" }] },
-    });
-
-    const result = await runListTask(db, task, signal());
-
-    expect(VaultWorker).not.toHaveBeenCalled();
-    expect(requestReservation).not.toHaveBeenCalled();
-    expect(handOff()).toEqual([
-      { type: "LIST", deploymentId: "dep-1", due: expect.any(Date), options: expect.objectContaining({ limit: 1 }) },
-    ]);
-    expect(handOff()[0].due.getTime()).toBeLessThanOrEqual(Date.now()); // no backoff: the deployment moved on
-    expect(result.outcome).toBe("COMPLETED");
-  });
-
   it("a fill that is spent (every node used after an assign error) hands off after the cooldown", async () => {
     reconcileFresh();
     const task = makeTask({
@@ -542,7 +506,7 @@ describe("runListTask reservation (self-custody)", () => {
       { $set: { "reservation_request.since": expect.any(Date) } }
     );
     expect(eventTypes()).toEqual(["JOB_RESERVE_WAITING"]);
-    expect(eventsInsertOne.mock.calls[0][0]).toMatchObject({ message: "Waiting for 3 matching node(s) in market m" });
+    expect(eventsInsertOne.mock.calls[0][0]).toMatchObject({ message: "Waiting for 3 matching node(s) in any premium market" });
     // None of the error path: no JOB_LIST_ERROR, no retry stamp or ERROR on the deployment, no hand-off.
     expect(onListError).not.toHaveBeenCalled();
     expect(deploymentsUpdateOne).not.toHaveBeenCalled();
@@ -558,7 +522,7 @@ describe("runListTask reservation (self-custody)", () => {
     const result = await runListTask(db, task, signal());
 
     expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
-      { key: task._id.toHexString(), market: "m", count: 1, ttlSeconds: 900 },
+      { key: task._id.toHexString(), count: 1, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
     expect(result.outcome).toBe("PARKED");
@@ -613,7 +577,6 @@ describe("runListTask reservation (self-custody)", () => {
       target_count: 1,
       ipfs_definition_hash: "Qm",
       replicas: 1,
-      market: "m2",
       requirements: { gpu: "H100" },
       reservation_request: pendingRequest(),
     });
@@ -621,7 +584,7 @@ describe("runListTask reservation (self-custody)", () => {
     const result = await runListTask(db, task, signal());
 
     expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
-      { key: task._id.toHexString(), market: "m2", requirements: { gpu: "H100" }, count: 1, ttlSeconds: 900 },
+      { key: task._id.toHexString(), requirements: { gpu: "H100" }, count: 1, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
     expect(onListError).not.toHaveBeenCalled(); // not an error: the deployment moved on
@@ -809,7 +772,7 @@ describe("runListTask funds check", () => {
 
     expect(checkListFunds).toHaveBeenCalledWith(task, 3, expect.any(AbortSignal));
     expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
-      { key: task._id.toHexString(), market: "m", count: 1, ttlSeconds: 900, maxJobPrice: 120 },
+      { key: task._id.toHexString(), count: 1, ttlSeconds: 900, maxJobPrice: 120 },
       expect.any(AbortSignal)
     );
     // The rest is handed off, as for any partial fill.
@@ -1027,7 +990,7 @@ describe("runListTask API-key path", () => {
     const result = await runListTask(db, task, signal());
 
     expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
-      { key: task._id.toHexString(), market: "m", requirements: { gpu: "RTX 4090" }, count: 2, ttlSeconds: 900 },
+      { key: task._id.toHexString(), requirements: { gpu: "RTX 4090" }, count: 2, ttlSeconds: 900 },
       expect.any(AbortSignal)
     );
     // From the post on, its jobs can land unseen: marked before the worker is spawned.
@@ -1072,5 +1035,133 @@ describe("runListTask API-key path", () => {
       ],
     ]);
     expect(result.outcome).toBe("COMPLETED");
+  });
+});
+
+describe("runListTask queue listing (deployment with a market)", () => {
+  it("lists straight into the deployment's market: no request, no node, no funds check", async () => {
+    reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 2, ipfs_definition_hash: "QmFrozen", replicas: 2, market: "m", requirements: { gpu: "RTX 4090" } });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).not.toHaveBeenCalled();
+    expect(checkListFunds).not.toHaveBeenCalled();
+    expect(tasksUpdateOne).not.toHaveBeenCalled();
+    expect(spawnedWorkerData()).toEqual([
+      expect.objectContaining({ ipfs_definition_hash: "QmFrozen", count: 2, startUnit: 0, target: 2 }),
+    ]);
+    expect(spawnedWorkerData()[0]).not.toHaveProperty("nodes");
+    expect(eventTypes()).toEqual([]);
+    expect(scheduleTask).not.toHaveBeenCalled();
+    expect(onListExit).toHaveBeenCalledWith(task);
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 2 });
+  });
+
+  it("tops up a reclaimed task from the unit reconcile asks for, with the frozen target", async () => {
+    reconcileUnits.mockImplementation(async ({ makeWorker }: { makeWorker: (count: number, startUnit: number) => unknown }) => {
+      await makeWorker(1, 2); // two units resumed and confirmed, one short
+      return { confirmed: 3, errored: 0, aborted: false, retry: false };
+    });
+    const task = makeTask({ target_count: 3, ipfs_definition_hash: "Qm", replicas: 3, market: "m" });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(spawnedWorkerData()).toEqual([expect.objectContaining({ count: 1, startUnit: 2, target: 3 })]);
+    expect(scheduleTask).not.toHaveBeenCalled(); // reconcile owns the shortfall; nothing is handed off
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 3 });
+  });
+
+  it("a deployment with no market still reserves: only host-manager can pick its market", async () => {
+    requestReservation.mockResolvedValue(fulfilled([{ nodeAddress: "n1", market: "m-cheapest" }]));
+    reconcileFresh({ confirmed: 1, errored: 0, aborted: false, retry: false });
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, market: null, requirements: { gpu: "RTX 4090" } });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(requestReservation).toHaveBeenCalledExactlyOnceWith(
+      { key: task._id.toHexString(), requirements: { gpu: "RTX 4090" }, count: 1, ttlSeconds: 900 },
+      expect.any(AbortSignal)
+    );
+    expect(spawnedNodes()).toEqual([[{ node: "n1", market: "m-cheapest" }]]);
+    expect(result.outcome).toBe("COMPLETED");
+  });
+
+  it("a handled error retries with the cooldown, as any LIST", async () => {
+    reconcileUnits.mockImplementation(
+      async ({ makeWorker, handlers }: { makeWorker: (c: number, s: number) => unknown; handlers: { onError: (u: number, e: string) => void } }) => {
+        await makeWorker(1, 0);
+        await handlers.onError(0, "Transaction simulation failed");
+        return { confirmed: 0, errored: 1, aborted: false, retry: false };
+      }
+    );
+    const task = makeTask({ target_count: 1, ipfs_definition_hash: "Qm", replicas: 1, market: "m" });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(result.outcome).toBe("RETRY");
+    expect(scheduleTask).not.toHaveBeenCalled();
+  });
+
+  it("once no longer wanted, self-custody signs nothing", async () => {
+    checkTaskWanted.mockResolvedValue(false);
+    reconcileFresh();
+    const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2, market: "m" });
+
+    const result = await runListTask(db, task, signal());
+
+    expect(VaultWorker).not.toHaveBeenCalled();
+    expect(result).toEqual({ outcome: "COMPLETED", successCount: 0 });
+  });
+
+  describe("API-key path", () => {
+    beforeEach(() => {
+      vaultKey.value = "nos_api_key";
+    });
+
+    it("marks the batch as posted before the worker sends it", async () => {
+      reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
+      const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2, market: "m" });
+
+      const result = await runListTask(db, task, signal());
+
+      expect(requestReservation).not.toHaveBeenCalled();
+      expect(tasksUpdateOne).toHaveBeenCalledExactlyOnceWith({ _id: task._id }, { $set: { assign_posted_at: expect.any(Date) } });
+      expect(order).toEqual(["persist", "spawn"]);
+      expect(spawnedWorkerData()).toEqual([expect.objectContaining({ count: 2, startUnit: 0, target: 2 })]);
+      expect(result.outcome).toBe("COMPLETED");
+    });
+
+    it("does not mark a batch twice on reclaim", async () => {
+      reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
+      const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2, market: "m", assign_posted_at: new Date() });
+
+      await runListTask(db, task, signal());
+
+      expect(tasksUpdateOne).not.toHaveBeenCalled();
+      expect(VaultWorker).toHaveBeenCalledOnce();
+    });
+
+    it("once no longer wanted, re-sends the batch it posted (same key, same target) to record what landed", async () => {
+      checkTaskWanted.mockResolvedValue(false);
+      reconcileFresh({ confirmed: 2, errored: 0, aborted: false, retry: false });
+      const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2, market: "m", assign_posted_at: new Date() });
+
+      const result = await runListTask(db, task, signal());
+
+      expect(spawnedWorkerData()).toEqual([expect.objectContaining({ target: 2 })]);
+      expect(result).toEqual({ outcome: "COMPLETED", successCount: 2 });
+    });
+
+    it("once no longer wanted, sends nothing when it never posted a batch", async () => {
+      checkTaskWanted.mockResolvedValue(false);
+      reconcileFresh();
+      const task = makeTask({ target_count: 2, ipfs_definition_hash: "Qm", replicas: 2, market: "m" });
+
+      await runListTask(db, task, signal());
+
+      expect(VaultWorker).not.toHaveBeenCalled();
+      expect(tasksUpdateOne).not.toHaveBeenCalled();
+    });
   });
 });

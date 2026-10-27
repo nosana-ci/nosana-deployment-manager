@@ -7,8 +7,10 @@ const state = vi.hoisted(() => ({
   useNosanaApiKey: false,
   postMessage: vi.fn(),
   assignMany: vi.fn(async (params: unknown[]) => params.map((_, i) => ({ ix: i }))),
+  listMany: vi.fn(async (_params: unknown, count: number) => Array.from({ length: count }, (_, i) => ({ ix: i }))),
   signBatch: vi.fn(async (): Promise<unknown[]> => []),
   assignBatch: vi.fn(),
+  listBatch: vi.fn(),
 }));
 
 vi.mock("worker_threads", () => ({
@@ -21,8 +23,8 @@ vi.mock("../../../worker/Worker.js", () => ({
     ...data,
     useNosanaApiKey: state.useNosanaApiKey,
     kit: {
-      jobs: { assignMany: state.assignMany, signBatch: state.signBatch },
-      api: { jobs: { assignBatch: state.assignBatch } },
+      jobs: { assignMany: state.assignMany, listMany: state.listMany, signBatch: state.signBatch },
+      api: { jobs: { assignBatch: state.assignBatch, listBatch: state.listBatch } },
     },
   })),
   workerErrorFormatter: (error: unknown) => (error instanceof Error ? `${error.name} ${error.message}` : String(error)),
@@ -41,15 +43,30 @@ async function runWorker(
     transactions = [] as unknown[],
   } = {}
 ): Promise<void> {
+  await startWorker(market, useNosanaApiKey, transactions, { count: nodes.length, startUnit: 3, nodes });
+}
+
+/** Reservations off: no `nodes`, the parent sends `count` from `startUnit` of a frozen `target`. */
+async function runListWorker(
+  market: string,
+  { useNosanaApiKey = false, count = 1, startUnit = 0, target = 1, transactions = [] as unknown[] } = {}
+): Promise<void> {
+  await startWorker(market, useNosanaApiKey, transactions, { count, startUnit, target });
+}
+
+async function startWorker(
+  market: string,
+  useNosanaApiKey: boolean,
+  transactions: unknown[],
+  data: Record<string, unknown>
+): Promise<void> {
   for (const key of Object.keys(state.workerData)) delete state.workerData[key];
   Object.assign(state.workerData, {
     task: { deployment: { market, timeout: 60 }, transactions },
     taskId: "task-1",
     vault: "encrypted-vault-key",
     ipfs_definition_hash: "QmDefinition",
-    count: nodes.length,
-    startUnit: 3,
-    nodes,
+    ...data,
   });
   state.useNosanaApiKey = useNosanaApiKey;
   vi.resetModules();
@@ -60,8 +77,10 @@ describe("LIST worker", () => {
   beforeEach(() => {
     state.postMessage.mockClear();
     state.assignMany.mockClear();
+    state.listMany.mockClear();
     state.signBatch.mockReset().mockResolvedValue([]);
     state.assignBatch.mockReset();
+    state.listBatch.mockReset();
   });
 
   it("assigns one job per reserved node, each in that node's own market", async () => {
@@ -186,5 +205,89 @@ describe("LIST worker", () => {
       { event: "CONFIRMED", unit: 3, job: "job-2", run: "run-2", tx: "tx-1", node: NODE_2, market: MARKET_A },
       { event: "DONE" },
     ]);
+  });
+
+  describe("queue listing (no reserved nodes)", () => {
+    it("lists `count` jobs into the deployment's market from `startUnit`, packed and signed", async () => {
+      state.signBatch.mockResolvedValue([
+        {
+          blob: "blob-0",
+          lastValidBlockHeight: 100n,
+          signature: "sig-0",
+          accounts: { jobs: ["job-1", "job-2"], runs: ["run-1", "run-2"] },
+        },
+      ]);
+
+      await runListWorker(MARKET_A, { count: 2, startUnit: 1, target: 3 });
+
+      expect(state.listMany).toHaveBeenCalledExactlyOnceWith(
+        { ipfsHash: "QmDefinition", timeout: 3600, market: MARKET_A },
+        2
+      );
+      expect(state.signBatch).toHaveBeenCalledWith([{ ix: 0 }, { ix: 1 }], { computeUnitMargin: 3 });
+      expect(state.assignMany).not.toHaveBeenCalled();
+      expect(state.postMessage.mock.calls.map(([message]) => message)).toEqual([
+        {
+          event: "SIGNED",
+          unit: 1,
+          blob: "blob-0",
+          lastValidBlockHeight: 100,
+          signature: "sig-0",
+          jobs: ["job-1", "job-2"],
+          runs: ["run-1", "run-2"],
+        },
+        { event: "DONE" },
+      ]);
+    });
+
+    it("API-key path has client-manager list the whole frozen target under the task's list key", async () => {
+      state.listBatch.mockResolvedValue({
+        items: [
+          { index: 0, status: "confirmed", tx: "tx-1", job: "job-1", run: "run-1" },
+          { index: 1, status: "confirmed", tx: "tx-1", job: "job-2", run: "run-2" },
+        ],
+      });
+
+      await runListWorker(MARKET_A, { useNosanaApiKey: true, count: 2, startUnit: 0, target: 2 });
+
+      expect(state.listBatch).toHaveBeenCalledExactlyOnceWith(
+        {
+          jobs: [
+            { ipfsHash: "QmDefinition", market: MARKET_A, timeout: 3600 },
+            { ipfsHash: "QmDefinition", market: MARKET_A, timeout: 3600 },
+          ],
+        },
+        { idempotencyKey: "task-1:list:0" }
+      );
+      expect(state.assignBatch).not.toHaveBeenCalled();
+      expect(state.postMessage.mock.calls.map(([message]) => message)).toEqual([
+        { event: "CONFIRMED", unit: 0, job: "job-1", run: "run-1", tx: "tx-1" },
+        { event: "CONFIRMED", unit: 1, job: "job-2", run: "run-2", tx: "tx-1" },
+        { event: "DONE" },
+      ]);
+    });
+
+    it("API-key path re-sends the whole target on reclaim but emits CONFIRMED only for slots not yet recorded", async () => {
+      state.listBatch.mockResolvedValue({
+        items: [
+          { index: 0, status: "confirmed", tx: "tx-1", job: "job-1", run: "run-1" },
+          { index: 1, status: "confirmed", tx: "tx-1", job: "job-2", run: "run-2" },
+        ],
+      });
+
+      await runListWorker(MARKET_A, {
+        useNosanaApiKey: true,
+        count: 1,
+        startUnit: 1,
+        target: 2,
+        transactions: [{ unit: 0, status: "CONFIRMED", signature: "tx-1", jobs: ["job-1"] }],
+      });
+
+      expect(state.listBatch.mock.calls[0][0].jobs).toHaveLength(2);
+      expect(state.postMessage.mock.calls.map(([message]) => message)).toEqual([
+        { event: "CONFIRMED", unit: 1, job: "job-2", run: "run-2", tx: "tx-1" },
+        { event: "DONE" },
+      ]);
+    });
   });
 });

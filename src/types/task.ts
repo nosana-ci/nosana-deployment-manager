@@ -191,10 +191,10 @@ export type TaskDocument = {
    */
   ipfs_definition_hash?: string;
   /**
-   * When the API path first posted this LIST's assign batch, persisted before
-   * the post. From then on its jobs may land whatever happens to the
-   * deployment, so the task is drained to record them rather than dropped
-   * (see `isListInFlight`).
+   * When the API path first posted this LIST's batch (an assign of reserved
+   * nodes, or a list into the market queue), persisted before the post. From
+   * then on its jobs may land whatever happens to the deployment, so the task
+   * is drained to record them rather than dropped (see `isListInFlight`).
    */
   assign_posted_at?: Date;
   /** Latest node reservation of a LIST task (self-custody). */

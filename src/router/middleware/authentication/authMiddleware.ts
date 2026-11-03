@@ -1,7 +1,9 @@
+import { address } from "@solana/addresses";
+
 import type { RouteHandler } from "fastify";
 
 import type { HeadersSchema } from "../../schema/index.schema.js";
-import { convertAddressToUnit8Array, getKit } from "../../../kit/index.js";
+import { getKit } from "../../../kit/index.js";
 
 export const authMiddleware: RouteHandler<{
   Headers: HeadersSchema;
@@ -17,7 +19,7 @@ export const authMiddleware: RouteHandler<{
   const kit = getKit();
 
   if (
-    !kit.authorization.validateHeaders(req.headers, convertAddressToUnit8Array(userId), {
+    !kit.authorization.validateHeaders(req.headers, address(userId), {
       expiry: 300,
     })
   ) {

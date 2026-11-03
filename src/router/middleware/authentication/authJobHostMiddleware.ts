@@ -5,7 +5,7 @@ import { address } from "@solana/addresses";
 import type { RouteHandler } from "fastify";
 
 import { ErrorMessages } from "../../../errors/index.js";
-import { convertAddressToUnit8Array, getKit } from "../../../kit/index.js";
+import { getKit } from "../../../kit/index.js";
 
 import type { HeadersSchema } from "../../schema/index.schema.js";
 
@@ -47,7 +47,7 @@ export const authJobHostMiddleware: RouteHandler<{
       if (
         !kit.authorization.validateHeaders(
           req.headers,
-          convertAddressToUnit8Array(job.node),
+          job.node,
           {
             expected_message: req.params.job,
             expiry: 300

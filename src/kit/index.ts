@@ -1,5 +1,4 @@
 import { createNosanaClient, NosanaClient, PartialClientConfig } from "@nosana/kit";
-import { address as createAddress, Address, getAddressEncoder } from "@solana/addresses";
 
 import { getConfig } from "../config/index.js";
 
@@ -34,8 +33,3 @@ export const getKit = (): NosanaClient => {
   kit = createNosanaClient(config.network, kitOptions);
   return kit;
 };
-
-export function convertAddressToUnit8Array(address: string | Address): Uint8Array {
-  const addressObj = typeof address === 'string' ? createAddress(address) : address;
-  return new Uint8Array(getAddressEncoder().encode(addressObj));
-}
